@@ -1,0 +1,8 @@
+packages:
+  - .
+engineStrict: true
+savePrefix: ''
+allowBuilds:
+  sharp: true
+  supabase: true
+  unrs-resolver: true
