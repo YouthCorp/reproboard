@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
 
+test("production does not expose local synthetic login or fixture credentials", async ({ page }) => {
+  const response = await page.goto("/login");
+  expect(await response!.text()).not.toContain("@reproboard.test");
+  await expect(page.getByRole("button", { name: "개발 계정으로 로그인", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "개발 계정", exact: true })).toHaveCount(0);
+});
+
 test("board and login clearly explain unavailable backend actions", async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

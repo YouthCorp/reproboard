@@ -1,6 +1,21 @@
 # 기술 계약과 아키텍처
 
-상태: 계획. 아래 계약을 만족하는 최소 구현을 선택하고 실제 경로·스키마를 완성 후 보정한다.
+상태: D2의 핵심 DB·제목 흐름 구현. 아래 전체 계약 중 실제 경로는 다음 절과 PROGRESS에 표시하며 이후 단계의 기능을 구현 완료로 간주하지 않는다.
+
+## D2 실제 구현과 경계
+
+- migration: `supabase/migrations/20260914000100_d2_issue_commands.sql`. `public.workspaces/workspace_members/issues/activity_events`, `private.command_receipts`. profiles·초대·검증·댓글·알림은 아직 없다.
+- `issues`는 UUID, 전역 sequence의 `RB-` 키, 제목, Inbox 고정 CHECK, version=1, 행위자·시간만 가진다. 다른 상태는 DB에서 거부한다. 추후 필드/전환은 별도 migration과 명령 검사로 확장한다.
+- 클라이언트는 public 4개 테이블의 SELECT와 `create_issue`/`update_issue` EXECUTE만 갖는다. 직접 DML·sequence·receipt·내부 명령 함수 접근은 닫았다. 읽기 helper는 현재 `auth.uid()`만 사용해 membership RLS 재귀를 피한다.
+- RPC 인수는 `p_workspace_id`, `p_request_id`, `p_payload: {title}`이고 update만 `p_issue_id`, `p_expected_version`을 추가한다. 추가 payload 필드·잘못된 형식은 VALIDATION이다. 같은 requestId의 payload 비교는 operation·issueId·expectedVersion·원본 JSONB의 SHA-256 기준이다.
+- private 공통 명령은 빈 search_path의 SECURITY DEFINER다. 모든 경로에서 auth.uid·현재 멤버십/Owner·Member 역할을 검사한다. 팀 외 이슈와 없는 이슈는 NOT_FOUND로 동일하게 응답한다. Viewer/비회원의 쓰기는 FORBIDDEN이다. public wrapper는 operation을 고정하며 내부 함수 직접 EXECUTE는 허용하지 않는다.
+- 잠금 순서: 사용자/팀/requestId의 transaction advisory lock → 멤버 행 FOR SHARE → receipt 확인 → 생성 시 팀 행 FOR UPDATE, 수정 시 이슈 행 FOR UPDATE. 성공한 이슈·activity·receipt는 한 트랜잭션에 저장한다. receipt를 읽는 재전송도 현재 권한을 다시 검사한다. 요청 실패·예외 시 성공 receipt는 남지 않는다.
+- 생성은 팀 잠금 안에서 500개 한도를 확인한다. 수정은 잠근 행의 version과 비교한다. 같은 requestId는 기존 성공 결과를 반환하므로 새 version/행을 만들지 않는다. 오래된 receipt 응답으로 Query 캐시를 덮지 않고 다시 조회한다.
+- UI: `features/auth/board-session.tsx`, `features/issues/live-board.tsx`, `issue-form.tsx`. 이슈는 Query에만 저장한다. 팀은 URL, 제목 초안은 각 폼에 둔다. 충돌 때 초안·기준 version을 유지하고 명시적으로 최신 제목을 가져온 뒤 다시 제출한다. 낙관적 이동/Realtime/오프라인 복구 전체 기능은 아직 없다.
+- `scripts/local-stack.mjs`가 고정 loopback API/DB·컨테이너 프로젝트와 작업 경로를 검증한다. `db:migrate/types/env/reset/seed`, 실제 DB 테스트가 이 검사를 통과해야 한다. 일반 API는 사용자 세션이며 Auth admin 권한은 합성 seed 도구에서만 사용한다.
+- 개발 계정 자격 정보는 gitignore된 `.local`에 생성한다. 서버의 development·명시적 스위치·loopback 검사 후에만 개발 로그인 UI에 전달한다. production 자격 정보 제공, 공개 개발 로그인, hosted seed/reset은 지원하지 않는다.
+
+공식 API 확인: [Supabase 함수 보안/EXECUTE](https://supabase.com/docs/guides/database/functions), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [password 세션](https://supabase.com/docs/reference/javascript/auth-signinwithpassword), [PostgreSQL 행/트랜잭션 잠금](https://www.postgresql.org/docs/17/explicit-locking.html). 위 잠금·receipt 정책은 이 프로젝트의 구현 선택이다.
 
 ## 1. 경계
 

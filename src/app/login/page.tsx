@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { readDevAccounts } from "@/lib/dev/accounts.server";
+import { DevLogin } from "@/features/auth/dev-login";
 
 export const metadata: Metadata = { title: "로그인" };
+export const dynamic = "force-dynamic";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const accounts = await readDevAccounts();
   return (
     <div className="login-page">
       <section className="login-intro" aria-labelledby="login-intro-title">
@@ -21,7 +25,8 @@ export default function LoginPage() {
         <h2 id="login-title">팀의 보드로 시작하기</h2>
         <p>GitHub 계정으로 로그인할 수 있도록 준비하고 있습니다.</p>
         <button className="button button-dark" disabled aria-describedby="login-note">GitHub 로그인 · 준비 중</button>
-        <p id="login-note" className="login-note">아직 로그인할 수 없습니다. 현재 화면에서는 계정 정보와 이슈를 저장하지 않습니다.</p>
+        <p id="login-note" className="login-note">GitHub 로그인은 아직 연결되지 않았습니다. 로컬 개발 환경에서는 합성 계정으로 제목 저장 흐름을 확인할 수 있습니다.</p>
+        {accounts && <DevLogin accounts={accounts} />}
         <div className="login-divider" />
         <Link className="preview-link" href="/board">보드 화면 미리보기 <span aria-hidden="true">→</span></Link>
         <p className="preview-note">데이터가 없는 화면 골격을 둘러보세요.</p>

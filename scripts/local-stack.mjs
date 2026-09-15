@@ -1,0 +1,66 @@
+/* global process, URL */
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import pg from 'pg';
+
+export const root = fileURLToPath(new URL('../', import.meta.url));
+const require = createRequire(import.meta.url);
+const cli = resolve(dirname(require.resolve('supabase/package.json')), 'dist/supabase.js');
+
+export function runCli(args) {
+  try {
+    return execFileSync(process.execPath, [cli, ...args], {
+      cwd: root, encoding: 'utf8', windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'], timeout: 180_000,
+    });
+  } catch {
+    // CLI errors can include URLs/keys. Do not forward raw stdout/stderr.
+    throw new Error(`Local Supabase command failed (${args.slice(0, 2).join(' ')}). Check Docker and local stack.`);
+  }
+}
+
+export function assertLocalTarget(status, container, config, cwd = root) {
+  if (resolve(cwd) !== resolve(root) || !/^project_id\s*=\s*"reproboard"\s*$/m.test(config)) {
+    throw new Error('Run from the reproboard repository with its local project config.');
+  }
+  const api = new URL(status.API_URL);
+  const db = new URL(status.DB_URL);
+  if (api.origin !== 'http://127.0.0.1:54321' || api.pathname !== '/' || api.username || api.password || api.search || api.hash
+    || !['postgres:', 'postgresql:'].includes(db.protocol) || db.hostname !== '127.0.0.1'
+    || db.port !== '54322' || db.pathname !== '/postgres' || db.username !== 'postgres' || db.search || db.hash) {
+    throw new Error('Refusing a non-local or unexpected Supabase target.');
+  }
+  const labels = container.Config?.Labels ?? {};
+  const ports = container.NetworkSettings?.Ports?.['5432/tcp'] ?? [];
+  if (container.Name !== '/supabase_db_reproboard' || container.State?.Running !== true
+    || labels['com.supabase.cli.project'] !== 'reproboard'
+    || resolve(labels['com.supabase.cli.workdir'] ?? '') !== resolve(root)
+    || !ports.some((port) => port.HostPort === '54322' && ['127.0.0.1', '0.0.0.0', '::'].includes(port.HostIp))) {
+    throw new Error('Local Docker database identity or port does not match this repository.');
+  }
+}
+
+export function localStack() {
+  const status = JSON.parse(runCli(['status', '--output', 'json']));
+  let container;
+  try {
+    container = JSON.parse(execFileSync('docker', ['inspect', 'supabase_db_reproboard'], {
+      cwd: root, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], timeout: 15_000,
+    }))[0];
+  } catch { throw new Error('Start the local Docker/Supabase stack first.'); }
+  assertLocalTarget(status, container, readFileSync(resolve(root, 'supabase/config.toml'), 'utf8'), process.cwd());
+  return status;
+}
+
+export async function localDb(status) {
+  const db = new pg.Client({ connectionString: status.DB_URL, ssl: false, connectionTimeoutMillis: 5000 });
+  await db.connect();
+  return db;
+}
+
+export function readAccounts() {
+  return JSON.parse(readFileSync(resolve(root, '.local/dev-accounts.json'), 'utf8'));
+}

@@ -4,7 +4,7 @@
 html { color-scheme: light; }
 body { margin: 0; background: var(--canvas); color: var(--ink); font-family: Arial, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; font-size: 14px; line-height: 1.6; }
 a { color: inherit; text-decoration: none; }
-button { font: inherit; }
+button, input, select { font: inherit; }
 a, button { -webkit-tap-highlight-color: transparent; }
 button:disabled { cursor: not-allowed; }
 :focus-visible { outline: 3px solid var(--teal); outline-offset: 5px; border-radius: 3px; }
@@ -82,6 +82,32 @@ h1 { font-size: clamp(28px, 3vw, 36px); line-height: 1.4; letter-spacing: -1.2px
 .feedback-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .loading-ring { width: 30px; height: 30px; border: 2px solid var(--line); border-top-color: var(--teal); border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.dev-login { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.dev-login h3 { font-size: 16px; }
+.dev-login p, .form-hint { font-size: 12px; color: var(--muted); }
+.dev-login .button { margin-top: 4px; }
+input, select { min-width: 0; max-width: 100%; padding: 10px 12px; border: 1px solid #aebcb3; border-radius: 6px; background: white; color: var(--ink); }
+.session-bar, .workspace-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.session-bar { justify-content: space-between; }
+.workspace-toolbar { margin: 24px 0; }
+.live-inbox { max-width: 920px; }
+.issue-create-form { padding: 22px; border: 1px solid var(--line); border-radius: 9px; background: white; }
+.form-row { display: flex; gap: 10px; margin: 8px 0; }
+.form-row input { flex: 1; }
+.form-row .button { flex-shrink: 0; }
+.form-message { margin-top: 5px; min-height: 1em; font-size: 13px; }
+.issue-list { list-style: none; padding: 0; display: grid; gap: 15px; }
+.issue-card { padding: 22px; border: 1px solid var(--line); border-radius: 9px; background: white; overflow-wrap: anywhere; }
+.issue-card h3 { margin: 8px 0 18px; font-size: 18px; }
+.issue-key { font-size: 12px; color: var(--teal); }
+.stale-draft { padding: 12px; margin-top: 12px; background: #fff4dd; border-radius: 6px; }
+.stale-draft .button { margin-top: 8px; }
+.read-only-note, .empty-inbox { padding: 20px 0; color: var(--muted); }
+@media (max-width: 650px) {
+  .form-row { flex-direction: column; }
+  .workspace-toolbar select { width: 100%; }
+  .issue-create-form, .issue-card { padding: 16px; }
+}
 @media (max-width: 1050px) {
   .site-header { padding: 0 24px; }
   .board-page { padding: 28px 24px; }

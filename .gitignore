@@ -3,6 +3,7 @@ node_modules/
 out/
 coverage/
 playwright-report/
+playwright-db-report/
 test-results/
 playwright/.auth/
 **/storageState*.json
@@ -13,6 +14,7 @@ next-env.d.ts
 supabase/.temp/
 supabase/.branches/
 .pnpm-store/
+.local/
 *.log
 .DS_Store
 Thumbs.db

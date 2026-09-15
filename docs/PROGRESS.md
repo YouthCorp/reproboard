@@ -1,10 +1,10 @@
 # 진행 기록
 
-현재 상태: D1 / P01 앱 골격·로컬 Supabase 기동 완료. 제품 기능은 미구현.
+현재 상태: D2 / P02 로컬 DB·Inbox 제목 생성→조회→수정 구현 및 관련 검증 완료.
 
-현재 단계: D1 구현 검증 완료, 별도 V01 검토 후 D2 / P02 진행 (2026-09-13, Asia/Seoul).
+현재 단계: D2 / P02 완료, V02 독립 검증 대기 (구현·검증 2026-09-14, 재개 마무리 2026-09-15, Asia/Seoul).
 
-선행 조건: Docker 엔진·Supabase CLI·로컬 DB 준비됨. D2에서 migration·개발 사용자·앱 DB 연결을 구현해야 한다. GitHub OAuth·원격 저장소·배포는 미설정.
+선행 조건: 로컬 Supabase·migration·합성 계정 4개/팀 2개·환경 설정 준비 및 실제 저장 검증 PASS. 다음 실행 시 Docker 상태를 재확인한다. GitHub OAuth·원격·배포는 미설정이며 V02 선행 조건은 아니다.
 
 ## 범위와 근거
 
@@ -19,19 +19,19 @@
 
 | 단계 | 구현 | 검증 | 근거/미해결 |
 |---|---|---|---|
-| D1 환경·골격 | DONE: P00/P01 | 로컬 PASS / 별도 V01 NOT_RUN | `src/app`, Query provider, 고정 패키지·lockfile, tests, 기본 CI, Supabase config. TEST_REPORT 참조 |
-| D2 DB·명령 | TODO | 제품 흐름 NOT_RUN | 로컬 PG 17.6 기동만 PASS. migration·seed·RPC·앱 DB 클라이언트 없음 |
-| D3 인증·권한 | TODO | NOT_RUN | 인증 코드·RLS·역할 테스트 없음 |
-| D4 보드·폼 | TODO | 제품 흐름 NOT_RUN | `board-shell.tsx`는 데이터 없는 5열 골격. 조회·상세·폼 없음 |
+| D1 환경·골격 | DONE: P00/P01 | V01 PASS | README의 지속 실행 상태 단정은 D2에서 수정. P01 전 파일 보존 독립 증명은 여전히 NOT_RUN |
+| D2 DB·명령 | DONE: P02 | 로컬 PASS / V02 NOT_RUN | migration·RLS/grant·create/update RPC·합성 seed·실제 세션 UI. DB 14건·DB UI 3건·보호 검사 2건 PASS |
+| D3 인증·권한 | TODO | 전체 권한표 NOT_RUN | D2 개발 password 세션·최소 팀/이슈 RLS는 있음. OAuth·팀 생성/초대·역할 변경 UI 없음 |
+| D4 보드·폼 | TODO | 전체 제품 흐름 NOT_RUN | 로그인 후 Inbox 제목 목록/폼만 구현. 5열 실제 데이터·상세·재현 필드 폼 없음 |
 | D5 상태·검증 | TODO | NOT_RUN | 전환 명령·재검증 코드 없음 |
-| D6 낙관적 UI | TODO | NOT_RUN | mutation·overlay 코드 없음 |
-| D7 실시간·충돌 | TODO | NOT_RUN | 구독·version 충돌 UI·실제 협업 증빙 없음 |
+| D6 낙관적 UI | TODO | NOT_RUN | D2 제목 mutation만 있음. 낙관적 이동·overlay 없음 |
+| D7 실시간·충돌 | TODO | 전체 NOT_RUN | D2 제목 version 경합·초안 유지 검증만 PASS. Realtime 구독·변경 전파 없음 |
 | D8 연결 복구 | TODO | NOT_RUN | 재연결·HTTP/WS 장애 처리 코드 없음 |
 | D9 댓글·알림 | TODO | NOT_RUN | 댓글·알림 코드 없음 |
-| D10 URL | TODO | NOT_RUN | URL 파서·탐색 코드 없음 |
+| D10 URL | TODO | NOT_RUN | D2 팀 선택 `?workspace=`만 있음. 검색·필터·정렬·상세 파서 없음 |
 | D11 접근성·UX | TODO | 핵심 흐름 NOT_RUN | D1 skip link·오류 재시도·좁은 화면 smoke만 PASS |
-| D12 회귀·CI | TODO | 전체 회귀·원격 CI NOT_RUN | Vitest 1건·Playwright 4건, `.github/workflows/ci.yml` 기반만 있음 |
-| D13 재현·시연 | TODO | NOT_RUN | D1 보드/로그인 캡처만 있음. 실제 협업·영상·새 clone 검증 없음 |
+| D12 회귀·CI | TODO | 전체 회귀·원격 CI NOT_RUN | Vitest 1·보호 2·DB 14·production smoke 5·DB UI 3건. CI는 정적/보호/production smoke 구성 |
+| D13 재현·시연 | TODO | NOT_RUN | D1/D2 화면 캡처 있음. 전체 시연·영상·새 clone 검증 없음 |
 | D14 문서·릴리스 | TODO | NOT_RUN | 문서 키트 존재는 구현·릴리스 완료 근거가 아님 |
 
 ## 환경 확인 — P00 당시 기록 (현재 결과는 아래 D1 및 TEST_REPORT)
@@ -57,16 +57,16 @@
 
 - 실제 검증: Node 24.19.0 / pnpm 11.19.0 / Next 16.3.5 / React 19.3.0 / TypeScript 5.9.3 / Supabase CLI 2.117.0. 일반 터미널의 Node 24.12.0과 달라 검증 프로세스의 PATH를 고정 런타임으로 맞췄다. 전역 설정 변경은 하지 않았다. 실행 절차는 README가 기준이다.
 - Docker Desktop 4.90.0 / 엔진 29.7.2 / WSL 2.6.3.0. Ubuntu 프록시의 `backend.sock` 부재 오류 이후 Windows·Ubuntu 엔진 응답과 소켓 존재를 확인했다. `pnpm db:start` exit 0, 컨테이너 8개 실행, PG 17.6 조회, Auth·Studio HTTP 200. 재설치·초기화·배포판 제거 없이 진행했으며 재발 원인은 미확정이다.
-- D2는 외부 계정 없이 진행 가능하다. `supabase/config.toml`은 PG 17, seed 비활성화 상태다. migration·개발 사용자·일반 세션 DB 요청과 로컬 reset 보호 조건은 P02에서 추가한다. 현재 `.env.example`은 값 없는 공개 설정 이름만 제공한다.
+- D2는 외부 계정 없이 실행한다. PG 17 migration과 보호된 `db:seed/env/reset/types`를 추가했다. 기본 SQL seed 대신 명시적 도구가 합성 계정·팀을 준비한다. `.env.example`은 빈 이름만, `.env.local`과 `.local`은 gitignore이며 앱은 공개 키+실제 사용자 세션만 사용한다. 현재 명령은 README 참조.
 - D3 사용자 작업: GitHub Settings → Developer settings → OAuth Apps에서 개발 앱을 등록한다. 홈페이지는 `http://127.0.0.1:3000`, 로컬 Supabase Auth 콜백은 `http://127.0.0.1:54321/auth/v1/callback` 기준으로 P03의 실제 provider 설정과 맞춘다. Client ID/secret은 P03에서 제공할 로컬 비밀 설정에 직접 입력하고 앱 redirect 경로도 P03 구현 후 등록한다. [공식 GitHub OAuth 설정](https://supabase.com/docs/guides/auth/social-login/auth-github). 비밀 값을 채팅·커밋에 남기지 않는다.
 - D13~14 공개 작업 전제: 사용자가 GitHub 원격 저장소와 공개 범위, 필요 시 개발/배포용 Supabase·호스팅 대상을 지정해야 한다. 현재는 원격 연결·계정 생성·배포·외부 게시를 하지 않는다. 로컬 개발 자체에는 외부 Supabase 계정이 필요하지 않다.
 
 ## 다음 실행 프롬프트
 
-[PROMPTS.md의 V01 — 환경·골격 검증](planning/PROMPTS.md#v01--환경골격-검증)으로 별도 검토한 뒤 P02로 진행한다. D1 자체 검증과 별도 검증 단계의 완료를 구분한다.
+[PROMPTS.md의 V02 — DB가 실제 기준인지 검증](planning/PROMPTS.md#v02--db가-실제-기준인지-검증)을 실행한 뒤 P03로 진행한다.
 
 ```text
-AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V01을 수행해라. 실제 파일·명령으로 D1을 검증하고 TEST_REPORT에 PASS/FAIL/NOT_RUN을 기록해라. Node 24.19.0과 pnpm 11.19.0을 확인하며, 로컬 Supabase 기동 성공과 아직 없는 제품 DB 기능을 구분해라. 사용자 변경과 로컬 DB를 보존하고 Docker 재설치·초기화 없이 현재 상태를 확인해라. 통과하면 P02를 다음 실행 프롬프트로 지정해라.
+AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V02를 수행해라. create_issue/update_issue의 실제 세션·RLS/grant·version 경합·동일 requestId/다른 payload·원자성을 코드와 로컬 DB로 독립 검증해라. README의 보호된 로컬 명령만 사용하고 기존 사용자 변경을 보존해라. reset 전 로컬 대상과 보존할 데이터를 확인하고 실제 저장 UI·reload·Viewer/타팀 격리를 대조해라. PASS/FAIL/NOT_RUN을 TEST_REPORT/PROGRESS에 기록하고 통과하면 P03을 다음 실행 프롬프트로 지정해라.
 ```
 
 ### D1 / P00 / 2026-09-13
@@ -91,6 +91,29 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V01을 수�
 - NOT_RUN: 별도 V01, 원격 CI, OAuth, AC01~16 전체 조건, 실제 제품 DB·권한·두 사용자 협업. 미구현 범위를 통과로 표시하지 않음.
 - 결정: Query provider는 보드 아래, Zustand 미도입. ADR 3건은 해당 기능 구현 때 검증하며 D1 설정을 새 기술 사례로 부풀리지 않음.
 - 다음: V01→P02. 로컬 DB는 실행 중이며 D2 연결 가능; migration·개발 사용자·RLS/RPC·version/receipt 구현이 남음. 외부 공개 없음.
+
+### D1 / V01 / 2026-09-14
+
+- 결과: 앱 골격 PASS. 실제 DB·인증·권한·제품 수용 기준은 NOT_RUN이며 완료로 간주하지 않는다.
+- PASS: Node 24.19.0/pnpm 11.19.0, frozen install, 단일 pnpm lockfile, script 존재, lint/typecheck/build, dev 첫 페이지와 새로고침, console warn/error 0.
+- PASS: 앱 전체 client 전환 없음. client 경계는 오류 복구와 `/board` 하위 Query provider에 한정된다.
+- PASS: 단일 HEAD에서 실제 secret 형식·추적된 비밀 파일 없음. 빈 `.env.example`만 추적되고 env/storageState/temp는 ignore된다.
+- NOT_RUN: 최초 커밋이 D1 결과 전체를 한 번에 추가해 P01 이전 baseline이 없으므로 기존 파일 무손실 주장은 독립 증명할 수 없다. 현재 HEAD 이후 삭제는 0개다.
+- FAIL: README의 과거 기동 기록 중 “현재 로컬 스택 실행 중” 문구는 현재 상태와 다르다. Docker CLI는 있으나 Linux 엔진·Auth·Studio가 내려가 있다.
+- 구분: Supabase CLI 2.117.0/config만 존재하고 migration·seed·앱 client는 없다. GitHub OAuth provider·callback·secret env도 없으며 D3 범위다.
+- 다음: Docker Desktop Linux 엔진→서버 버전→`pnpm db:start`/`pnpm db:status` 확인 후 P02. OAuth·원격·배포 없이 migration·개발 사용자·RLS/RPC·version/receipt·로컬 보호 절차를 구현한다.
+
+### D2 / P02 / 2026-09-14
+
+- 완료: 합성 계정의 실제 세션으로 Inbox 제목 생성→조회→수정·reload, Viewer 읽기 전용·타팀 격리, 충돌 초안 유지·명시적 최신 제목 반영.
+- DB: 핵심 public 4테이블/private receipt, RLS·SELECT/EXECUTE grant, 내부 함수 차단, auth.uid/역할/허용 필드 검사·version·동시 requestId 잠금·원자적 activity/receipt.
+- 로컬: Supabase SDK 2.116.0/pg 8.23.0 고정, migration·seed·env·types·reset 보호 도구. 실제 사용자/이슈 0 확인 후 로컬 reset·migration 재적용·합성 계정 4개/팀 2개 준비 PASS.
+- PASS: lint/typecheck/Vitest 1·production build·production smoke 5·로컬 보호 2·실제 DB 14·실제 계정 브라우저 3건. 서비스 키는 Auth seed에만 사용.
+- 수정: SDK abortSignal 호출 순서·테스트 lint·기존 dev 프로세스 잠금 충돌 해결. DB UI 검증은 같은 3000 개발 서버 사용. 기존 V01 문서 변경은 보존.
+- 증거: TEST_REPORT·DB UI 저장/충돌 캡처. 소스 65개/production 162개에서 실제 비밀 값 일치 0, 기존 V01 기록 동일 확인. 테스트 데이터만 정리하며 trace/storageState·자격 정보는 커밋하지 않음.
+- 결정: 서버 캐시는 Query만 소유하고 폼 초안은 로컬 state, 팀은 URL. ADR 02에 D2 기반만 연결; 낙관적 이동·재연결 사례는 아직 제안.
+- NOT_RUN/남음: 별도 V02·원격 CI·OAuth·전체 제품 수용 기준·Realtime·응답 유실 장애 주입·실제 사용자 피드백. D3 이상 기능을 완료로 표시하지 않음.
+- 다음: V02→P03. 09-15 재개 시 Docker/Supabase/dev를 reset 없이 재기동해 엔진·Auth/Studio/login HTTP 200·합성 팀 2개 유지 확인. 실행은 README 기준, 로컬 커밋 식별자는 최종 보고 참조. 외부 공개 없음.
 
 ## 하루 기록 양식
 

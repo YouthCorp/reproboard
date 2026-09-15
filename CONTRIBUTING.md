@@ -1,6 +1,6 @@
 # 기여 안내
 
-현재는 D1 앱 골격 단계다. Node 24.19.0·pnpm 11.19.0과 lockfile을 사용하며, 실제 실행 순서·코드 경로·검증 범위는 README를 따른다.
+현재는 D2 로컬 DB 최소 저장 흐름 단계다. Node 24.19.0·pnpm 11.19.0과 lockfile을 사용하며, 실제 실행 순서·코드 경로·검증 범위는 README를 따른다.
 
 ## 시작하기
 
@@ -18,7 +18,7 @@ README의 로컬 환경 구성과 테스트 명령을 먼저 따른다. 제품 �
 
 TypeScript의 명확한 도메인 타입과 작은 기능 단위 모듈을 사용한다. 기존 formatter/lint 설정을 따른다. 무의미한 추상화·전체 폴더 재편보다 문제를 해결하는 좁은 변경을 선호한다.
 
-변경 후 `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`를 실행한다. 화면 탐색에 영향이 있으면 Chromium 설치 후 `pnpm test:e2e`를 실행한다. 현재 E2E는 골격 smoke이며 DB 협업 검증은 D2 이후에 추가한다.
+변경 후 `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`를 실행한다. 화면 탐색에 영향이 있으면 Chromium 설치 후 `pnpm test:e2e`를 실행한다. DB/권한/명령 변경은 로컬 준비 후 `pnpm test:db`, 저장 화면 변경은 `pnpm test:db-ui`, 로컬 도구 변경은 `pnpm test:local-tools`로 검증한다. 전체 실시간 협업 검증은 이후 단계다.
 
 실행한 테스트와 미실행 이유를 구분하고, 관련 없는 테스트 제거·skip으로 통과시키지 않는다. UI 변경에는 실제 화면을, 데이터 경합 변경에는 재현 절차를 포함한다.
 

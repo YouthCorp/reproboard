@@ -64,7 +64,7 @@ schema_paths = []
 
 [db.seed]
 # If enabled, seeds the database after migrations during a db reset.
-# D2 will add migrations, guarded synthetic users and seed data.
+# Synthetic Auth accounts and memberships are created by guarded pnpm db:seed.
 enabled = false
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"

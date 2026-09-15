@@ -25,7 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <main id="main-content" tabIndex={-1}>{children}</main>
         <footer className="site-footer">
           <span>Reproduce. Resolve. Recheck.</span>
-          <span>개발 중 · 화면 골격</span>
+          <span>개발 중 · Inbox 제목 저장</span>
         </footer>
       </body>
     </html>

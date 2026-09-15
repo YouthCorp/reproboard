@@ -2,7 +2,7 @@
 
 소규모 개발팀이 버그 재현 정보를 모으고, 수정 후 재검증까지 관리하는 협업 보드.
 
-**현재 상태: D1 앱 골격 구현.** 로그인 안내, 데이터 없는 5단계 보드, 오류·로딩·404 경계가 있다. 실제 로그인·이슈 저장·권한·협업은 아직 구현하지 않았다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)를 기준으로 구분한다.
+**현재 상태: D2 로컬 DB 최소 흐름 구현.** 합성 계정의 실제 로그인 세션으로 Inbox 제목 생성→조회→수정이 가능하다. DB에서 팀·역할·version·중복 요청을 검사한다. GitHub OAuth·상태 전환·실시간 협업은 아직 없다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)를 기준으로 구분한다.
 
 ## 왜 만드는가
 
@@ -10,7 +10,7 @@
 
 ## 화면과 시연
 
-`/board`는 백엔드 미연결 상태를 명시한 화면 골격이다. `/login`의 GitHub 버튼은 준비 중이며 실제 인증을 수행하지 않는다. 개발 서버에서 직접 확인하거나 `pnpm test:e2e` 실행 후 `playwright-report/index.html`의 데스크톱·모바일 캡처를 볼 수 있다. 실제 협업 영상과 `/demo`는 D13 범위이며 아직 없다.
+로그인 전 `/board`는 데이터 없는 5단계 미리보기다. 로컬 설정 후 `/login`에서 합성 Owner/Member/Viewer/다른 팀 Owner를 선택하면 실제 Supabase 세션으로 전환한다. 로그인 후에는 Inbox 제목 생성·수정 화면이 열린다. Viewer는 읽기 전용이고 다른 팀 데이터는 표시되지 않는다. GitHub 버튼은 준비 중이다. 실제 협업 영상과 `/demo`는 D13 범위이며 아직 없다.
 
 ## 구현 목표
 
@@ -32,7 +32,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-[로컬 보드](http://127.0.0.1:3000/board) · [로그인 안내](http://127.0.0.1:3000/login). `/`는 `/board`로 이동한다. 서버는 loopback에만 바인딩한다. D1 화면은 환경 변수나 Docker 없이도 실행된다. 외부 폰트 다운로드를 요구하지 않는다.
+[로컬 보드](http://127.0.0.1:3000/board) · [로그인](http://127.0.0.1:3000/login). `/`는 `/board`로 이동한다. 서버는 loopback에만 바인딩한다. 환경 변수·Docker 없이 실행하면 미리보기만 사용할 수 있다. 실제 저장은 아래 로컬 DB 준비 절차가 필요하다. 외부 폰트 다운로드는 요구하지 않는다.
 
 ### 검증 명령
 
@@ -46,12 +46,17 @@ pnpm dev
 | `pnpm start` | 빌드된 앱 실행, 기본 3000 포트 |
 | `pnpm exec playwright install chromium` | 고정 Playwright에 맞는 Chromium 설치 |
 | `pnpm test:e2e` | production 서버를 3100 포트에서 자동 실행·종료하는 smoke 테스트 |
+| `pnpm test:local-tools` | 원격/잘못된 DB 대상·확인 없는 reset 거부 검사, Docker 없이 실행 가능 |
+| `pnpm test:db` | 실제 로컬 세션의 RLS/RPC·동시성·원자성 검증. 로컬 스택·migration·seed 필요 |
+| `pnpm test:db-ui` | 실제 개발 계정의 생성→수정→reload, Viewer·팀 격리, 두 사용자 제목 충돌 검증 |
 
-E2E 전에 `pnpm build`와 브라우저 설치가 필요하다. 보드↔로그인·새로고침, 404 복귀, 키보드 skip link, 390px 폭을 검증한다. 실제 DB/로그인/두 사용자 테스트가 아니다. 이미지 증빙은 HTML 리포트에 첨부된다. `pnpm exec playwright show-report`로 리포트를 열 수 있다. [CI](.github/workflows/ci.yml)는 같은 검사와 빌드·Chromium smoke를 Ubuntu runner에서 수행하도록 구성했으며 GitHub에서의 실행은 아직 NOT_RUN이다.
+`test:e2e` 전에 `pnpm build`와 브라우저 설치가 필요하다. 보드↔로그인, 404, 키보드, 390px 및 production의 개발 로그인 미노출을 검증한다. 이 smoke와 실제 DB 테스트는 별도다. `test:db-ui`는 아래 로컬 준비 후 실행하며, 3000 포트의 기존 개발 서버를 사용하거나 없으면 자동 시작한다. 기존 서버의 환경 값이 바뀌었다면 재시작한다. 실행 중에는 동일한 합성 계정을 수동 조작하지 않는다.
 
-### 로컬 Supabase / D2 준비
+캡처는 `playwright-report/index.html`과 `playwright-db-report/index.html`에 있다. `pnpm exec playwright show-report playwright-db-report`로 DB 화면 리포트를 볼 수 있다. 개발 인증 요청에 비밀 값이 포함되므로 DB UI의 trace/storageState는 저장하지 않는다. DB 테스트는 이번 실행에서 만든 이슈만 정리하며, seed와 별도로 기존 이슈를 삭제하지 않는다. [CI](.github/workflows/ci.yml)는 정적 검사·로컬 보호 검사·빌드·production smoke까지 구성했다. GitHub 실행과 DB 테스트 CI는 NOT_RUN이다.
 
-Supabase CLI **2.117.0**을 프로젝트 devDependency로 설치했다. `supabase/config.toml`은 CLI의 실제 `init` 결과를 바탕으로 하며 PostgreSQL 17, Auth, Realtime, Studio, 로컬 메일 확인을 사용한다. 파일 업로드·Edge Functions·Analytics는 현재 범위에 필요 없어 비활성화했다. 새 테이블의 API 자동 노출도 닫았다. D2에서 명시적 grant/RLS/RPC를 추가한다.
+### 로컬 Supabase / 실제 저장 준비
+
+Supabase CLI **2.117.0**을 프로젝트 devDependency로 설치했다. `supabase/config.toml`은 PostgreSQL 17, Auth, Realtime, Studio, 로컬 메일 확인을 사용한다. 파일 업로드·Edge Functions·Analytics와 새 테이블의 API 자동 노출은 비활성화했다. migration이 명시적으로 RLS·SELECT·RPC 권한만 부여한다. Realtime 서버 기동은 앱 구독 구현을 의미하지 않는다.
 
 1. Docker Desktop에서 Linux 엔진을 실행한다. `docker desktop status`의 running 표시만으로는 충분하지 않다. 아래 서버 버전 조회가 성공해야 한다.
 2. 프로젝트 루트에서 다음 명령을 실행한다. 첫 기동은 컨테이너 이미지 다운로드로 시간이 걸린다.
@@ -60,26 +65,35 @@ Supabase CLI **2.117.0**을 프로젝트 devDependency로 설치했다. `supabas
 docker version --format 'Client={{.Client.Version}} Server={{.Server.Version}}'
 pnpm exec supabase --version
 pnpm db:start
-pnpm db:status
+pnpm db:migrate
+pnpm db:seed
+pnpm db:env
+pnpm db:types
+pnpm dev
 ```
 
-Studio는 [127.0.0.1:54323](http://127.0.0.1:54323), API는 `http://127.0.0.1:54321`, DB 포트는 54322다. CLI 상태 출력에는 로컬 키가 포함될 수 있으므로 전체 결과를 커밋·공유하지 않는다. 종료는 `pnpm db:stop`이며 `--no-backup`은 붙이지 않는다. 운영 프로젝트 연결·DB reset은 이 절차에 없다.
+Studio는 [127.0.0.1:54323](http://127.0.0.1:54323), API는 `http://127.0.0.1:54321`, DB 포트는 54322다. 상태 확인 명령 `pnpm db:status`의 출력에는 로컬 키가 포함될 수 있어 전체를 커밋·공유하지 않는다. 종료는 `pnpm db:stop`이며 `--no-backup`은 붙이지 않는다. 다음 작업 시에는 다시 상태를 확인한다. 과거 기동 성공은 현재 실행 상태의 보장이 아니다.
 
-아직 migration·seed·개발 사용자·앱 Supabase 클라이언트는 없다. seed 실행은 비활성화했다. D2에서 로컬 대상 보호 검사와 함께 추가하며, 스택 기동과 제품 데이터 저장 성공을 구분한다.
+`db:migrate`는 `supabase migration up --local`, `db:types`는 `supabase gen types typescript --local --schema public`을 실행하는 보호된 wrapper다. 생성된 `src/lib/supabase/database.types.ts`는 커밋하며 SQL 변경 후 다시 생성한다. 타입의 Insert/Update 정의는 DB 쓰기 권한을 뜻하지 않는다.
 
-2026-09-13 실제 기동 검증: `pnpm db:start` exit 0, 컨테이너 8개 실행, PostgreSQL 17.6 조회 성공, Auth health와 Studio HTTP 200. 현재 로컬 스택을 실행 상태로 두었다.
+`db:seed`는 합성 계정 4개와 팀 2개를 생성한다. 무작위 비밀번호는 gitignore된 `.local/dev-accounts.json`에만 저장하며 터미널·채팅에 출력하지 않는다. 재실행 시 합성 계정의 비밀번호·역할을 준비하고 기존 이슈는 보존한다. 같은 예약 이메일/팀 UUID가 다른 데이터에 사용 중이면 중단한다. 테스트 DB에서만 고정된 합성 식별자를 사용한다. Supabase 기본 SQL seed는 꺼져 있어 명시적으로 이 명령을 실행해야 한다.
+
+초기화가 필요한 경우에만 `pnpm db:reset --confirm-local-reproboard` 후 `pnpm db:seed`를 실행한다. **이 명령은 해당 로컬 DB의 데이터·계정을 삭제하고 migration을 다시 적용한다.** wrapper는 API/DB loopback 주소·고정 포트·DB 이름, Docker 프로젝트/작업 경로/실행 상태, 저장소 루트를 대조한다. 원격 URL·`--linked`·다른 대상 인수를 받지 않는다. 운영 DB 초기화에 사용하지 않는다. 일반 개발에는 데이터 보존형 `db:migrate`를 사용한다.
 
 Docker/WSL 오류가 재발하면 먼저 `docker version`과 `wsl --list --verbose`를 확인한다. 이번 `Ubuntu distro proxy` 오류는 `backend.sock` 부재였고, 이후 Windows/Ubuntu 양쪽 엔진 응답과 소켓 존재가 확인됐다. 재설치나 초기화는 수행하지 않았다. 엔진 응답이 실패하면 앱 개발은 계속할 수 있지만 DB 검증을 PASS로 처리하지 않는다. Ubuntu 내부 Docker 사용을 위한 WSL 배포판 연동과 Windows에서 사용하는 Docker 엔진은 구분한다. [Docker WSL 안내](https://docs.docker.com/desktop/features/wsl/).
 
 ### 환경 변수·외부 설정
 
-`.env.example`에는 값 없는 공개 설정 이름만 있다. 파일을 직접 `.env.local`로 복사하되 기존 파일은 덮어쓰지 않는다. D1은 이를 읽지 않으며 D2에서 연결할 때 값을 채운다.
+`pnpm db:env`가 확인된 로컬 스택의 공개 설정과 개발 로그인 스위치를 `.env.local`에 기록한다. 기존 내용이 다르면 덮어쓰지 않고 중단하므로 `.env.example`의 이름과 비교해 직접 수정한다. `.env.example`은 모든 값이 비어 있다. 실제 값·합성 비밀번호·Auth 토큰은 커밋하지 않는다.
 
 | 변수 | D2~3에서 얻는 값과 용도 |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | 로컬 CLI가 표시하는 API URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 로컬 publishable key 또는 legacy anon key. service_role/secret key 사용 금지 |
 | `NEXT_PUBLIC_SITE_URL` | 앱 origin, 기본 `http://127.0.0.1:3000` |
+| `DEV_LOGIN_ENABLED` | 서버 전용 개발 로그인 스위치. `true`여도 production에서는 비활성화 |
+
+개발 계정 UI와 자격 정보는 서버에서 `NODE_ENV=development`, `DEV_LOGIN_ENABLED=true`, API=`http://127.0.0.1:54321`을 모두 확인한 경우에만 제공한다. 일반 브라우저 요청은 publishable/anon key와 로그인 사용자 토큰만 사용한다. admin key는 보호된 로컬 Auth seed 도구에만 사용하며 `.env.local`이나 앱 코드에 넣지 않는다.
 
 실제 OAuth는 D3에서 GitHub OAuth 앱 등록, Supabase Auth의 콜백 URL 등록, provider의 Client ID/secret 입력이 필요하다. 인증 콜백 코드는 아직 없으므로 redirect allowlist는 비워 두었다. secret은 서버/로컬 비밀 설정에만 두고 `NEXT_PUBLIC_*`에 넣지 않는다. 로컬 개발 사용자로 진행할 D2에는 외부 계정이 필요 없다. GitHub 원격·공개 배포는 아직 설정하지 않았다.
 
@@ -87,7 +101,9 @@ Docker/WSL 오류가 재발하면 먼저 `docker version`과 `wsl --list --verbo
 
 설치: Next.js 16.3.5, React 19.3.0, TypeScript 5.9.3, TanStack Query 5.102.8, Vitest 5.0.0, Playwright 1.63.0. 전체 정확한 버전은 [package.json](package.json)과 lockfile이 기준이다. [Next 지원 조건](https://nextjs.org/docs/app/getting-started/installation)·[Node LTS](https://nodejs.org/en/blog/release/v24.19.0)·[Supabase 로컬 요구 조건](https://supabase.com/docs/guides/local-development/cli/getting-started)을 대조하고 실제 빌드로 확인했다.
 
-Root layout과 페이지는 Server Component다. Query provider는 보드 아래에만 두며 아직 서버 조회를 실행하지 않는다. 공유 임시 UI가 없으므로 Zustand는 설치하지 않았다. 상태 소유권은 서버 데이터=Query, 공유 임시 UI=Zustand, 검색·필터·정렬·선택=URL 계약을 유지한다.
+Supabase SDK **2.116.0**(Node ≥22), 로컬 검증용 pg **8.23.0**(Node ≥16)을 정확히 고정했다. Root layout과 페이지는 Server Component이며 Query provider는 보드 아래에만 둔다. 이슈 목록은 `['issues', workspaceId]` Query 캐시에서 읽는다. 제목 초안은 폼 로컬 state, 팀 선택은 URL `?workspace=`에 둔다. 공유 임시 UI가 없어 Zustand는 도입하지 않았다.
+
+RPC는 `create_issue`와 `update_issue`뿐이며 제목 외 payload를 거부한다. `auth.uid()`·팀 역할을 재검사하고 같은 사용자/팀/requestId의 실행을 트랜잭션 잠금으로 직렬화한다. 수정은 이슈 행을 잠근 뒤 expectedVersion을 비교하고 이슈·activity·receipt를 함께 커밋한다. 동일 requestId/다른 payload는 VALIDATION, 오래된 version은 CONFLICT다. 정상 거부는 JSON 결과이며 SDK/전송 오류와 구분한다. 명시적 재시도는 같은 requestId를 사용하고 자동 재시도·오프라인 큐는 없다. 낙관적 이동·응답 유실 장애 주입 검증은 D6 이후다.
 
 ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는 ESLint 10을 지원하지 않아, ESLint 10.10.0에 호환되는 TypeScript·React Hooks·공식 Next 플러그인을 직접 구성했다. 규칙 전체를 끄거나 peer 조건을 무시하지 않았다. `agentRules: false`는 Next 개발 서버가 기존 AGENTS.md를 자동 수정하는 것을 막는다.
 
@@ -99,16 +115,19 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 ## 코드 길잡이
 
-현재 파일과 책임이다. 이후 단계의 상세·폼·협업 코드는 아직 없다.
+현재 파일과 책임이다. 구조화 재현 정보·상태 전환·실시간 협업 코드는 아직 없다.
 
 | 영역 | 책임 |
 |---|---|
 | [src/app](src/app) | Root layout, `/board`, `/login`, 오류·로딩·404 경계 |
 | [src/features/issues/board-shell.tsx](src/features/issues/board-shell.tsx) | 5단계의 데이터 없는 보드 |
+| [src/features/issues/live-board.tsx](src/features/issues/live-board.tsx), [issue-form.tsx](src/features/issues/issue-form.tsx) | 세션별 읽기·Inbox 제목 생성/수정·충돌 입력 보존 |
+| [src/features/auth](src/features/auth) | 개발 로그인·세션 변경 시 Query 캐시 정리 |
+| [scripts](scripts) | 로컬 대상 보호·migration/type/env·합성 계정 준비 |
 | [src/lib/query/query-provider.tsx](src/lib/query/query-provider.tsx) | 보드의 QueryClient 생명주기, 하위 Suspense 경계 |
 | [src/components](src/components) | 공통 로딩·오류 복구 UI |
-| [supabase/config.toml](supabase/config.toml) | 로컬 스택 설정, 제품 스키마는 D2 |
-| [tests](tests) | 오류 복구 UI와 실제 Chromium 화면 smoke |
+| [supabase/migrations](supabase/migrations), [config.toml](supabase/config.toml) | 핵심 테이블·RLS·grant·명령, 로컬 스택 설정 |
+| [tests](tests) | UI 단위·로컬 보호·실제 DB·production/개발 Chromium 흐름 |
 | docs | 제품·기술·검증·시연 |
 
 ## 한계
@@ -119,4 +138,4 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 [기여 안내](CONTRIBUTING.md), [보안 제보 안내](SECURITY.md), [MIT 라이선스](LICENSE).
 
-개인 프로젝트이며 D1 골격 구성과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 CASE_STUDY에 단계별 증거와 함께 정리한다. 실제 팀 사용·성능 개선 성과는 아직 측정하지 않았다.
+개인 프로젝트이며 D1~D2 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 CASE_STUDY에 단계별 증거와 함께 정리한다. 실제 팀 사용·성능 개선 성과는 아직 측정하지 않았다.
