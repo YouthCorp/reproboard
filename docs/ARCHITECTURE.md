@@ -1,8 +1,23 @@
 # 기술 계약과 아키텍처
 
-상태: D2의 핵심 DB·제목 흐름 구현. 아래 전체 계약 중 실제 경로는 다음 절과 PROGRESS에 표시하며 이후 단계의 기능을 구현 완료로 간주하지 않는다.
+상태: D3 인증·팀·초대·역할과 D2 제목 흐름 구현. 아래 전체 계약 중 실제 경로는 다음 절과 PROGRESS에 표시하며 이후 단계의 기능을 구현 완료로 간주하지 않는다.
 
-## D2 실제 구현과 경계
+## D3 실제 구현과 경계
+
+- `@supabase/ssr@0.12.7`의 browser/server client, `src/proxy.ts`의 `getClaims()` 검증·쿠키 갱신, `/auth/callback`의 PKCE 교환. 세션 결과·쿠키를 공유 응답 캐시에 넣지 않으며 auth 관련 페이지는 dynamic이다. 실제 외부 GitHub 승인/취소는 앱 등록 전 NOT_RUN.
+- GitHub 설정 여부는 서버의 Auth settings 조회로 판단한다. callback의 사용자 제공 오류·code는 표시하지 않는다. 복귀 경로는 `/board`(검증한 workspace UUID만)·`/invite`로 한정한다. 원점은 설정된 SITE_URL이며 전달된 Host/next URL을 신뢰하지 않는다.
+- 실제 로그인 사용자의 쿠키는 browser/server가 공유한다. 로그아웃·계정 변경은 Query 캐시·폼을 비우고 갱신 불가 세션은 재로그인을 안내한다. 네트워크 오류와 만료를 구분한다. JWT 전역 즉시 폐기·전체 재연결 복구는 보장하지 않는다.
+- migration `20260915000100_d3_auth_workspaces.sql`: `public.profiles(user_id, display_name)`와 `private.workspace_invites` 추가. Auth insert trigger는 이름만 제한 길이로 저장하며 기존 계정은 backfill한다. 메타데이터의 role/workspace_id는 권한에 쓰지 않는다.
+- 프로필 읽기는 본인 또는 같은 팀으로 제한한다. `list_workspace_members`는 RLS를 따르는 SECURITY INVOKER이며 표시 이름·user id·역할만 반환한다. membership/profile helper는 auth.uid 기준 SECURITY DEFINER로 재귀를 피하고 내부 변경 함수는 직접 호출 불가다.
+- `create_workspace`는 생성자를 Owner로 지정하고 멤버를 같은 트랜잭션에 추가한다. `create_invite`는 현재 Owner만, `accept_invite`는 현재 로그인 사용자만 가능하며 역할 입력을 받지 않는다. `change_member_role`은 현재 Owner가 해당 팀의 Member↔Viewer만 변경하고 expectedRole 경합을 검사한다. Owner 이전·자가 강등·비회원 지정은 거부한다.
+- 초대는 브라우저 CSPRNG 32바이트의 hex 원문을 DB 명령에서 SHA-256으로 해시한다. private 테이블·receipt 어디에도 원문을 보존하지 않는다. 만료는 생성 시각+24시간 CHECK, 역할은 Member CHECK, 수락은 행 잠금 후 실제 현재 시각 검사→멤버 insert→소비 표시→receipt까지 원자적이다. 이미 가입한 사용자는 소비·승격하지 않는다.
+- 생성/수락/역할 명령도 기존 actor/workspace/requestId 잠금과 receipt를 재사용한다. 동일 요청은 추가 효과 없이 반환하고 다른 payload는 거부한다. 수락 replay도 현재 팀 접근 권한을 다시 확인한다. 초대 결과에는 id/만료만 반환하며 링크 원문은 만든 브라우저가 가진다.
+- 초대는 URL fragment에서 탭 sessionStorage로 옮겨 로그인 후 복귀한다. 원문은 HTTP URL/OAuth query에 포함하지 않고 수락 성공 후 제거한다. Query는 서버 목록·멤버를, 각 컴포넌트는 입력·미확정 명령을 소유한다. 팀 선택은 URL이며 Zustand는 미도입이다.
+- `workspace_permissions`의 DB 권한표는 read/write/verify/comment/invite/manage_members를 명시한다. D2 이슈 명령의 실제 역할 검사도 일치한다. 검증·댓글 endpoint/테이블은 D5/D9에 추가하며 현재는 해당 쓰기 경로가 없다. capability 조회 통과를 검증·댓글 동작 완료로 간주하지 않는다.
+
+공식 근거: [Next.js SSR](https://supabase.com/docs/guides/auth/server-side/creating-a-client?framework=nextjs), [GitHub/PKCE](https://supabase.com/docs/guides/auth/social-login/auth-github), [SSR 캐시 주의](https://supabase.com/docs/guides/auth/server-side/advanced-guide), [Next dynamic 응답](https://nextjs.org/docs/app/guides/self-hosting). 세부 로컬 OAuth 등록 순서는 README에 모았다.
+
+## D2 당시 구현과 경계 (D3 추가 사항은 위 절 참조)
 
 - migration: `supabase/migrations/20260914000100_d2_issue_commands.sql`. `public.workspaces/workspace_members/issues/activity_events`, `private.command_receipts`. profiles·초대·검증·댓글·알림은 아직 없다.
 - `issues`는 UUID, 전역 sequence의 `RB-` 키, 제목, Inbox 고정 CHECK, version=1, 행위자·시간만 가진다. 다른 상태는 DB에서 거부한다. 추후 필드/전환은 별도 migration과 명령 검사로 확장한다.

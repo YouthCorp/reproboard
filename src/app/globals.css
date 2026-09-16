@@ -141,3 +141,16 @@ input, select { min-width: 0; max-width: 100%; padding: 10px 12px; border: 1px s
   .login-steps { gap: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .loading-ring { animation: none; } }
+:root { --team-border: #d9dfd8; }
+.team-panel { margin: 1rem 0; padding: 1rem; border: 1px solid var(--team-border); border-radius: 12px; background: #fff; }
+.team-panel summary { cursor: pointer; font-weight: 650; padding: .2rem; }
+.team-panel form, .member-list, .invite-create { margin-top: 1rem; }
+.team-panel label, .invite-result label { display: block; margin-bottom: .5rem; }
+.team-panel input { min-width: 0; padding: .7rem; border: 1px solid var(--team-border); border-radius: 6px; }
+.member-list { list-style: none; padding: 0; }
+.member-list li { padding: .7rem 0; border-bottom: 1px solid var(--team-border); overflow-wrap: anywhere; }
+.member-list li .button { margin-top: .5rem; }
+.invite-result { margin-top: 1rem; overflow-wrap: anywhere; }
+.invite-result input { display: block; width: 100%; margin: .5rem 0; }
+.invite-page { max-width: 680px; margin: 3rem auto; padding: 1.5rem; border: 1px solid var(--team-border); border-radius: 16px; background: #fff; }
+.invite-page .button { margin: .5rem .5rem .5rem 0; }

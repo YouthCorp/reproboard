@@ -5,6 +5,7 @@ import { QueryProvider } from "@/lib/query/query-provider";
 import { BoardSession } from "@/features/auth/board-session";
 
 export const metadata: Metadata = { title: "버그 보드" };
+export const dynamic = "force-dynamic";
 
 export default function BoardPage() {
   return (

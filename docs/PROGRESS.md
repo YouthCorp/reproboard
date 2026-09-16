@@ -1,10 +1,10 @@
 # 진행 기록
 
-현재 상태: D2 / P02 로컬 DB·Inbox 제목 생성→조회→수정 구현 및 관련 검증 완료.
+현재 상태: D3 / P03 인증 경계·팀 생성·초대·역할 관리 로컬 구현 및 관련 검증 완료. 실제 GitHub OAuth 왕복은 외부 앱 미설정으로 NOT_RUN.
 
-현재 단계: D2 / P02 완료, V02 독립 검증 대기 (구현·검증 2026-09-14, 재개 마무리 2026-09-15, Asia/Seoul).
+현재 단계: D3 / P03 로컬 PASS, V03 독립 검증 대기 (2026-09-16, Asia/Seoul).
 
-선행 조건: 로컬 Supabase·migration·합성 계정 4개/팀 2개·환경 설정 준비 및 실제 저장 검증 PASS. 다음 실행 시 Docker 상태를 재확인한다. GitHub OAuth·원격·배포는 미설정이며 V02 선행 조건은 아니다.
+선행 조건: D2/V02 PASS를 보존하고 D3 migration을 데이터 보존형으로 적용했다. 기본 합성 계정 4개/팀 2개·프로필 4개와 실제 세션 준비. 다음 실행 때 Docker 상태를 재확인한다. 실제 GitHub smoke에는 README의 앱 등록·루트 .env·provider 활성화가 필요하며 로컬 개발은 계속 가능하다.
 
 ## 범위와 근거
 
@@ -20,8 +20,8 @@
 | 단계 | 구현 | 검증 | 근거/미해결 |
 |---|---|---|---|
 | D1 환경·골격 | DONE: P00/P01 | V01 PASS | README의 지속 실행 상태 단정은 D2에서 수정. P01 전 파일 보존 독립 증명은 여전히 NOT_RUN |
-| D2 DB·명령 | DONE: P02 | 로컬 PASS / V02 NOT_RUN | migration·RLS/grant·create/update RPC·합성 seed·실제 세션 UI. DB 14건·DB UI 3건·보호 검사 2건 PASS |
-| D3 인증·권한 | TODO | 전체 권한표 NOT_RUN | D2 개발 password 세션·최소 팀/이슈 RLS는 있음. OAuth·팀 생성/초대·역할 변경 UI 없음 |
+| D2 DB·명령 | DONE: P02 | V02 PASS | reset/migration 재적용·실제 세션 UI/reload·직접 DML 거부·경합·멱등성·거부 원자성 독립 확인. TEST_REPORT 참조 |
+| D3 인증·권한 | DONE: P03 로컬 구현 | 로컬 PASS / V03·실제 OAuth NOT_RUN | SSR/PKCE·팀 생성·초대·역할 UI·프로필/RLS. DB 25·DB UI 7건 회귀 PASS. 검증/댓글은 권한표만, 기능은 D5/D9 |
 | D4 보드·폼 | TODO | 전체 제품 흐름 NOT_RUN | 로그인 후 Inbox 제목 목록/폼만 구현. 5열 실제 데이터·상세·재현 필드 폼 없음 |
 | D5 상태·검증 | TODO | NOT_RUN | 전환 명령·재검증 코드 없음 |
 | D6 낙관적 UI | TODO | NOT_RUN | D2 제목 mutation만 있음. 낙관적 이동·overlay 없음 |
@@ -30,8 +30,8 @@
 | D9 댓글·알림 | TODO | NOT_RUN | 댓글·알림 코드 없음 |
 | D10 URL | TODO | NOT_RUN | D2 팀 선택 `?workspace=`만 있음. 검색·필터·정렬·상세 파서 없음 |
 | D11 접근성·UX | TODO | 핵심 흐름 NOT_RUN | D1 skip link·오류 재시도·좁은 화면 smoke만 PASS |
-| D12 회귀·CI | TODO | 전체 회귀·원격 CI NOT_RUN | Vitest 1·보호 2·DB 14·production smoke 5·DB UI 3건. CI는 정적/보호/production smoke 구성 |
-| D13 재현·시연 | TODO | NOT_RUN | D1/D2 화면 캡처 있음. 전체 시연·영상·새 clone 검증 없음 |
+| D12 회귀·CI | TODO | 전체 회귀·원격 CI NOT_RUN | Vitest 3·보호 2·DB 25·production smoke 6·DB UI 7건. CI는 정적/보호/production smoke 구성 |
+| D13 재현·시연 | TODO | NOT_RUN | D1~D3 화면 캡처 있음. 전체 시연·영상·새 clone 검증 없음 |
 | D14 문서·릴리스 | TODO | NOT_RUN | 문서 키트 존재는 구현·릴리스 완료 근거가 아님 |
 
 ## 환경 확인 — P00 당시 기록 (현재 결과는 아래 D1 및 TEST_REPORT)
@@ -58,15 +58,15 @@
 - 실제 검증: Node 24.19.0 / pnpm 11.19.0 / Next 16.3.5 / React 19.3.0 / TypeScript 5.9.3 / Supabase CLI 2.117.0. 일반 터미널의 Node 24.12.0과 달라 검증 프로세스의 PATH를 고정 런타임으로 맞췄다. 전역 설정 변경은 하지 않았다. 실행 절차는 README가 기준이다.
 - Docker Desktop 4.90.0 / 엔진 29.7.2 / WSL 2.6.3.0. Ubuntu 프록시의 `backend.sock` 부재 오류 이후 Windows·Ubuntu 엔진 응답과 소켓 존재를 확인했다. `pnpm db:start` exit 0, 컨테이너 8개 실행, PG 17.6 조회, Auth·Studio HTTP 200. 재설치·초기화·배포판 제거 없이 진행했으며 재발 원인은 미확정이다.
 - D2는 외부 계정 없이 실행한다. PG 17 migration과 보호된 `db:seed/env/reset/types`를 추가했다. 기본 SQL seed 대신 명시적 도구가 합성 계정·팀을 준비한다. `.env.example`은 빈 이름만, `.env.local`과 `.local`은 gitignore이며 앱은 공개 키+실제 사용자 세션만 사용한다. 현재 명령은 README 참조.
-- D3 사용자 작업: GitHub Settings → Developer settings → OAuth Apps에서 개발 앱을 등록한다. 홈페이지는 `http://127.0.0.1:3000`, 로컬 Supabase Auth 콜백은 `http://127.0.0.1:54321/auth/v1/callback` 기준으로 P03의 실제 provider 설정과 맞춘다. Client ID/secret은 P03에서 제공할 로컬 비밀 설정에 직접 입력하고 앱 redirect 경로도 P03 구현 후 등록한다. [공식 GitHub OAuth 설정](https://supabase.com/docs/guides/auth/social-login/auth-github). 비밀 값을 채팅·커밋에 남기지 않는다.
+- D3 사용자 작업: [README의 GitHub OAuth 설정](../README.md#github-oauth-설정--사용자가-할-외부-작업)에 앱 등록→루트 `.env`→provider 활성화→재기동→실제 승인/취소 순서를 모았다. 홈페이지는 `http://127.0.0.1:3000`, GitHub 등록 콜백은 `http://127.0.0.1:54321/auth/v1/callback`, 앱 PKCE 콜백은 `http://127.0.0.1:3000/auth/callback`. 실제 실행 중인 Auth allowlist에는 앱 콜백이 반영됐고 GitHub provider는 비활성화 상태다. 비밀 값은 채팅·커밋에 남기지 않는다.
 - D13~14 공개 작업 전제: 사용자가 GitHub 원격 저장소와 공개 범위, 필요 시 개발/배포용 Supabase·호스팅 대상을 지정해야 한다. 현재는 원격 연결·계정 생성·배포·외부 게시를 하지 않는다. 로컬 개발 자체에는 외부 Supabase 계정이 필요하지 않다.
 
 ## 다음 실행 프롬프트
 
-[PROMPTS.md의 V02 — DB가 실제 기준인지 검증](planning/PROMPTS.md#v02--db가-실제-기준인지-검증)을 실행한 뒤 P03로 진행한다.
+[PROMPTS.md의 V03 — 권한 우회·참여 흐름 검증](planning/PROMPTS.md#v03--권한-우회참여-흐름-검증)을 수행한 뒤 P04로 진행한다.
 
 ```text
-AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V02를 수행해라. create_issue/update_issue의 실제 세션·RLS/grant·version 경합·동일 requestId/다른 payload·원자성을 코드와 로컬 DB로 독립 검증해라. README의 보호된 로컬 명령만 사용하고 기존 사용자 변경을 보존해라. reset 전 로컬 대상과 보존할 데이터를 확인하고 실제 저장 UI·reload·Viewer/타팀 격리를 대조해라. PASS/FAIL/NOT_RUN을 TEST_REPORT/PROGRESS에 기록하고 통과하면 P03을 다음 실행 프롬프트로 지정해라.
+AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V03을 수행해라. 실제 세션의 팀 생성·초대 정상/만료/재사용/동시 수락·Member/Viewer 변경·Owner 보호·직접 table/RPC 우회·타팀 프로필 격리를 독립 검증해라. SSR 정상 갱신·폐기된 세션 안내·로그아웃·콜백 오류/복귀 경로를 대조하고, 실제 GitHub 승인/취소는 provider가 설정된 경우에만 수행해라. 미설정이면 NOT_RUN과 README 사용자 작업을 유지해라. 기존 데이터와 V02 기록을 보존하고 PASS/FAIL/NOT_RUN을 기록한 뒤 통과하면 P04를 다음 프롬프트로 지정해라.
 ```
 
 ### D1 / P00 / 2026-09-13
@@ -114,6 +114,29 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V02를 수�
 - 결정: 서버 캐시는 Query만 소유하고 폼 초안은 로컬 state, 팀은 URL. ADR 02에 D2 기반만 연결; 낙관적 이동·재연결 사례는 아직 제안.
 - NOT_RUN/남음: 별도 V02·원격 CI·OAuth·전체 제품 수용 기준·Realtime·응답 유실 장애 주입·실제 사용자 피드백. D3 이상 기능을 완료로 표시하지 않음.
 - 다음: V02→P03. 09-15 재개 시 Docker/Supabase/dev를 reset 없이 재기동해 엔진·Auth/Studio/login HTTP 200·합성 팀 2개 유지 확인. 실행은 README 기준, 로컬 커밋 식별자는 최종 보고 참조. 외부 공개 없음.
+
+### D2 / V02 / 2026-09-15
+
+- 결과: PASS. UI mock이 아닌 실제 로컬 Supabase API·일반 사용자 세션·PostgreSQL 사후 조회로 D2 최소 흐름을 독립 검증했다.
+- 초기화: loopback API/DB·컨테이너/프로젝트 경로와 합성 데이터만 확인 후 reset. migration·4개 RLS·grant 재적용과 빈 DB를 확인하고 seed/env/types를 복구했다.
+- PASS: 수동 Owner UI 생성→DB version 1→reload→수정→version 2→reload, activity/receipt 각 요청 1건, console warn/error 0. DB UI 3/3.
+- PASS: 직접 issues insert/update `42501`; Viewer/타팀/anon 명령 거부. 거부 request는 이슈 불변·activity/receipt 0.
+- PASS: 동일 version의 Owner/Member 경합 성공 1·CONFLICT 1, 동일 requestId 동시 재전송은 동일 응답·version 증가/activity/receipt 각 1회. DB 14/14·보호 2/2.
+- 보안: client env는 publishable/anon key이며 secret/service key가 아니다. admin key는 로컬 Auth seed만 사용. 개발 로그인 자격 노출은 LOW 로컬 전용 위험으로 경계를 유지한다.
+- 정리: 요청된 reset이 초기 합성 이슈 1·activity 4·receipt 4를 삭제했고 백업은 없음. 검수 UUID도 정리해 사용자 4·팀 2·이슈/activity/receipt 0. lint/typecheck/Vitest PASS.
+- 다음: P03. Docker 상태 재확인 후 로컬 계정으로 팀·초대·역할 권한을 구현하며, 실제 GitHub OAuth smoke는 사용자 provider 설정 전까지 NOT_RUN으로 둔다.
+
+### D3 / P03 / 2026-09-15~16
+
+- 완료: 실제 세션의 워크스페이스 생성자 Owner, Member 초대 링크→로그인→수락, Member↔Viewer 변경·타팀 격리·최소 표시 이름. GitHub UI/PKCE callback·쿠키 갱신·로그아웃·만료 안내 구현.
+- DB: D3 migration·profiles/Auth trigger·private invite hash/24시간/Member 고정·행 잠금 수락·Owner/비회원 보호·현재 역할 검사. 생성/수락/역할 변경과 receipt를 원자적으로 처리하며 직접 쓰기는 계속 차단.
+- 환경: 공식 Next/Supabase/GitHub 문서와 npm peer를 확인해 SSR 0.12.7 고정. migration/type 생성·DB 설정 보존 재기동 PASS, reset/seed 재실행 없음. 기존 합성 사용자 4·팀 2·프로필 4 유지.
+- PASS: frozen install·lint/typecheck·production build, Vitest 3·로컬 보호 2·DB 25·production smoke 6·DB UI 7건. 만료 테스트는 해당 브라우저의 세션만 폐기하며 정상 갱신 Set-Cookie도 확인.
+- 수정/관찰: 초대 저장소를 외부 상태 구독으로 정리하고 테스트 URL import·SDK 만료 시각 fixture를 수정. dev/production 캐시 헤더를 구분. dev 탐색의 stream 종료 로그 1회는 원인 미확정이며 흐름은 PASS; TEST_REPORT에 한계 기록.
+- 증거: TEST_REPORT·DB UI의 팀 역할 390px/제목 저장/충돌 캡처 직접 확인. 소스 82·production 198개 실제 로컬 비밀 값 일치 0, 생성 타입 재현성 PASS. 테스트 이슈/activity/receipt/invite·오류 주입 함수 0 확인.
+- 결정: 이슈·팀·멤버는 Query, 폼/미확정 명령은 로컬 state, 팀 선택은 URL. 초대 원문은 fragment→탭 sessionStorage로 전달하고 DB/receipt에는 해시만 저장. ADR 3건 틀 유지, 기존 V02 기록 보존.
+- NOT_RUN: 실제 GitHub 승인/취소·별도 V03·원격 CI·hosted/공개·전체 수용 기준·검증/댓글 동작·Realtime·응답 유실 주입·사용자 피드백. 외부 설정은 README에 한 번에 정리.
+- 다음: V03→P04. 핵심 파일은 D3 migration, src/proxy/auth/workspaces, tests/db·db-ui. 로컬 커밋 식별자는 최종 보고 참조. 외부 공개 없음.
 
 ## 하루 기록 양식
 

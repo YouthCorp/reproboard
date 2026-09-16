@@ -97,6 +97,21 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          display_name: string
+          user_id: string
+        }
+        Insert: {
+          display_name: string
+          user_id: string
+        }
+        Update: {
+          display_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       workspace_members: {
         Row: {
           created_at: string
@@ -152,9 +167,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invite: {
+        Args: { p_request_id: string; p_token: string }
+        Returns: Json
+      }
+      change_member_role: {
+        Args: { p_payload: Json; p_request_id: string; p_workspace_id: string }
+        Returns: Json
+      }
+      create_invite: {
+        Args: { p_payload: Json; p_request_id: string; p_workspace_id: string }
+        Returns: Json
+      }
       create_issue: {
         Args: { p_payload: Json; p_request_id: string; p_workspace_id: string }
         Returns: Json
+      }
+      create_workspace: {
+        Args: { p_payload: Json; p_request_id: string; p_workspace_id: string }
+        Returns: Json
+      }
+      list_workspace_members: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          display_name: string
+          role: string
+          user_id: string
+        }[]
       }
       update_issue: {
         Args: {
@@ -166,6 +205,7 @@ export type Database = {
         }
         Returns: Json
       }
+      workspace_permissions: { Args: { p_workspace_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DevAccount } from "@/lib/dev/accounts.server";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { safeNext } from "@/lib/auth/navigation";
 
-export function DevLogin({ accounts }: { accounts: DevAccount[] }) {
+export function DevLogin({ accounts, next = "/board" }: { accounts: DevAccount[]; next?: string }) {
   const router = useRouter();
   const [role, setRole] = useState("owner");
   const [pending, setPending] = useState(false);
@@ -20,7 +21,7 @@ export function DevLogin({ accounts }: { accounts: DevAccount[] }) {
     try {
       const result = await client.auth.signInWithPassword({ email: account.email, password: account.password });
       if (result.error) { setError("개발 계정 로그인에 실패했습니다. 로컬 Supabase와 계정 준비 상태를 확인하세요."); return; }
-      router.push("/board");
+      router.push(safeNext(next));
       router.refresh();
     } catch { setError("로그인 서버에 연결하지 못했습니다."); }
     finally { setPending(false); }

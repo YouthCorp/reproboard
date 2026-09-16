@@ -1,5 +1,15 @@
 import { expect, test } from "@playwright/test";
 
+test("production authentication pages prohibit shared response caching", async ({ request }) => {
+  for (const path of ["/board", "/login", "/invite"]) {
+    const response = await request.get(path);
+    expect(response.status()).toBe(200);
+    expect(response.headers()["cache-control"]).toContain("private");
+    expect(response.headers()["cache-control"]).toContain("no-store");
+    expect(response.headers()["referrer-policy"]).toBe("no-referrer");
+  }
+});
+
 test("production does not expose local synthetic login or fixture credentials", async ({ page }) => {
   const response = await page.goto("/login");
   expect(await response!.text()).not.toContain("@reproboard.test");
@@ -7,7 +17,7 @@ test("production does not expose local synthetic login or fixture credentials", 
   await expect(page.getByRole("combobox", { name: "개발 계정", exact: true })).toHaveCount(0);
 });
 
-test("board and login clearly explain unavailable backend actions", async ({ page }, testInfo) => {
+test("anonymous board preview and login clearly explain unavailable actions", async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
@@ -21,7 +31,7 @@ test("board and login clearly explain unavailable backend actions", async ({ pag
   await testInfo.attach("board-desktop", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
   await page.getByRole("link", { name: "로그인 안내" }).click();
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole("button", { name: "GitHub 로그인 · 준비 중" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "GitHub로 로그인" })).toBeDisabled();
   await testInfo.attach("login-desktop", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
   await page.getByRole("link", { name: "보드 화면 미리보기" }).click();
   await expect(page).toHaveURL(/\/board$/);

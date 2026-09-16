@@ -2,7 +2,7 @@
 
 소규모 개발팀이 버그 재현 정보를 모으고, 수정 후 재검증까지 관리하는 협업 보드.
 
-**현재 상태: D2 로컬 DB 최소 흐름 구현.** 합성 계정의 실제 로그인 세션으로 Inbox 제목 생성→조회→수정이 가능하다. DB에서 팀·역할·version·중복 요청을 검사한다. GitHub OAuth·상태 전환·실시간 협업은 아직 없다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)를 기준으로 구분한다.
+**현재 상태: D3 인증·팀·초대·역할 관리 구현.** 실제 로그인 세션으로 팀 생성, 1회용 Member 초대, Member↔Viewer 변경과 Inbox 제목 저장이 가능하다. GitHub OAuth·PKCE 콜백 코드는 있으며 외부 OAuth 앱 등록 전 실제 GitHub 로그인은 NOT_RUN이다. 상태 전환·실시간 협업은 아직 없다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)를 기준으로 구분한다.
 
 ## 왜 만드는가
 
@@ -10,7 +10,7 @@
 
 ## 화면과 시연
 
-로그인 전 `/board`는 데이터 없는 5단계 미리보기다. 로컬 설정 후 `/login`에서 합성 Owner/Member/Viewer/다른 팀 Owner를 선택하면 실제 Supabase 세션으로 전환한다. 로그인 후에는 Inbox 제목 생성·수정 화면이 열린다. Viewer는 읽기 전용이고 다른 팀 데이터는 표시되지 않는다. GitHub 버튼은 준비 중이다. 실제 협업 영상과 `/demo`는 D13 범위이며 아직 없다.
+로그인 전 `/board`는 데이터 없는 5단계 미리보기다. 로컬 설정 후 `/login`에서 합성 Owner/Member/Viewer/다른 팀 Owner를 선택하면 실제 Supabase 세션으로 전환한다. 로그인 후 새 팀을 만들면 Owner가 되고, 팀 멤버 패널에서 초대 링크를 생성하거나 Member↔Viewer를 변경한다. `/invite`에서 로그인 후 명시적으로 수락한다. Viewer는 읽기 전용이고 다른 팀 데이터는 표시되지 않는다. GitHub 버튼은 실제 provider 설정 상태에 따라 활성화된다. 실제 협업 영상과 `/demo`는 D13 범위이며 아직 없다.
 
 ## 구현 목표
 
@@ -48,11 +48,11 @@ pnpm dev
 | `pnpm test:e2e` | production 서버를 3100 포트에서 자동 실행·종료하는 smoke 테스트 |
 | `pnpm test:local-tools` | 원격/잘못된 DB 대상·확인 없는 reset 거부 검사, Docker 없이 실행 가능 |
 | `pnpm test:db` | 실제 로컬 세션의 RLS/RPC·동시성·원자성 검증. 로컬 스택·migration·seed 필요 |
-| `pnpm test:db-ui` | 실제 개발 계정의 생성→수정→reload, Viewer·팀 격리, 두 사용자 제목 충돌 검증 |
+| `pnpm test:db-ui` | 실제 계정의 제목 저장·충돌, 팀 생성·초대 수락·역할 변경, SSR 갱신·만료·로그아웃·콜백 오류 |
 
 `test:e2e` 전에 `pnpm build`와 브라우저 설치가 필요하다. 보드↔로그인, 404, 키보드, 390px 및 production의 개발 로그인 미노출을 검증한다. 이 smoke와 실제 DB 테스트는 별도다. `test:db-ui`는 아래 로컬 준비 후 실행하며, 3000 포트의 기존 개발 서버를 사용하거나 없으면 자동 시작한다. 기존 서버의 환경 값이 바뀌었다면 재시작한다. 실행 중에는 동일한 합성 계정을 수동 조작하지 않는다.
 
-캡처는 `playwright-report/index.html`과 `playwright-db-report/index.html`에 있다. `pnpm exec playwright show-report playwright-db-report`로 DB 화면 리포트를 볼 수 있다. 개발 인증 요청에 비밀 값이 포함되므로 DB UI의 trace/storageState는 저장하지 않는다. DB 테스트는 이번 실행에서 만든 이슈만 정리하며, seed와 별도로 기존 이슈를 삭제하지 않는다. [CI](.github/workflows/ci.yml)는 정적 검사·로컬 보호 검사·빌드·production smoke까지 구성했다. GitHub 실행과 DB 테스트 CI는 NOT_RUN이다.
+캡처는 `playwright-report/index.html`과 `playwright-db-report/index.html`에 있다. `pnpm exec playwright show-report playwright-db-report`로 DB 화면 리포트를 볼 수 있다. 개발 인증 요청에 비밀 값이 포함되므로 DB UI의 trace/storageState는 저장하지 않는다. DB 테스트는 이번 실행의 UUID로 만든 이슈·팀·초대·receipt만 정리하며 기존 데이터는 보존한다. 만료 테스트는 해당 테스트 브라우저의 Auth 세션만 폐기한다. [CI](.github/workflows/ci.yml)는 정적 검사·로컬 보호 검사·빌드·production smoke까지 구성했다. GitHub 실행과 DB 테스트 CI는 NOT_RUN이다.
 
 ### 로컬 Supabase / 실제 저장 준비
 
@@ -92,18 +92,34 @@ Docker/WSL 오류가 재발하면 먼저 `docker version`과 `wsl --list --verbo
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 로컬 publishable key 또는 legacy anon key. service_role/secret key 사용 금지 |
 | `NEXT_PUBLIC_SITE_URL` | 앱 origin, 기본 `http://127.0.0.1:3000` |
 | `DEV_LOGIN_ENABLED` | 서버 전용 개발 로그인 스위치. `true`여도 production에서는 비활성화 |
+| `SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID` | OAuth App의 Client ID. 로컬 CLI용 루트 `.env`에 입력 |
+| `SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET` | OAuth App의 Client secret. 로컬 CLI용 루트 `.env`에만 입력, 공개 접두사 금지 |
 
 개발 계정 UI와 자격 정보는 서버에서 `NODE_ENV=development`, `DEV_LOGIN_ENABLED=true`, API=`http://127.0.0.1:54321`을 모두 확인한 경우에만 제공한다. 일반 브라우저 요청은 publishable/anon key와 로그인 사용자 토큰만 사용한다. admin key는 보호된 로컬 Auth seed 도구에만 사용하며 `.env.local`이나 앱 코드에 넣지 않는다.
 
-실제 OAuth는 D3에서 GitHub OAuth 앱 등록, Supabase Auth의 콜백 URL 등록, provider의 Client ID/secret 입력이 필요하다. 인증 콜백 코드는 아직 없으므로 redirect allowlist는 비워 두었다. secret은 서버/로컬 비밀 설정에만 두고 `NEXT_PUBLIC_*`에 넣지 않는다. 로컬 개발 사용자로 진행할 D2에는 외부 계정이 필요 없다. GitHub 원격·공개 배포는 아직 설정하지 않았다.
+### GitHub OAuth 설정 — 사용자가 할 외부 작업
+
+외부 OAuth App·secret이 없어 실제 GitHub 승인/취소 왕복은 아직 실행하지 않았다. 아래 설정이 없어도 개발 계정으로 팀·초대·권한을 사용할 수 있다. 이미 외부 앱이 있다면 정확한 로컬 주소와 자격 정보만 대조한다.
+
+1. GitHub → Settings → Developer settings → OAuth Apps → New OAuth App에서 개발 앱을 등록한다. Homepage URL은 `http://127.0.0.1:3000`, **Authorization callback URL은 `http://127.0.0.1:54321/auth/v1/callback`**이다. Device Flow는 사용하지 않는다. Client ID와 새 Client secret을 직접 보관한다.
+2. 저장소 루트의 gitignore된 `.env`에 `SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID`와 `SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET`을 입력한다. CLI는 `.env.local`이 아니라 루트 `.env`의 `env(...)`를 읽는다. 기존 파일은 덮어쓰지 않는다. 키를 채팅이나 커밋에 남기지 않는다.
+3. `supabase/config.toml`의 `[auth.external.github]`에서 `enabled = true`로 변경한다. `client_id`/`secret`은 이미 위 환경 변수 이름을 참조한다. `pnpm db:stop` → `pnpm db:start`로 설정을 반영한다. reset과 `--no-backup`은 사용하지 않는다.
+4. 앱 `.env.local`의 `NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000`을 확인하고 `pnpm dev`를 재시작한다. **앱 PKCE 콜백은 `http://127.0.0.1:3000/auth/callback`**이며 config의 `additional_redirect_urls`에 정확히 등록되어 있다. GitHub에 등록하는 54321 콜백과 용도가 다르다. 브라우저도 `localhost`와 섞지 말고 127.0.0.1로 접속한다.
+5. `/login`의 GitHub 버튼으로 승인→보드, 로그아웃→재로그인을 확인한다. GitHub 승인 취소도 확인한다. 초대 링크에서 로그인한 경우 `/invite`로 복귀하며 자동 가입하지 않는다. 실제 결과를 TEST_REPORT에 추가한다.
+
+공식 근거: [Next.js SSR 쿠키·Proxy](https://supabase.com/docs/guides/auth/server-side/creating-a-client?framework=nextjs), [GitHub OAuth/PKCE](https://supabase.com/docs/guides/auth/social-login/auth-github), [로컬 config와 비밀 값](https://supabase.com/docs/guides/local-development/managing-config). hosted 환경을 선택하면 별도 OAuth App에 해당 프로젝트의 Auth callback을 등록하고 Supabase Dashboard → Authentication → Sign In/Providers 및 URL Configuration을 설정한다. 현재 hosted 설정·원격·공개 배포는 수행하지 않았다.
+
+SSR 쿠키 갱신은 Proxy의 `getClaims()`가 검증하고 콜백은 `exchangeCodeForSession()`을 사용한다. 보드·로그인·초대는 dynamic/no-store 응답이며 복귀 주소는 `/board`와 `/invite`로 제한한다. 로그아웃은 현재 브라우저 세션을 종료하고 캐시를 비운다. 갱신이 거부된 세션은 재로그인을 안내한다. 통신 장애를 세션 만료로 단정하지 않으며 발급된 JWT의 즉시 전역 무효화는 보장하지 않는다. D2 localStorage 세션은 자동 이관하지 않으므로 업그레이드 후 한 번 다시 로그인한다.
+
+초대 링크는 `http://127.0.0.1:3000/invite#<token>` 형태다. 원문은 HTTP URL이나 OAuth 복귀 query로 전송하지 않고 브라우저 탭의 sessionStorage에 잠시 보관하며 수락 성공 후 제거한다. DB에는 SHA-256만 저장하고 Member 역할·24시간·1회 사용을 강제한다. 이미 참여한 사용자는 초대를 소비하거나 Viewer에서 승격하지 않는다. Owner는 이전·자가 강등할 수 없다. 링크 원문을 잃으면 새 링크를 생성한다.
 
 ## 기술과 설계
 
 설치: Next.js 16.3.5, React 19.3.0, TypeScript 5.9.3, TanStack Query 5.102.8, Vitest 5.0.0, Playwright 1.63.0. 전체 정확한 버전은 [package.json](package.json)과 lockfile이 기준이다. [Next 지원 조건](https://nextjs.org/docs/app/getting-started/installation)·[Node LTS](https://nodejs.org/en/blog/release/v24.19.0)·[Supabase 로컬 요구 조건](https://supabase.com/docs/guides/local-development/cli/getting-started)을 대조하고 실제 빌드로 확인했다.
 
-Supabase SDK **2.116.0**(Node ≥22), 로컬 검증용 pg **8.23.0**(Node ≥16)을 정확히 고정했다. Root layout과 페이지는 Server Component이며 Query provider는 보드 아래에만 둔다. 이슈 목록은 `['issues', workspaceId]` Query 캐시에서 읽는다. 제목 초안은 폼 로컬 state, 팀 선택은 URL `?workspace=`에 둔다. 공유 임시 UI가 없어 Zustand는 도입하지 않았다.
+Supabase SDK **2.116.0**(Node ≥22), SSR **0.12.7**(SDK peer `^2.114.0`), 로컬 검증용 pg **8.23.0**(Node ≥16)을 정확히 고정했다. Root layout과 페이지는 Server Component이며 Query provider는 보드·초대 화면의 상호작용 경계에만 둔다. 이슈 목록은 `['issues', workspaceId]` Query 캐시에서 읽는다. 제목 초안은 폼 로컬 state, 팀 선택은 URL `?workspace=`에 둔다. 공유 임시 UI가 없어 Zustand는 도입하지 않았다.
 
-RPC는 `create_issue`와 `update_issue`뿐이며 제목 외 payload를 거부한다. `auth.uid()`·팀 역할을 재검사하고 같은 사용자/팀/requestId의 실행을 트랜잭션 잠금으로 직렬화한다. 수정은 이슈 행을 잠근 뒤 expectedVersion을 비교하고 이슈·activity·receipt를 함께 커밋한다. 동일 requestId/다른 payload는 VALIDATION, 오래된 version은 CONFLICT다. 정상 거부는 JSON 결과이며 SDK/전송 오류와 구분한다. 명시적 재시도는 같은 requestId를 사용하고 자동 재시도·오프라인 큐는 없다. 낙관적 이동·응답 유실 장애 주입 검증은 D6 이후다.
+제목 RPC `create_issue`/`update_issue`에 D3의 `create_workspace`, `create_invite`, `accept_invite`, `change_member_role`을 추가했다. 읽기 RPC는 최소 표시 이름·역할 목록과 권한표만 제공한다. `auth.uid()`·현재 팀 역할을 재검사하고 같은 사용자/팀/requestId의 실행을 트랜잭션 잠금으로 직렬화한다. 이슈 수정은 expectedVersion, 역할 변경은 expectedRole을 검사한다. 명령 효과와 receipt를 함께 저장하며 이슈는 activity도 포함한다. 초대 원문은 receipt에도 저장하지 않는다. 동일 requestId/다른 payload는 VALIDATION, 오래된 기준은 CONFLICT다. 정상 거부와 SDK/전송 오류를 구분하며 미확정 결과는 같은 요청으로 명시적으로 확인한다. 자동 재시도·오프라인 큐는 없다. 응답 유실 장애 주입 검증은 D6 이후다.
 
 ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는 ESLint 10을 지원하지 않아, ESLint 10.10.0에 호환되는 TypeScript·React Hooks·공식 Next 플러그인을 직접 구성했다. 규칙 전체를 끄거나 peer 조건을 무시하지 않았다. `agentRules: false`는 Next 개발 서버가 기존 AGENTS.md를 자동 수정하는 것을 막는다.
 
@@ -119,12 +135,13 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 | 영역 | 책임 |
 |---|---|
-| [src/app](src/app) | Root layout, `/board`, `/login`, 오류·로딩·404 경계 |
+| [src/app](src/app) | Root layout, `/board`, `/login`, `/invite`, `/auth/callback`, 오류·로딩·404 경계 |
 | [src/features/issues/board-shell.tsx](src/features/issues/board-shell.tsx) | 5단계의 데이터 없는 보드 |
 | [src/features/issues/live-board.tsx](src/features/issues/live-board.tsx), [issue-form.tsx](src/features/issues/issue-form.tsx) | 세션별 읽기·Inbox 제목 생성/수정·충돌 입력 보존 |
-| [src/features/auth](src/features/auth) | 개발 로그인·세션 변경 시 Query 캐시 정리 |
+| [src/features/auth](src/features/auth), [src/proxy.ts](src/proxy.ts) | GitHub/개발 로그인·쿠키 갱신·만료 안내·로그아웃과 Query 캐시 정리 |
+| [src/features/workspaces](src/features/workspaces) | 팀 생성·초대 링크·초대 수락·Member/Viewer 변경 |
 | [scripts](scripts) | 로컬 대상 보호·migration/type/env·합성 계정 준비 |
-| [src/lib/query/query-provider.tsx](src/lib/query/query-provider.tsx) | 보드의 QueryClient 생명주기, 하위 Suspense 경계 |
+| [src/lib/query/query-provider.tsx](src/lib/query/query-provider.tsx) | 보드·초대의 QueryClient 생명주기, 하위 Suspense 경계 |
 | [src/components](src/components) | 공통 로딩·오류 복구 UI |
 | [supabase/migrations](supabase/migrations), [config.toml](supabase/config.toml) | 핵심 테이블·RLS·grant·명령, 로컬 스택 설정 |
 | [tests](tests) | UI 단위·로컬 보호·실제 DB·production/개발 Chromium 흐름 |
@@ -138,4 +155,4 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 [기여 안내](CONTRIBUTING.md), [보안 제보 안내](SECURITY.md), [MIT 라이선스](LICENSE).
 
-개인 프로젝트이며 D1~D2 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 CASE_STUDY에 단계별 증거와 함께 정리한다. 실제 팀 사용·성능 개선 성과는 아직 측정하지 않았다.
+개인 프로젝트이며 D1~D3 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 CASE_STUDY에 단계별 증거와 함께 정리한다. 실제 팀 사용·성능 개선 성과는 아직 측정하지 않았다.

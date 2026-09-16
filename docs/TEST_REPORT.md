@@ -1,6 +1,56 @@
 # 테스트 실행 보고서
 
-현재 상태: **D2 / P02 로컬 최소 저장 흐름 PASS, V02 독립 검증 대기.** V01의 기존 검증 기록은 아래에 보존한다. README의 지속 실행 상태 단정은 D2에서 수정했고 D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+현재 상태: **D3 / P03 로컬 구현 검증 PASS, 실제 GitHub OAuth·독립 V03 NOT_RUN.** 기존 V02 본문은 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+
+## D3 실제 결과 — 2026-09-15~16
+
+Windows 25H2 / PowerShell 7.6.5 / Node 24.19.0 / pnpm 11.19.0 / Docker 29.7.2 / PostgreSQL 17.6 / Supabase CLI 2.117.0. 기존 Next 16.3.5·SDK 2.116.0에 SSR 0.12.7을 정확히 추가했다. 시작 시 사용자 변경은 PROGRESS/TEST_REPORT의 V02 기록 2개였고 사본을 보존했다. 합성 Owner/Member/Viewer/별도 팀 Owner를 실제 password 세션으로 사용했다.
+
+| 명령/검증 | 결과 | 실제 확인·한계 |
+|---|---|---|
+| 공식 문서·버전 | PASS | Supabase Next SSR·GitHub/PKCE·CLI env·Next dynamic 캐시 문서 확인. npm 공식 SSR latest metadata 0.12.7, SDK peer ^2.114.0과 현재 2.116.0 호환. Node/pnpm 기존 pin 유지 |
+| `pnpm db:migrate`, `pnpm db:types` | PASS | D3 migration 데이터 보존형 적용, public 타입 생성. 최종 타입 재생성 전후 SHA-256 동일. 기존 기본 계정의 profiles backfill, reset/seed 재실행 없음 |
+| `pnpm db:stop` → `pnpm db:start` | PASS | 설정 반영용 보존 재기동 exit 0. 실행 중 Auth allowlist에 정확한 3000 `/auth/callback` 존재, GitHub provider=false. 키가 포함될 수 있는 원문 출력 없음 |
+| `pnpm test:db` | PASS 25/25 | D2 14건 유지 + D3 11건. 실제 사용자 API와 사후 SQL 조회. 테스트 데이터 준비/정리·롤백 주입만 postgres 사용 |
+| 팀 생성·역할 주입 | PASS | Viewer도 새 팀의 생성자는 Owner. 동일 요청 동시 생성은 팀/멤버/receipt 1회. owner_id/role payload 주입·기존 타팀 id 거부. 직접 profiles/workspaces/members insert/update/delete 42501 |
+| 프로필·권한표 | PASS | 같은 팀 표시 이름/user id/역할만 조회, 타팀 rows 0, anon 거부, 정책 재귀 없음. 새 auth.users insert trigger는 80자 이름만 저장하고 role/workspace 메타데이터는 멤버십에 영향 없음. read/write/verify/comment/invite/manage_members 표 일치; 검증·댓글은 capability만 확인 |
+| 초대 생성·수락 | PASS | Owner만 생성, DB/receipt 원문 없음·SHA-256 대조·24시간·Member 고정. 동시 생성 replay 효과 1회. 서로 다른 사용자 동시 수락 성공 1/거부 1, 가입/소비/receipt 각각 한 번. 동일 성공 요청 replay도 추가 효과 없음 |
+| 만료·재사용·이미 가입 | PASS | 만료/없는/사용된 초대 거부·실패 receipt 0. 이미 가입한 Owner·Viewer는 링크를 소비하지 않고 승격하지 않음. 역할/다른 payload 주입 거부 |
+| 역할 변경·원자성 | PASS | Member/Viewer/타팀 변경 거부, Owner 자가 강등·이전·비회원 대상 차단. 같은 기준 역할의 동시 변경 성공 1/CONFLICT 1. 같은 JWT에서도 Viewer 전환 후 이슈 쓰기 거부, Member 복귀 후 성공. 멤버 insert 예외 시 팀 생성·초대 소비·receipt 전부 rollback |
+| 내부 경계 | PASS | private 초대/공통 명령 직접 접근 42501. auth.uid 없는 authenticated SQL bootstrap 거부. receipt 재전송은 현재 권한 확인 |
+| `pnpm test:db-ui` | PASS 7/7 | 기존 제목 저장/reload·Viewer/타팀·두 사용자 초안 보존 3건 유지. 새 팀 UI→fragment 초대→로그인 복귀→수락→Member/Viewer 변경, 만료 안내·타팀 이름 미노출, SSR/로그아웃, 콜백 오류 4건 추가 |
+| SSR 갱신·종료 | PASS | 실제 세션 쿠키의 과거 expiry로 서버 갱신 유도, Set-Cookie와 새 만료 시각 확인. 해당 테스트 브라우저의 Auth 세션만 폐기 후 갱신 거부→재로그인 안내. 로그아웃 후 쿠키 0·미리보기. 실제 1시간 경과를 기다린 검증이나 GitHub 로그인 검증은 아님 |
+| OAuth 오류·복귀 | PASS / 실제 OAuth NOT_RUN | 실제 route에서 취소 query·없는/잘못된 code를 안전한 안내로 처리. 오류 원문 미반영, 외부 next 거부, `/invite` 복귀와 no-store 확인. 브라우저 초대 원문이 HTTP 요청 URL에 없는 것도 확인. 외부 GitHub 승인 왕복을 mock 성공으로 대체하지 않음 |
+| 설치·정적·단위 | PASS | `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm test` 3/3, `pnpm test:local-tools` 2/2. 마지막 보호 검사는 09-15, 나머지 최종 회귀 09-16. 테스트 삭제/skip 없음 |
+| 빌드·production | PASS | `pnpm build` exit 0. `/auth/callback`, `/board`, `/invite`, `/login` dynamic 및 Proxy 출력. `pnpm test:e2e` 6/6: 기존 smoke와 개발 자격 미노출 유지, 3개 인증 관련 페이지 private/no-store/no-referrer 확인 |
+| 비밀 값·정리 | PASS | 소스 후보 82·production server/static 198개를 실제 합성 비밀번호·로컬 JWT/secret/service 키와 메모리에서 대조: 일치 0. 값 미출력. 최종 합성 사용자 4·프로필 4·팀 2, 이슈/activity/receipt/invite·오류 주입 함수 각각 0 |
+| 별도 V03·외부 기능 | NOT_RUN | 실제 GitHub 승인/취소: root .env의 Client ID/secret 미설정 및 provider=false. README에 등록/콜백/변수/재기동 순서 기록. V03·원격 CI·hosted·새 clone·전체 AC01~16·검증/댓글·Realtime·응답 유실 주입·실제 사용자 피드백 미실행 |
+
+- 중간 FAIL 후 수정: effect 안의 동기 setState 대신 초대 저장소 외부 상태 구독, JS 테스트의 Node URL import. 세션 fixture의 `expires_at=0`은 SDK에서 만료로 보지 않아 실제 과거 시각으로 수정하고 브라우저 자동 갱신과 서버 검증을 분리했다. 정상 갱신/거부 모두 최종 PASS.
+- 캐시 검증: Next dev의 페이지 헤더는 `no-cache, must-revalidate`여서 production 기준의 no-store assertion이 처음 실패했다. 보드를 명시적 dynamic으로 두고 dev/production을 별도 검증했다. 최종 production 3개 페이지는 private/no-store였다.
+- 로그 한계: 폐기한 테스트 세션의 `refresh_token_not_found`는 의도한 실패이며 값은 출력되지 않았다. 개발 탐색 중 `The destination stream closed early` 서버 로그가 1회 있었고 해당 흐름 및 전체 7건은 PASS였다. 이 로그의 원인은 미확정이다. production smoke에서는 같은 로그가 관찰되지 않았다. 모든 서버/브라우저 로그가 0이라고 주장하지 않는다.
+- 실제 캡처: `playwright-db-report/index.html`의 `d3-team-roles`(390px), `d2-saved-inbox`, `d2-stale-title` 3장을 직접 열어 확인했다. 새 팀 흐름 390px overflow 0, 기본 제목/팀 관리 흐름의 pageerror 0. 초대 원문이 사라진 후 캡처하며 DB UI trace/storageState는 저장하지 않는다.
+- 변경 후 권한은 DB에서 매번 검사하고 UI는 명시적 재조회/포커스/거부 응답으로 갱신한다. 실시간 역할 전파·즉시 전역 JWT 무효화는 이번 범위가 아니다. 새 댓글/검증 명령은 D5/D9에서 같은 DB 권한표를 적용하고 실제 동작을 검증해야 한다.
+
+## V02 독립 검증 — 2026-09-15
+
+Windows 25H2 / Node 24.19.0 / pnpm 11.19.0 / PostgreSQL 17.6. 검수 시작 커밋은 `367fff2`, working tree는 clean이었다. 아래 DB 결과는 Supabase 로컬 API와 실제 PostgreSQL 사후 조회를 함께 사용했으며 UI mock 결과가 아니다.
+
+| 검증 항목 | 결과 | 실제 확인·증거 |
+|---|---|---|
+| 로컬 대상 보호 | PASS | `pnpm test:local-tools` 2/2. 실제 reset 전 wrapper가 API `127.0.0.1:54321`, DB `127.0.0.1:54322/postgres`, 실행 중인 `supabase_db_reproboard`, 프로젝트/작업 경로를 확인했다. 원격 URL·다른 포트/DB/컨테이너·확인 없는 reset은 거부된다. |
+| 초기화·migration 재적용 | PASS | 초기화 전 합성 사용자 4·팀 2·이슈 1·activity 4·receipt 4를 확인했다. 고정 Node 24.19.0으로 `db:reset --confirm-local-reproboard` exit 0. 직후 migration `20260914000100_d2_issue_commands`, 공개 테이블 4개의 RLS, authenticated SELECT/RPC 허용과 직접 INSERT/UPDATE·anon RPC 거부, 전체 데이터 0을 SQL로 확인했다. seed/env/types 재실행도 PASS. |
+| 공개 키·일반 사용자 세션 | PASS | `.env.local`의 브라우저 키는 실행 중인 publishable/anon key와 같고 secret/service key와 달랐다. 브라우저에는 `src/lib/supabase/browser.ts`의 공개 키 client만 생성된다. 실제 Owner password 세션의 UI 저장 행은 `created_by`/`updated_by`가 해당 합성 Owner였고, admin key는 `scripts/seed-local.mjs`의 로컬 Auth seed에만 사용된다. 검증·정리 SQL의 postgres 연결은 사용자 동작으로 계산하지 않았다. |
+| UI 생성·수정·reload | PASS | 실제 브라우저에서 Owner 로그인→`V02 수동 저장 2026-09-15` 생성→DB version 1/activity 1/receipt 1→reload 유지→제목 수정→DB version 2/activity 2/receipt 2→reload 유지. console warn/error 0, 종료 시 로그아웃. `pnpm test:db-ui`도 실제 로컬 DB/별도 context로 3/3 PASS. |
+| 직접 `issues` 쓰기 | PASS | 별도 Owner 사용자 세션에서 `.from('issues').insert`와 `.update`를 직접 시도해 둘 다 PostgreSQL `42501`. 우회 행 0, 기존 제목/version 불변. `pnpm test:db`는 Owner/Member/Viewer/outsider의 직접 insert/update/delete도 확인했다. |
+| 동일 version 경합 | PASS | 독립 Owner/Member 세션이 version 1을 동시에 수정해 성공 1·`CONFLICT` 1, transport error 0, 최종 version 2. 승자 activity 1·receipt 1, 패자 성공 기록 0. DB 테스트의 같은 시나리오도 PASS. |
+| 동일 requestId 재전송 | PASS | 같은 Owner 세션의 동일 update를 동시에 2회 보내 두 호출은 같은 성공 결과를 받았고 최종 version 2, activity 1, receipt 1이었다. 이후 replay·동시 create·다른 payload/operation 거부를 포함한 DB 테스트도 PASS. |
+| 권한 거부 원자성 | PASS | Viewer의 update RPC는 transport 성공/도메인 `FORBIDDEN`; 이슈·version 불변, 해당 requestId의 activity 0·receipt 0. 타팀·없는 팀·익명·권한 회수 후 replay와 activity insert 강제 실패의 전체 rollback도 `pnpm test:db`에서 PASS. |
+| 재현 스크립트·회귀 | PASS | `tests/db/commands.test.mjs` 14/14, `tests/db-ui/board.spec.mjs` 3/3, `tests/local-tools/guard.test.mjs` 2/2. `pnpm lint`, `pnpm typecheck`, `pnpm test` 1/1 PASS. 생성 DB 타입은 커밋과 동일하고 skip/삭제 없음. |
+| 보안 검토 | PASS / LOW 관찰 | 요청한 D2 경로에서 critical/high/medium 취약점은 발견하지 못했다. 개발 모드 `/login`은 합성 비밀번호를 client에 전달하므로 같은 로컬 사용자에게 fixture 계정이 노출될 수 있다. `NODE_ENV=development`+명시적 switch+loopback API·loopback dev bind로 제한되고 production smoke가 미노출을 확인한다. 이 경계를 완화하거나 production에 켜지 않는다. |
+| D2 밖의 범위 | NOT_RUN | OAuth, 초대·전체 역할 관리, 상태 전환, Realtime, commit 후 응답 유실 장애 주입, hosted/원격 CI, 전체 AC01~16은 D2 PASS에 포함하지 않는다. |
+
+첫 reset 시도는 권한 확장 환경의 Node 24.12.0이 engine pin에 거부되어 DB 변경 전에 exit 1이었다. 고정 Node 24.19.0으로 재실행해 위 결과를 얻었다. 요청된 reset으로 초기화 전 로컬 합성 이슈 1·activity 4·receipt 4는 삭제됐으며 별도 백업은 만들지 않았다. 검수 중 생성한 이슈와 연관 activity/receipt만 정확한 UUID로 정리했고 최종 상태는 합성 사용자 4·팀 2·이슈/activity/receipt 0이다.
 
 ## D2 실제 결과 — 2026-09-14
 
@@ -118,6 +168,6 @@ V01은 D1 앱 골격을 PASS로 판정한다. 실제 이슈 생성·조회·수�
 
 ## 최종 판정
 
-D1/V01 및 D2/P02의 명시한 범위는 PASS. D2에서 로컬 스택 기동·migration 재적용·실제 세션 제목 저장까지 검증했다. 지속 실행 상태는 다음 작업 때 다시 확인한다. V02 독립 검증 뒤 P03 진행 가능하며 제품 MVP 전체 릴리스 판정은 아직 하지 않는다. P01 이전 파일 보존 독립 증명은 기준 이력 부재로 NOT_RUN이다.
+D1/V01 및 D2/V02의 명시한 범위는 PASS. 로컬 reset·migration 재적용, 공개 키+일반 사용자 세션, 실제 UI 저장/reload, 직접 DML 거부, version 경합, requestId 멱등성, 거부 원자성을 독립 검증했다. P03 진행 가능하지만 제품 MVP 전체 릴리스 판정은 아직 하지 않는다. P01 이전 파일 보존 독립 증명은 기준 이력 부재로 NOT_RUN이다.
 
 공개 저장소·공개 배포·영상 제작·OAuth 검증은 모두 NOT_RUN. 테스트와 캡처에 실제 사용자 데이터는 없다.
