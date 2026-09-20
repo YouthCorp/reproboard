@@ -1,6 +1,34 @@
 # 테스트 실행 보고서
 
-현재 상태: **D3 / P03 로컬 구현 검증 PASS, 실제 GitHub OAuth·독립 V03 NOT_RUN.** 기존 V02 본문은 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+현재 상태: **D4 / P04 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03/V04는 NOT_RUN이다. 기존 V02/D3 본문은 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+
+## D4 실제 결과 — 2026-09-16, 재개·최종 검증 09-20
+
+Windows / PowerShell / Node 24.19.0 / pnpm 11.19.0 / Docker 29.7.2 / PostgreSQL 17.6 / Supabase CLI 2.117.0 / 고정 Playwright 1.63.0 Chromium 환경. D4 시작 커밋 `7503d03`, 당시 working tree clean. D4 중단 작업을 그대로 이어 진행했으며 패키지 버전/lockfile 변경·외부 계정 설정·공개 작업은 없다.
+
+| 검증 | 결과 | 실제 근거와 한계 |
+|---|---|---|
+| migration·타입 | PASS | 09-16 `pnpm db:migrate` → `pnpm db:types`. `20260916000100_d4_issue_fields.sql` 적용, public 타입 재생성. reset 없이 기존 행/계정/환경 보존. 09-20 Docker Desktop 기동 대기 후 엔진 29.7.2, `pnpm db:start` exit 0, dev ready |
+| 실제 DB | PASS 29/29 | `pnpm test:db` 09-20. D2/D3 25건 회귀 + D4 4건: 기본값·각 필드 최대/초과·Unicode/공백·enum/null/허용 필드·간헐 조건·잘못된 담당자, 부분 필드 version 경합, activity 실패 rollback, 강등 담당자 보존/해제/새 지정 거부 |
+| 실제 DB UI | PASS 10/10 | `pnpm test:db-ui` 09-20. 기존 D2 3건을 카드→상세 편집으로 변경하고 D3 4건 유지. 별도 합성 팀에서 구조화 생성/편집/DB 사후 조회/reload/재진입, 입력 오류·IME 이벤트, 로딩/0건/조회 실패/재시도/없는 상세/초안 보존 3건 추가 |
+| 서버 데이터·초안 | PASS | 카드·상세는 동일 `["issues", workspaceId]` Query. UI 저장 후 version 2와 본문/빌드 trim 확인. 별도 실제 RPC 수정→최신 상세 조회 성공 및 네트워크 abort 실패 모두 로컬 입력 유지, 명시적 최신 값 선택만 폼 교체. 두 사용자 충돌·재제출로 version 3 확인 |
+| 입력·접근성 | PASS / 부분 NOT_RUN | 공백 제목·121 이모지·4,001자 본문·간헐 메모 누락·DOM 주입 담당자의 제출 거부, 첫 오류 포커스/aria-invalid/설명 연결. 120 이모지 제목/4,000 이모지 본문은 실제 DB 저장. Chromium compositionstart/Enter(isComposing·229)/compositionend로 중간 제출 0 확인. 실제 Windows 한글 IME 후보창 조작과 스크린리더는 NOT_RUN |
+| URL·모바일·증거 | PASS | 상세 URL 새로고침/재진입/뒤로가기, 닫기 초기 포커스·Escape 후 카드 포커스 복원. 390px 문서/상세 수평 overflow 없음. `docs/evidence/d4-board.png`(1440×1618), `d4-mobile-detail.png`(390×844)를 실제 DB 흐름으로 생성하고 두 이미지를 직접 확인. D4 구조화 흐름 및 기존 생성 흐름 pageerror 0 |
+| 정적·단위·보호 | PASS | `pnpm lint`, `pnpm typecheck`, `pnpm test` 3/3, `pnpm test:local-tools` 2/2. 테스트 삭제/skip 없음. `git diff --check` 통과 |
+| production | PASS | 최종 `pnpm build` exit 0, `pnpm test:e2e` 6/6. 익명 미리보기/로그인·404·키보드·390px·개발 계정 미노출·응답 캐시 경계 회귀 |
+| 비밀 값·정리 | PASS | 소스 후보 90·production server/static 198개를 실제 로컬 합성 비밀번호/JWT/secret/service 값과 메모리에서 대조하여 일치 0. 값은 미출력. 최종 합성 계정/프로필 각 4, 전체 팀 3·이슈/activity 0·receipt 4·초대 1, D2/3/4 오류 주입 함수 0. 테스트 소유 UUID만 정리했으며 다른 로컬 팀·기록을 삭제하지 않음 |
+| 외부·후속 범위 | NOT_RUN | 독립 V03/V04·실제 GitHub OAuth(provider=false)·원격 CI·새 clone·전체 AC01~16·상태 전환·DnD·Realtime·전체 오프라인 복구·실제 사용자 피드백. 정상 5열 렌더링은 상태 이동 완료를 뜻하지 않음 |
+
+수정한 중간 FAIL과 재현 근거:
+
+- SQL `elsif`의 CASE 표현식 괄호 누락으로 첫 migration이 거부됐다. 괄호를 추가해 데이터 보존형 재적용·타입 생성과 29건 DB 회귀를 통과했다.
+- 제목 label 안에 추가한 “필수” 표시로 기존 정확한 라벨 선택이 실패했다. 필수 여부를 입력 설명으로 옮기고 라벨 연결·오류 포커스·10건 UI 회귀를 확인했다.
+- 보드와 상세에 같은 제목이 있어 과거 페이지 전체 heading 선택자가 중복됐다. 테스트가 실제 편집 중인 dialog를 지정하도록 수정했다. assertion 삭제/skip 없이 저장/reload/DB 확인을 유지했다.
+- 기존 DB 테스트의 “모든 사용자는 한 팀만 볼 수 있다” 가정이 사용자가 생성한 다른 팀에서 실패했다. 실제 membership 목록에 포함된 팀만 허용되는지와 기본 팀 접근·타팀 거부를 함께 검증하도록 바꿨다.
+- URL 선택이 인증 effect 의존성이 되어 구독을 다시 만들고 초기 auth 이벤트에서 캐시를 비울 수 있었다. 복귀 URL ref와 구독 수명을 분리했다. 상세 탐색·새로고침·D3 로그인/갱신/로그아웃 회귀 PASS.
+- 네트워크 abort는 설치된 PostgREST SDK의 GET 재시도(1/2/4초)와 Query 재시도 이후 오류가 확정된다. 처음 5초 assertion은 아직 조회 중이어서 실패했다. 실행 코드를 확인하고 오류 DOM을 최대 20초 조건 대기하도록 고쳤다. 성공 응답을 가짜로 대체하지 않고 두 실제 조회 장애/복구와 초안 보존을 확인했다.
+
+알려진 D4 차단 결함은 없다. 상세 닫기/페이지 이탈은 미저장 초안을 폐기하며 디스크 초안 복구를 제공하지 않는다. 현재 상태는 DB에서 Inbox만 허용하므로 D5가 상태 CHECK와 필수 조건/재검증을 함께 확장해야 한다. D4의 3개 새 UI 테스트는 실제 OS IME·전체 접근성 인증을 대체하지 않는다.
 
 ## D3 실제 결과 — 2026-09-15~16
 
@@ -168,6 +196,6 @@ V01은 D1 앱 골격을 PASS로 판정한다. 실제 이슈 생성·조회·수�
 
 ## 최종 판정
 
-D1/V01 및 D2/V02의 명시한 범위는 PASS. 로컬 reset·migration 재적용, 공개 키+일반 사용자 세션, 실제 UI 저장/reload, 직접 DML 거부, version 경합, requestId 멱등성, 거부 원자성을 독립 검증했다. P03 진행 가능하지만 제품 MVP 전체 릴리스 판정은 아직 하지 않는다. P01 이전 파일 보존 독립 증명은 기준 이력 부재로 NOT_RUN이다.
+D1/V01·D2/V02 및 D3/P03·D4/P04의 위에 명시한 로컬 범위는 PASS. D4 최종 테스트는 단위 3·보호 2·실제 DB 29·DB UI 10·production 6으로 합계 50건 PASS다. 다음은 V04 독립 검증이며 제품 MVP 전체 릴리스 판정은 아직 하지 않는다. 별도 V03과 P01 이전 파일 보존 독립 증명은 NOT_RUN이다.
 
 공개 저장소·공개 배포·영상 제작·OAuth 검증은 모두 NOT_RUN. 테스트와 캡처에 실제 사용자 데이터는 없다.

@@ -1,6 +1,6 @@
 # 제품 계약
 
-상태: 제품 계약. D3까지 Inbox 제목 저장, 워크스페이스 생성·초대·Member/Viewer 변경, 최소 프로필/RLS와 인증 경계를 구현했다. GitHub OAuth 코드는 있으나 외부 앱 등록 전 실제 왕복은 NOT_RUN이다. 나머지 이슈 필드·전환·검증·댓글 등은 계획이며 PROGRESS를 기준으로 구분한다.
+상태: 제품 계약. D4에서 Inbox 구조화 입력·5열 보드·상세를 추가했다. D3의 워크스페이스 생성·초대·Member/Viewer 변경, 최소 프로필/RLS와 인증 경계를 유지한다. GitHub OAuth 코드는 있으나 외부 앱 등록 전 실제 왕복은 NOT_RUN이다. 상태 전환·검증·댓글 등은 계획이며 실제 검증 상태는 PROGRESS를 기준으로 구분한다.
 
 ## 목표
 
@@ -11,14 +11,16 @@
 - issue id(UUID), 사람이 읽는 issue key, workspace id.
 - title: 1~120자. creation에 필수.
 - steps / expected / actual / environment: 각각 최대 4,000자. Inbox에는 비어 있을 수 있다.
-- reproduction: unknown / reproduced / intermittent / not_reproduced. intermittent는 발생 조건 메모 필수.
+- reproduction: unknown(기본값) / reproduced / intermittent / not_reproduced. intermittent는 발생 조건 메모 `reproduction_note` 필수. 메모는 최대 4,000자.
 - severity: unset / S1 / S2 / S3 / S4. S1 핵심 기능 중단·데이터 손실, S2 주요 기능 문제·우회 어려움, S3 부분 문제·우회 가능, S4 표현·경미한 불편. 실제 심각도 판단은 사람이 한다.
 - priority: unset / P0 / P1 / P2 / P3. 긴급 / 높음 / 보통 / 낮음. 심각도에서 자동 확정하지 않는다.
 - assignee: 같은 팀의 Owner 또는 Member, 없을 수 있음. Viewer는 작업 담당자로 새 지정하지 않는다.
-- fix_note / target_build: Verify 진입 시 필수.
+- fix_note / target_build: Verify 진입 시 필수. D4에서 길이를 각각 최대 4,000자 / 120자로 구체화한다. Inbox에서는 선택 입력이다.
 - version: 서버에서 증가시키는 정수. UI에 일반적으로 노출할 필요는 없다.
 
-모든 문자열은 trim 후 빈 값 여부를 검사한다. D2 제목은 ECMAScript `String.trim()`과 동일한 공백 집합을 FE/DB에서 제거하고, Unicode 코드 포인트 수로 1~120자를 검사한다(JS `Array.from`, PostgreSQL `char_length`). 단일 한글·이모지는 1자이며 결합 문자/ZWJ 이모지 묶음은 여러 코드 포인트일 수 있다. 나머지 필드는 구현 단계에서 같은 기준으로 확장한다.
+제목만으로 Inbox에 등록할 수 있다. 본문·메모·대상 빌드는 빈 문자열, reproduction은 unknown, severity/priority는 unset, assignee_id는 null이 기본값이다. D4는 Inbox의 생성·편집만 허용하며 상태 이동은 D5에서 추가한다.
+
+모든 문자열은 trim 후 빈 값 여부를 검사한다. ECMAScript `String.trim()`과 동일한 공백 집합을 FE/DB에서 제거하고, Unicode 코드 포인트 수로 각 최대 길이를 검사한다(JS `Array.from`, PostgreSQL `char_length`). 단일 한글·이모지는 1자이며 결합 문자/ZWJ 이모지 묶음은 여러 코드 포인트일 수 있다. 재현 단계·기대 결과·실제 결과·환경 중 비어 있지 않은 항목 수를 0~4로 표시하며, 입력 충족 수를 신뢰도나 재현 성공률로 표현하지 않는다.
 
 ## 상태 전환
 

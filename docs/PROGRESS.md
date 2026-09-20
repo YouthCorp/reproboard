@@ -1,10 +1,10 @@
 # 진행 기록
 
-현재 상태: D3 / P03 인증 경계·팀 생성·초대·역할 관리 로컬 구현 및 관련 검증 완료. 실제 GitHub OAuth 왕복은 외부 앱 미설정으로 NOT_RUN.
+현재 상태: D4 / P04 실제 Query 보드·URL 상세·Inbox 구조화 생성/편집 로컬 구현 및 관련 검증 완료. 상태 전환은 D5 범위이며 실제 GitHub OAuth 왕복은 외부 앱 미설정으로 NOT_RUN.
 
-현재 단계: D3 / P03 로컬 PASS, V03 독립 검증 대기 (2026-09-16, Asia/Seoul).
+현재 단계: D4 / P04 로컬 PASS, V04 독립 검증 대기 (2026-09-20, Asia/Seoul). 사용자의 D4 지시에 따라 진행했으며 별도 V03은 여전히 NOT_RUN이다.
 
-선행 조건: D2/V02 PASS를 보존하고 D3 migration을 데이터 보존형으로 적용했다. 기본 합성 계정 4개/팀 2개·프로필 4개와 실제 세션 준비. 다음 실행 때 Docker 상태를 재확인한다. 실제 GitHub smoke에는 README의 앱 등록·루트 .env·provider 활성화가 필요하며 로컬 개발은 계속 가능하다.
+선행 조건: D2/V02·D3 기록과 기존 사용자 데이터를 보존했다. D4 migration·타입 생성 완료, 기본 합성 계정 4개의 실제 세션 사용 가능. 09-20 Docker/Supabase/dev를 reset 없이 재기동했다. 다음 실행 때 엔진 상태를 재확인하며 D5 전에 V04로 입력/복구 경계를 검증한다. 실제 GitHub smoke에는 README의 외부 앱 설정이 필요하다.
 
 ## 범위와 근거
 
@@ -22,13 +22,13 @@
 | D1 환경·골격 | DONE: P00/P01 | V01 PASS | README의 지속 실행 상태 단정은 D2에서 수정. P01 전 파일 보존 독립 증명은 여전히 NOT_RUN |
 | D2 DB·명령 | DONE: P02 | V02 PASS | reset/migration 재적용·실제 세션 UI/reload·직접 DML 거부·경합·멱등성·거부 원자성 독립 확인. TEST_REPORT 참조 |
 | D3 인증·권한 | DONE: P03 로컬 구현 | 로컬 PASS / V03·실제 OAuth NOT_RUN | SSR/PKCE·팀 생성·초대·역할 UI·프로필/RLS. DB 25·DB UI 7건 회귀 PASS. 검증/댓글은 권한표만, 기능은 D5/D9 |
-| D4 보드·폼 | TODO | 전체 제품 흐름 NOT_RUN | 로그인 후 Inbox 제목 목록/폼만 구현. 5열 실제 데이터·상세·재현 필드 폼 없음 |
+| D4 보드·폼 | DONE: P04 로컬 구현 | 로컬 PASS / V04 NOT_RUN | 5열 Query 보드·URL 상세·구조화 폼·충족/누락·초안 보존. DB 29·DB UI 10건 및 캡처 2장. 상태 이동은 없음 |
 | D5 상태·검증 | TODO | NOT_RUN | 전환 명령·재검증 코드 없음 |
-| D6 낙관적 UI | TODO | NOT_RUN | D2 제목 mutation만 있음. 낙관적 이동·overlay 없음 |
-| D7 실시간·충돌 | TODO | 전체 NOT_RUN | D2 제목 version 경합·초안 유지 검증만 PASS. Realtime 구독·변경 전파 없음 |
+| D6 낙관적 UI | TODO | NOT_RUN | D4 Inbox 생성/편집 mutation만 있음. 낙관적 이동·overlay 없음 |
+| D7 실시간·충돌 | TODO | 전체 NOT_RUN | D4 구조화 필드 version 경합·초안 유지 검증 PASS. Realtime 구독·변경 전파 없음 |
 | D8 연결 복구 | TODO | NOT_RUN | 재연결·HTTP/WS 장애 처리 코드 없음 |
 | D9 댓글·알림 | TODO | NOT_RUN | 댓글·알림 코드 없음 |
-| D10 URL | TODO | NOT_RUN | D2 팀 선택 `?workspace=`만 있음. 검색·필터·정렬·상세 파서 없음 |
+| D10 URL | TODO | 전체 NOT_RUN | D4 팀/상세 `?workspace=&issue=` 복원·뒤로가기만 구현. 검색·필터·정렬 없음 |
 | D11 접근성·UX | TODO | 핵심 흐름 NOT_RUN | D1 skip link·오류 재시도·좁은 화면 smoke만 PASS |
 | D12 회귀·CI | TODO | 전체 회귀·원격 CI NOT_RUN | Vitest 3·보호 2·DB 25·production smoke 6·DB UI 7건. CI는 정적/보호/production smoke 구성 |
 | D13 재현·시연 | TODO | NOT_RUN | D1~D3 화면 캡처 있음. 전체 시연·영상·새 clone 검증 없음 |
@@ -63,10 +63,10 @@
 
 ## 다음 실행 프롬프트
 
-[PROMPTS.md의 V03 — 권한 우회·참여 흐름 검증](planning/PROMPTS.md#v03--권한-우회참여-흐름-검증)을 수행한 뒤 P04로 진행한다.
+[PROMPTS.md의 V04 — 폼·실제 데이터·상태 경계 검증](planning/PROMPTS.md#v04--폼실제-데이터상태-경계-검증)을 수행한 뒤 P05로 진행한다. 독립 V03 미실행 사실은 유지한다.
 
 ```text
-AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V03을 수행해라. 실제 세션의 팀 생성·초대 정상/만료/재사용/동시 수락·Member/Viewer 변경·Owner 보호·직접 table/RPC 우회·타팀 프로필 격리를 독립 검증해라. SSR 정상 갱신·폐기된 세션 안내·로그아웃·콜백 오류/복귀 경로를 대조하고, 실제 GitHub 승인/취소는 provider가 설정된 경우에만 수행해라. 미설정이면 NOT_RUN과 README 사용자 작업을 유지해라. 기존 데이터와 V02 기록을 보존하고 PASS/FAIL/NOT_RUN을 기록한 뒤 통과하면 P04를 다음 프롬프트로 지정해라.
+AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V04를 수행해라. 실제 DB에서 제목만 생성→구조화 편집→새로고침→상세 재진입, 공백·최대 길이·한글 조합·잘못된 담당자를 독립 검증해라. 재조회 성공/실패와 version 충돌에서 초안 보존, Query 단일 소유, URL 뒤로가기, 0건·로딩·권한 없음·390px 상세·오류 포커스를 확인해라. 기존 데이터와 문서를 보존하고 PASS/FAIL/NOT_RUN을 기록해라. 실제 OS 한글 IME는 실행 가능한 환경에서 직접 확인하고 자동 composition 이벤트와 구분해라. 통과하면 P05를 다음 프롬프트로 지정해라.
 ```
 
 ### D1 / P00 / 2026-09-13
@@ -137,6 +137,18 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V03을 수�
 - 결정: 이슈·팀·멤버는 Query, 폼/미확정 명령은 로컬 state, 팀 선택은 URL. 초대 원문은 fragment→탭 sessionStorage로 전달하고 DB/receipt에는 해시만 저장. ADR 3건 틀 유지, 기존 V02 기록 보존.
 - NOT_RUN: 실제 GitHub 승인/취소·별도 V03·원격 CI·hosted/공개·전체 수용 기준·검증/댓글 동작·Realtime·응답 유실 주입·사용자 피드백. 외부 설정은 README에 한 번에 정리.
 - 다음: V03→P04. 핵심 파일은 D3 migration, src/proxy/auth/workspaces, tests/db·db-ui. 로컬 커밋 식별자는 최종 보고 참조. 외부 공개 없음.
+
+### D4 / P04 / 2026-09-16 구현 시작 · 09-20 검증 완료
+
+- 완료: Query 목록 1개로 실제 5열 보드·URL 상세·Inbox 생성/편집. 제목만 등록, 구조화 필드·충족 0~4/누락·severity/priority 도움말·같은 팀 담당자 제공.
+- DB: `20260916000100_d4_issue_fields.sql`과 생성 타입. trim/코드 포인트 길이·enum·간헐 조건·담당자·권한·version·requestId·activity/receipt 원자성 강제. 기존 행은 기본값으로 확장하고 reset/seed 재실행 없음.
+- 입력: 폼 초안/기준 version을 서버 값과 분리. 재조회 성공/실패 시 유지, 충돌 후 명시적 최신 값 선택으로 교체. 상세 닫기는 미저장 초안을 폐기하며 이동/DnD/Realtime는 미구현.
+- PASS: lint/typecheck/build, Vitest 3/3·로컬 보호 2/2·실제 DB 29/29·DB UI 10/10·production smoke 6/6. 기존 테스트를 제거/skip하지 않고 새 상세 흐름에 맞춰 수정.
+- 증거: `docs/evidence/d4-board.png`(1440px), `d4-mobile-detail.png`(390px). 합성 별도 팀에서 저장/재조회 후 생성·직접 이미지 확인; 테스트 팀/행은 해당 UUID만 정리.
+- 수정한 실패: migration CASE 괄호, 필수 표시를 포함한 라벨 선택, 보드/상세 제목 중복 테스트 선택자, 단일 팀 가정 테스트. URL 이동에 따른 인증 재구독/캐시 초기화 경로도 제거. 읽기 SDK+Query 재시도에 맞춰 장애 테스트 조건 대기.
+- 결정: 기존 ADR 02를 전체 Inbox 필드 경합·초안 보존으로 확장. 발생 조건/수정 메모 4,000자·대상 빌드 120자를 PRD에 명시. 패키지/lockfile 버전 변경 없음.
+- NOT_RUN/남음: 독립 V03/V04, 실제 OS 한글 IME·스크린리더·GitHub OAuth·원격 CI·새 clone·전체 AC·사용자 피드백. D4 범위의 알려진 차단 결함 없음. D5에서 상태 CHECK/필수 조건·검증 기록을 함께 확장해야 함.
+- 다음: V04→P05. 핵심 경로는 issues UI/fields, D4 migration, DB/UI tests, README/TEST_REPORT. 로컬 커밋 식별자는 종료 보고 참조; 공개/운영 변경 없음.
 
 ## 하루 기록 양식
 

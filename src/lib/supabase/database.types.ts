@@ -52,11 +52,22 @@ export type Database = {
       }
       issues: {
         Row: {
+          actual: string
+          assignee_id: string | null
           created_at: string
           created_by: string
+          environment: string
+          expected: string
+          fix_note: string
           id: string
           issue_key: string
+          priority: string
+          reproduction: string
+          reproduction_note: string
+          severity: string
           status: string
+          steps: string
+          target_build: string
           title: string
           updated_at: string
           updated_by: string
@@ -64,11 +75,22 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          actual?: string
+          assignee_id?: string | null
           created_at?: string
           created_by: string
+          environment?: string
+          expected?: string
+          fix_note?: string
           id?: string
           issue_key?: string
+          priority?: string
+          reproduction?: string
+          reproduction_note?: string
+          severity?: string
           status?: string
+          steps?: string
+          target_build?: string
           title: string
           updated_at?: string
           updated_by: string
@@ -76,11 +98,22 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          actual?: string
+          assignee_id?: string | null
           created_at?: string
           created_by?: string
+          environment?: string
+          expected?: string
+          fix_note?: string
           id?: string
           issue_key?: string
+          priority?: string
+          reproduction?: string
+          reproduction_note?: string
+          severity?: string
           status?: string
+          steps?: string
+          target_build?: string
           title?: string
           updated_at?: string
           updated_by?: string
@@ -88,6 +121,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "issues_assignee_fkey"
+            columns: ["workspace_id", "assignee_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_members"
+            referencedColumns: ["workspace_id", "user_id"]
+          },
           {
             foreignKeyName: "issues_workspace_id_fkey"
             columns: ["workspace_id"]

@@ -1,11 +1,23 @@
 # 기술 계약과 아키텍처
 
-상태: D3 인증·팀·초대·역할과 D2 제목 흐름 구현. 아래 전체 계약 중 실제 경로는 다음 절과 PROGRESS에 표시하며 이후 단계의 기능을 구현 완료로 간주하지 않는다.
+상태: D4 구조화 입력·보드·상세와 D3 인증·팀·권한 구현. 아래 전체 계약 중 실제 경로는 다음 절과 PROGRESS에 표시하며 이후 단계의 기능을 구현 완료로 간주하지 않는다.
+
+## D4 실제 구현과 경계
+
+- `20260916000100_d4_issue_fields.sql`은 기존 행에 기본값을 추가하는 migration이다. D2 RPC 서명·권한·receipt 해시 형식을 보존하고 허용 필드만 확장한다. create는 title 필수, update는 비어 있지 않은 부분 payload를 기존 행에 병합한 뒤 전체 필드를 검증한다. 상태·행위자·version 주입은 여전히 금지다.
+- 문자열 trim·코드 포인트 길이·enum·간헐 조건 메모를 DB에서 검증한다. 담당자는 같은 workspace의 membership 복합 FK로 묶으며 새 지정 시 역할을 행 잠금 아래 검사한다. Viewer로 강등된 기존 담당자는 보존/해제 가능하나 새로 지정할 수 없다. 화면은 재지정 필요를 표시한다.
+- 허용된 편집·activity의 old/new 필드·receipt는 단일 트랜잭션이다. 요청 재전송은 현재 권한을 다시 확인하고 기존 결과를 반환한다. 모든 본문 변경은 이슈 단위 expectedVersion을 사용하므로 다른 필드끼리의 수정도 충돌한다.
+- `live-board.tsx`의 `["issues", workspaceId]` Query 결과를 `issue-board.tsx`와 `issue-detail.tsx`에 전달한다. 상세용 별도 이슈 캐시는 없다. 선택은 URL의 workspace/issue UUID이며 로그인 복귀·직접 진입·뒤로가기를 지원한다. 인증 구독은 URL 이동과 분리해 같은 사용자의 캐시를 지우지 않는다.
+- 폼은 초기 입력값·기준 version·미확정 명령만 로컬에 보유한다. 서버 재조회는 초안을 덮지 않는다. version 차이는 경고하고 명시적인 최신 값 불러오기로만 교체한다. 조회 실패에도 이전 Query 데이터와 열린 폼을 유지하며 저장 결과 불명 시 입력을 잠그고 같은 requestId로 명시적 재시도한다.
+- 기본 HTML dialog의 모달 포커스·Escape와 닫기 버튼을 사용한다. 상세 닫기는 입력 저장이 아니며 저장하지 않은 초안은 폐기된다. 모든 폼 필드에 라벨/설명/오류 연결을 제공하고 첫 오류로 포커스를 이동한다. 조합 중 Enter는 제출하지 않으며 UTF-16 maxLength로 한글·이모지 입력을 자르지 않는다.
+- 보드는 고정 5열을 실제 데이터로 분류한다. D4 DB 상태 CHECK는 여전히 Inbox만 허용한다. D5의 상태별 불변 조건이 구현되기 전 임의 상태 편집 경로를 열지 않는다. DnD·Realtime·필터/정렬·전역 임시 UI는 추가하지 않았다.
+
+API 근거: [TanStack Query의 query key와 캐시](https://tanstack.com/query/latest/docs/framework/react/guides/query-keys), [HTML dialog의 모달·포커스·닫기 동작](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/dialog). 초안 수명과 상태 구현 순서는 프로젝트 결정이다.
 
 ## D3 실제 구현과 경계
 
 - `@supabase/ssr@0.12.7`의 browser/server client, `src/proxy.ts`의 `getClaims()` 검증·쿠키 갱신, `/auth/callback`의 PKCE 교환. 세션 결과·쿠키를 공유 응답 캐시에 넣지 않으며 auth 관련 페이지는 dynamic이다. 실제 외부 GitHub 승인/취소는 앱 등록 전 NOT_RUN.
-- GitHub 설정 여부는 서버의 Auth settings 조회로 판단한다. callback의 사용자 제공 오류·code는 표시하지 않는다. 복귀 경로는 `/board`(검증한 workspace UUID만)·`/invite`로 한정한다. 원점은 설정된 SITE_URL이며 전달된 Host/next URL을 신뢰하지 않는다.
+- GitHub 설정 여부는 서버의 Auth settings 조회로 판단한다. callback의 사용자 제공 오류·code는 표시하지 않는다. 복귀 경로는 `/board`(검증한 workspace/issue UUID만)·`/invite`로 한정한다. 원점은 설정된 SITE_URL이며 전달된 Host/next URL을 신뢰하지 않는다.
 - 실제 로그인 사용자의 쿠키는 browser/server가 공유한다. 로그아웃·계정 변경은 Query 캐시·폼을 비우고 갱신 불가 세션은 재로그인을 안내한다. 네트워크 오류와 만료를 구분한다. JWT 전역 즉시 폐기·전체 재연결 복구는 보장하지 않는다.
 - migration `20260915000100_d3_auth_workspaces.sql`: `public.profiles(user_id, display_name)`와 `private.workspace_invites` 추가. Auth insert trigger는 이름만 제한 길이로 저장하며 기존 계정은 backfill한다. 메타데이터의 role/workspace_id는 권한에 쓰지 않는다.
 - 프로필 읽기는 본인 또는 같은 팀으로 제한한다. `list_workspace_members`는 RLS를 따르는 SECURITY INVOKER이며 표시 이름·user id·역할만 반환한다. membership/profile helper는 auth.uid 기준 SECURITY DEFINER로 재귀를 피하고 내부 변경 함수는 직접 호출 불가다.

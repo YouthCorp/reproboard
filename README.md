@@ -2,7 +2,7 @@
 
 소규모 개발팀이 버그 재현 정보를 모으고, 수정 후 재검증까지 관리하는 협업 보드.
 
-**현재 상태: D3 인증·팀·초대·역할 관리 구현.** 실제 로그인 세션으로 팀 생성, 1회용 Member 초대, Member↔Viewer 변경과 Inbox 제목 저장이 가능하다. GitHub OAuth·PKCE 콜백 코드는 있으며 외부 OAuth 앱 등록 전 실제 GitHub 로그인은 NOT_RUN이다. 상태 전환·실시간 협업은 아직 없다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)를 기준으로 구분한다.
+**현재 상태: D4 실제 보드·상세·구조화 입력 구현.** 제목만으로 Inbox에 등록하고 재현 정보·분류·담당자·수정 메모를 편집할 수 있다. D3의 팀 생성, 1회용 Member 초대, Member↔Viewer 변경을 유지한다. GitHub OAuth·PKCE 콜백 코드는 있으며 외부 OAuth 앱 등록 전 실제 GitHub 로그인은 NOT_RUN이다. 상태 전환·실시간 협업은 아직 없다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)를 기준으로 구분한다.
 
 ## 왜 만드는가
 
@@ -11,6 +11,10 @@
 ## 화면과 시연
 
 로그인 전 `/board`는 데이터 없는 5단계 미리보기다. 로컬 설정 후 `/login`에서 합성 Owner/Member/Viewer/다른 팀 Owner를 선택하면 실제 Supabase 세션으로 전환한다. 로그인 후 새 팀을 만들면 Owner가 되고, 팀 멤버 패널에서 초대 링크를 생성하거나 Member↔Viewer를 변경한다. `/invite`에서 로그인 후 명시적으로 수락한다. Viewer는 읽기 전용이고 다른 팀 데이터는 표시되지 않는다. GitHub 버튼은 실제 provider 설정 상태에 따라 활성화된다. 실제 협업 영상과 `/demo`는 D13 범위이며 아직 없다.
+
+로그인한 보드의 5개 열은 같은 Query 목록에서 렌더링된다. D4에서는 Inbox 등록·편집만 제공하므로 나머지 열은 비어 있다. 카드를 누르면 `?workspace=…&issue=…`의 상세가 열리고 새로고침·주소 공유·뒤로가기로 복원된다. 제목은 1~120자, 재현 본문·발생 조건·수정 메모는 각각 4,000자, 대상 빌드는 120자까지이며 trim 후 코드 포인트로 센다. 재현 정보 0~4 충족 수와 누락 항목은 입력 상태를 나타낸다.
+
+편집 초안은 저장된 값과 분리한다. 다른 저장 후 최신 상세를 조회해도 초안은 유지하며, 충돌 안내에서 **최신 값으로 다시 편집**을 누르면 폼 전체가 최신 서버 값으로 교체된다. 저장하지 않고 상세를 닫으면 초안은 폐기된다. 심각도는 영향, 우선순위는 처리 순서이며 자동으로 연결하지 않는다. [실제 보드 캡처](docs/evidence/d4-board.png) · [390px 상세 캡처](docs/evidence/d4-mobile-detail.png)는 합성 팀의 실제 DB 흐름에서 생성했다.
 
 ## 구현 목표
 
@@ -48,7 +52,7 @@ pnpm dev
 | `pnpm test:e2e` | production 서버를 3100 포트에서 자동 실행·종료하는 smoke 테스트 |
 | `pnpm test:local-tools` | 원격/잘못된 DB 대상·확인 없는 reset 거부 검사, Docker 없이 실행 가능 |
 | `pnpm test:db` | 실제 로컬 세션의 RLS/RPC·동시성·원자성 검증. 로컬 스택·migration·seed 필요 |
-| `pnpm test:db-ui` | 실제 계정의 제목 저장·충돌, 팀 생성·초대 수락·역할 변경, SSR 갱신·만료·로그아웃·콜백 오류 |
+| `pnpm test:db-ui` | 실제 구조화 생성·편집·URL 상세·초안 보존·오류/재시도·모바일·IME 이벤트, 기존 팀/인증 흐름 |
 
 `test:e2e` 전에 `pnpm build`와 브라우저 설치가 필요하다. 보드↔로그인, 404, 키보드, 390px 및 production의 개발 로그인 미노출을 검증한다. 이 smoke와 실제 DB 테스트는 별도다. `test:db-ui`는 아래 로컬 준비 후 실행하며, 3000 포트의 기존 개발 서버를 사용하거나 없으면 자동 시작한다. 기존 서버의 환경 값이 바뀌었다면 재시작한다. 실행 중에는 동일한 합성 계정을 수동 조작하지 않는다.
 
@@ -75,6 +79,8 @@ pnpm dev
 Studio는 [127.0.0.1:54323](http://127.0.0.1:54323), API는 `http://127.0.0.1:54321`, DB 포트는 54322다. 상태 확인 명령 `pnpm db:status`의 출력에는 로컬 키가 포함될 수 있어 전체를 커밋·공유하지 않는다. 종료는 `pnpm db:stop`이며 `--no-backup`은 붙이지 않는다. 다음 작업 시에는 다시 상태를 확인한다. 과거 기동 성공은 현재 실행 상태의 보장이 아니다.
 
 `db:migrate`는 `supabase migration up --local`, `db:types`는 `supabase gen types typescript --local --schema public`을 실행하는 보호된 wrapper다. 생성된 `src/lib/supabase/database.types.ts`는 커밋하며 SQL 변경 후 다시 생성한다. 타입의 Insert/Update 정의는 DB 쓰기 권한을 뜻하지 않는다.
+
+D3 환경에서 D4로 올릴 때는 Docker 시작 후 `pnpm db:start` → `pnpm db:migrate` → `pnpm db:types` → `pnpm dev` 순서로 실행한다. `20260916000100_d4_issue_fields.sql`은 기존 이슈를 기본값으로 확장한다. `.env.local`·계정 재생성이나 DB reset은 필요하지 않다. 외부 OAuth 설정도 D4 로컬 개발의 선행 조건이 아니다.
 
 `db:seed`는 합성 계정 4개와 팀 2개를 생성한다. 무작위 비밀번호는 gitignore된 `.local/dev-accounts.json`에만 저장하며 터미널·채팅에 출력하지 않는다. 재실행 시 합성 계정의 비밀번호·역할을 준비하고 기존 이슈는 보존한다. 같은 예약 이메일/팀 UUID가 다른 데이터에 사용 중이면 중단한다. 테스트 DB에서만 고정된 합성 식별자를 사용한다. Supabase 기본 SQL seed는 꺼져 있어 명시적으로 이 명령을 실행해야 한다.
 

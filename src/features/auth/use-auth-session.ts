@@ -17,6 +17,8 @@ export function useAuthSession() {
   const pathname = usePathname();
   const params = useSearchParams();
   const next = safeNext(`${pathname}?${params.toString()}`);
+  const returnPath = useRef(next);
+  useEffect(() => { returnPath.current = next; }, [next]);
   useEffect(() => {
     if (!client) return;
     let userId: string | undefined;
@@ -28,10 +30,10 @@ export function useAuthSession() {
         userId = session?.user.id;
       }
       setState({ session, ready: true });
-      if (expired) router.replace(`/login?reason=session-expired&next=${encodeURIComponent(next)}`);
+      if (expired) router.replace(`/login?reason=session-expired&next=${encodeURIComponent(returnPath.current)}`);
     });
     return () => data.subscription.unsubscribe();
-  }, [client, cache, router, next]);
+  }, [client, cache, router]);
 
   async function signOut() {
     if (!client) return;

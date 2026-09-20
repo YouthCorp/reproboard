@@ -12,5 +12,7 @@ describe("authentication return paths", () => {
     expect(safeNext(`/board?workspace=${id}&next=https://evil.invalid#secret`)).toBe(`/board?workspace=${id}`);
     expect(safeNext("/invite?token=secret#secret")).toBe("/invite");
     expect(safeNext("/board?workspace=bad")).toBe("/board");
+    expect(safeNext(`/board?workspace=${id}&issue=${id}&token=secret`)).toBe(`/board?workspace=${id}&issue=${id}`);
+    expect(safeNext("/board?issue=bad")).toBe("/board");
   });
 });

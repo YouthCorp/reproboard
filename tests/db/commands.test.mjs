@@ -72,11 +72,13 @@ after(async () => {
 
 test('actual Owner/Member/Viewer sessions read only their team; anonymous cannot read', async () => {
   for (const role of ['owner', 'member', 'viewer']) {
+    const permitted = (await db.query('select workspace_id from public.workspace_members where user_id=$1', [users[role]])).rows.map((row) => row.workspace_id);
     for (const table of ['workspaces', 'workspace_members', 'issues', 'activity_events']) {
       const result = await clients[role].from(table).select('*');
       assert.equal(result.error, null, `${role}/${table} read failed`);
       assert.ok(result.data.length > 0);
-      assert.ok(result.data.every((row) => (table === 'workspaces' ? row.id : row.workspace_id) === team));
+      assert.ok(result.data.every((row) => permitted.includes(table === 'workspaces' ? row.id : row.workspace_id)));
+      assert.ok(result.data.some((row) => (table === 'workspaces' ? row.id : row.workspace_id) === team));
     }
   }
   const outside = await clients.outsider.from('issues').select('*').eq('workspace_id', team);
@@ -121,7 +123,7 @@ test('forged issue/workspace relationship and nonexistent ids return the same NO
   }
 });
 
-test('server validates the only allowed field, trim and Unicode length; actor/version/status cannot be injected', async () => {
+test('server validates title, trim and Unicode length; actor/version/status cannot be injected', async () => {
   for (const payload of [{ title: '' }, { title: ' \t\n\u3000' }, { title: 'x'.repeat(121) }, { title: 123 }, { title: null },
     { title: 'ok', status: 'done' }, { title: 'ok', created_by: users.outsider }, { title: 'ok', version: 99 }, {}, [], null]) {
     const args = { ...createArgs('unused'), p_payload: payload };
@@ -261,4 +263,76 @@ test('workspace capacity check stays at 500 under concurrent creation', async ()
     assert.equal(results.filter((result) => result.code === 'VALIDATION').length, 1);
     assert.equal(Number((await db.query('select count(*) from public.issues where workspace_id=$1', [workspace])).rows[0].count), 500);
   } finally { await removeTestWorkspace(workspace); }
+});
+
+test('D4 title-only defaults and all structured fields use the same trim/code-point limits', async () => {
+  const bare = (await rpc('owner', 'create_issue', createArgs('제목만'))).data;
+  for (const key of ['steps','expected','actual','environment','reproduction_note','fix_note','target_build']) assert.equal(bare[key], '');
+  assert.equal(bare.reproduction, 'unknown'); assert.equal(bare.severity, 'unset'); assert.equal(bare.priority, 'unset'); assert.equal(bare.assignee_id, null);
+  const payload = { title: ' \uFEFF최대 입력\u3000 ', reproduction: ' intermittent ', severity: ' S2 ', priority: ' P3 ', assignee_id: users.member };
+  for (const key of ['steps','expected','actual','environment','reproduction_note','fix_note']) payload[key] = `\uFEFF${'😀'.repeat(4000)}\u3000`;
+  payload.target_build = ` ${'한'.repeat(120)} `;
+  const args = { ...createArgs('unused'), p_payload: payload };
+  const saved = await rpc('owner', 'create_issue', args);
+  assert.equal(saved.ok, true); assert.equal(saved.data.title, '최대 입력'); assert.equal(saved.data.status, 'inbox');
+  for (const key of ['steps','expected','actual','environment','reproduction_note','fix_note']) assert.equal(saved.data[key], '😀'.repeat(4000));
+  assert.equal(saved.data.target_build, '한'.repeat(120)); assert.equal(saved.data.priority, 'P3'); assert.equal(saved.data.severity, 'S2');
+  const event = (await db.query('select changes from public.activity_events where request_id=$1', [args.p_request_id])).rows[0];
+  assert.equal(event.changes.new_fields.steps, saved.data.steps);
+  assert.deepEqual(await rpc('owner', 'create_issue', args), saved);
+  assert.equal((await rpc('owner', 'create_issue', { ...args, p_payload: { ...payload, actual: 'changed' } })).code, 'VALIDATION');
+  assert.equal(await activityCount(args.p_request_id), 1); assert.equal(await receiptCount(args.p_request_id), 1);
+});
+
+test('D4 oversized/null/unknown fields, invalid enums, intermittent without a memo, and injected assignees reject atomically', async () => {
+  const invalid = [
+    ...['steps','expected','actual','environment','reproduction_note','fix_note'].map((key) => ({ [key]: '한'.repeat(4001) })),
+    { target_build: 'a'.repeat(121) }, { steps: null }, { actual: 1 }, { extra: 'injection' },
+    { reproduction: 'invalid' }, { severity: 'S0' }, { priority: 'P4' },
+    { reproduction: 'intermittent', reproduction_note: '\uFEFF\u3000' },
+    ...[users.viewer, users.outsider, randomUUID(), 'bad', '', 12].map((assignee_id) => ({ assignee_id })),
+  ];
+  for (const fields of invalid) {
+    const args = { ...createArgs('거부되어야 하는 합성 이슈'), p_payload: { title: '거부', ...fields } };
+    assert.equal((await rpc('owner', 'create_issue', args)).code, 'VALIDATION');
+    assert.equal(await receiptCount(args.p_request_id), 0); assert.equal(await activityCount(args.p_request_id), 0);
+  }
+  const row = (await rpc('member', 'create_issue', { ...createArgs('간헐 이슈'), p_payload: { title: '간헐 이슈', reproduction: 'intermittent', reproduction_note: '처음 실행할 때' } })).data;
+  const edit = { ...updateArgs(row, 'unused'), p_payload: { reproduction_note: ' ' } };
+  assert.equal((await rpc('member', 'update_issue', edit)).code, 'VALIDATION');
+  const stored = (await db.query('select version,reproduction_note from public.issues where id=$1', [row.id])).rows[0];
+  assert.deepEqual(stored, { version: 1, reproduction_note: '처음 실행할 때' });
+});
+
+test('D4 partial structured edits race by issue version and keep activity/receipt atomic on rollback', async () => {
+  const row = (await rpc('owner', 'create_issue', createArgs('구조화 경합'))).data;
+  const a = { ...updateArgs(row, 'unused'), p_payload: { steps: 'Owner 재현 단계', expected: '예상' } };
+  const b = { ...updateArgs(row, 'unused'), p_payload: { environment: 'Member 환경' } };
+  const results = await Promise.all([rpc('owner', 'update_issue', a), rpc('member', 'update_issue', b)]);
+  assert.equal(results.filter((r) => r.ok).length, 1); assert.equal(results.filter((r) => r.code === 'CONFLICT').length, 1);
+  const winner = results.find((r) => r.ok).data;
+  assert.equal(winner.title, row.title); assert.equal(winner.version, 2);
+  const edit = { ...updateArgs(winner, 'unused'), p_payload: { actual: 'must roll back', fix_note: 'must roll back' } };
+  await db.query(`create function private.d4_test_failure() returns trigger language plpgsql as $$ begin if new.request_id='${edit.p_request_id}'::uuid then raise exception 'D4_TEST_ROLLBACK'; end if; return new; end $$`);
+  await db.query('create trigger d4_test_failure before insert on public.activity_events for each row execute function private.d4_test_failure()');
+  try {
+    assert.ok((await clients.owner.rpc('update_issue', edit)).error);
+    const stored = (await db.query('select actual,fix_note,version from public.issues where id=$1', [row.id])).rows[0];
+    assert.deepEqual(stored, { actual: '', fix_note: '', version: 2 });
+    assert.equal(await receiptCount(edit.p_request_id), 0); assert.equal(await activityCount(edit.p_request_id), 0);
+  } finally {
+    await db.query('drop trigger d4_test_failure on public.activity_events'); await db.query('drop function private.d4_test_failure()');
+  }
+});
+
+test('D4 a demoted assignee is retained for reassignment but cannot be newly assigned', async () => {
+  const row = (await rpc('owner', 'create_issue', { ...createArgs('담당자 강등'), p_payload: { title: '담당자 강등', assignee_id: users.member } })).data;
+  await db.query("update public.workspace_members set role='viewer' where workspace_id=$1 and user_id=$2", [team, users.member]);
+  try {
+    const retained = await rpc('owner', 'update_issue', { ...updateArgs(row, 'unused'), p_payload: { steps: '보존', assignee_id: users.member } });
+    assert.equal(retained.ok, true); assert.equal(retained.data.assignee_id, users.member);
+    const removed = await rpc('owner', 'update_issue', { ...updateArgs(retained.data, 'unused'), p_payload: { assignee_id: null } });
+    assert.equal(removed.ok, true);
+    assert.equal((await rpc('owner', 'update_issue', { ...updateArgs(removed.data, 'unused'), p_payload: { assignee_id: users.member } })).code, 'VALIDATION');
+  } finally { await db.query("update public.workspace_members set role='member' where workspace_id=$1 and user_id=$2", [team, users.member]); }
 });

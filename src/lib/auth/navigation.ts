@@ -6,8 +6,12 @@ export function safeNext(value: unknown): string {
   const url = new URL(value, "https://reproboard.invalid");
   if (url.pathname === "/invite") return "/invite";
   if (url.pathname !== "/board") return "/board";
-  const workspace = url.searchParams.get("workspace");
-  return workspace && uuid.test(workspace) ? `/board?workspace=${workspace}` : "/board";
+  const next = new URLSearchParams();
+  for (const key of ["workspace", "issue"]) {
+    const value = url.searchParams.get(key);
+    if (value && uuid.test(value)) next.set(key, value);
+  }
+  return next.size ? `/board?${next.toString()}` : "/board";
 }
 
 export function siteOrigin(): string | null {

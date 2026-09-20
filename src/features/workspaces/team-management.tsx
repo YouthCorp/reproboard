@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMembers } from "./use-members";
 import type { AppSupabase } from "@/lib/supabase/browser";
 import { newInviteToken } from "./commands";
 import { useWorkspaceCommand } from "./use-workspace-command";
@@ -41,11 +41,7 @@ function InviteCreate({ client, workspaceId }: { client: AppSupabase; workspaceI
 }
 
 export function TeamManagement({ client, workspaceId, isOwner }: { client: AppSupabase; workspaceId: string; isOwner: boolean }) {
-  const members = useQuery({ queryKey: ["members", workspaceId], queryFn: async ({ signal }) => {
-    const result = await client.rpc("list_workspace_members", { p_workspace_id: workspaceId }).abortSignal(signal);
-    if (result.error) throw new Error("팀 멤버를 불러오지 못했습니다.");
-    return result.data;
-  } });
+  const members = useMembers(client, workspaceId);
   return <details className="team-panel"><summary>팀 멤버와 권한</summary>
     {members.isPending ? <p role="status">멤버를 불러오는 중…</p> : members.isError ? <p role="alert">팀 멤버를 불러오지 못했습니다. <button onClick={() => members.refetch()}>다시 조회</button></p> :
       <ul className="member-list">{members.data.map((member) => <li key={member.user_id}>
