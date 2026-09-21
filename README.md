@@ -2,7 +2,7 @@
 
 소규모 개발팀이 버그 재현 정보를 모으고, 수정 후 재검증까지 관리하는 협업 보드.
 
-**현재 상태: D5 상태 전환·재검증·재오픈 구현.** 제목만으로 Inbox에 등록하고 재현 정보·분류·담당자·수정 내용을 갖춰 상태를 이동한다. Verify에서 통과/실패를 기록하고, Done은 사유를 남겨 재오픈한다. D3의 팀·초대·역할 기능을 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN이며 DnD·낙관적 이동·Realtime는 후속 단계다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)를 기준으로 구분한다.
+**현재 상태: D6 DnD·낙관적 이동·응답 유실 복구 구현.** 카드의 이동 손잡이 또는 상세 메뉴로 상태를 변경하고 저장 중임을 표시한다. 실패한 카드만 되돌리며 결과를 받지 못하면 같은 요청으로 확인한다. D3~D5의 팀·권한·구조화 입력·검증 기록을 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN이며 Realtime는 후속 단계다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)를 기준으로 구분한다.
 
 ## 왜 만드는가
 
@@ -16,13 +16,19 @@
 
 편집 초안은 저장된 값과 분리한다. 다른 저장 후 최신 상세를 조회해도 초안은 유지하며, 충돌 안내에서 **최신 값으로 다시 편집**을 누르면 폼 전체가 최신 서버 값으로 교체된다. 저장하지 않고 상세를 닫으면 초안은 폐기된다. 심각도는 영향, 우선순위는 처리 순서이며 자동으로 연결하지 않는다. [실제 보드 캡처](docs/evidence/d4-board.png) · [390px 상세 캡처](docs/evidence/d4-mobile-detail.png)는 합성 팀의 실제 DB 흐름에서 생성했다.
 
-D5의 상태 이동은 상세 상단 메뉴에서 확정하며 서버 성공 후 보드에 반영한다. 아래 순서로 직접 확인할 수 있다.
+D6의 상태 이동은 카드 손잡이를 다른 열에 놓거나 상세 상단 메뉴에서 확정한다. 저장 응답 전에는 임시 이동과 **저장 중** 표시가 보인다. 아래 순서로 직접 확인할 수 있다.
 
 1. 제목만 생성한 이슈에서 Ready 이동을 누르면 누락 조건이 보인다. 재현 4개 필드·재현됨/간헐적 재현(발생 조건 포함)·심각도·우선순위를 저장한 뒤 Ready로 이동한다. 같은 팀 Owner/Member를 담당자로 저장하면 In Progress로 이동할 수 있다.
 2. 수정 메모·대상 빌드를 저장하고 Verify로 이동한다. **검증 실패 → In Progress**는 검증한 앱 버전·환경·실패 이유를 요구한다. 수정 후 다시 Verify에서 **검증 통과 → Done**을 선택하고 실제 검증 버전·환경을 남긴다.
 3. Done에서 본문 편집이 잠겼는지 확인한다. **재오픈 → Inbox**에 사유를 입력하면 다시 편집할 수 있고 과거 통과/실패 기록은 남는다. Ready→Inbox와 In Progress→Ready도 이동 사유가 필요하다.
 
-입력 다이얼로그의 취소는 상태를 바꾸지 않는다. 현재 상태의 필수 정보는 일반 편집으로 지울 수 없다. 검증 중 이슈 version이 달라지면 입력을 보존하고 최신 내용을 확인한 뒤 다시 검증하도록 안내한다. 결과를 확인하지 못한 전송은 같은 requestId로 명시적으로 재확인한다. [검증 다이얼로그](docs/evidence/d5-verification-dialog.png) · [Done과 과거 기록](docs/evidence/d5-done-history.png)은 실제 DB 흐름의 캡처다.
+입력 다이얼로그의 취소는 상태를 바꾸지 않는다. 현재 상태의 필수 정보는 일반 편집으로 지울 수 없다. 검증 중 이슈 version이 달라지면 입력을 보존하고 최신 내용을 확인한 뒤 다시 검증하도록 안내한다. [검증 다이얼로그](docs/evidence/d5-verification-dialog.png) · [Done과 과거 기록](docs/evidence/d5-done-history.png)은 D5의 실제 DB 흐름 캡처다.
+
+같은 열의 드롭은 아무 작업도 하지 않으며 열 내부는 최근 수정 순서를 유지한다. 이동 중인 이슈의 추가 편집/이동은 잠기고 다른 카드는 계속 조작할 수 있다. 사유·검증 입력이 필요한 이동은 양식을 제출한 뒤 시작한다. 키보드 사용자는 카드 상세의 이동 메뉴를 이용한다.
+
+10초 타임아웃이나 응답 유실은 **결과 확인 중**으로 표시한다. 실제 저장됐을 수 있으므로 카드의 **같은 요청으로 결과 확인**을 누른다. 미확정 입력 창은 **보드에서 계속 작업**으로 닫아도 요청이 남는다. 자동 재전송·오프라인 큐는 없으며 새로고침·팀 이탈·로그아웃 시 메모리의 요청 정보는 사라진다. 이 경우 서버를 다시 읽어 상태를 확인해야 한다.
+
+동작 영상: [A 실패 중 B 성공](docs/evidence/d6-request-isolation.webm) · [실제 검증 저장 후 응답 유실·재확인](docs/evidence/d6-receipt-recovery.webm). 합성 팀의 Playwright 실제 DB 실행을 녹화한 짧은 WebM이다. 멈추거나 재생 속도를 낮춰 확인할 수 있으며 사용자 사용성·성능 측정 영상은 아니다.
 
 ## 구현 목표
 
@@ -60,7 +66,7 @@ pnpm dev
 | `pnpm test:e2e` | production 서버를 3100 포트에서 자동 실행·종료하는 smoke 테스트 |
 | `pnpm test:local-tools` | 원격/잘못된 DB 대상·확인 없는 reset 거부 검사, Docker 없이 실행 가능 |
 | `pnpm test:db` | 실제 로컬 세션의 RLS/RPC·동시성·원자성 검증. 로컬 스택·migration·seed 필요 |
-| `pnpm test:db-ui` | 실제 생성/편집·상태 이동·실패/통과/재오픈·version 충돌·명령 재확인, URL·초안·모바일·IME 이벤트·팀/인증 회귀 |
+| `pnpm test:db-ui` | 실제 DnD 지연·카드별 실패·commit 후 응답 유실·10초 타임아웃·늦은 응답, 기존 생성/편집·검증·URL·초안·모바일·IME 이벤트·팀/인증 회귀 |
 
 `test:e2e` 전에 `pnpm build`와 브라우저 설치가 필요하다. 보드↔로그인, 404, 키보드, 390px 및 production의 개발 로그인 미노출을 검증한다. 이 smoke와 실제 DB 테스트는 별도다. `test:db-ui`는 아래 로컬 준비 후 실행하며, 3000 포트의 기존 개발 서버를 사용하거나 없으면 자동 시작한다. 기존 서버의 환경 값이 바뀌었다면 재시작한다. 실행 중에는 동일한 합성 계정을 수동 조작하지 않는다.
 
@@ -88,7 +94,7 @@ Studio는 [127.0.0.1:54323](http://127.0.0.1:54323), API는 `http://127.0.0.1:54
 
 `db:migrate`는 `supabase migration up --local`, `db:types`는 `supabase gen types typescript --local --schema public`을 실행하는 보호된 wrapper다. 생성된 `src/lib/supabase/database.types.ts`는 커밋하며 SQL 변경 후 다시 생성한다. 타입의 Insert/Update 정의는 DB 쓰기 권한을 뜻하지 않는다.
 
-D3/D4 환경에서 D5로 올릴 때는 Docker 시작 후 `pnpm db:start` → `pnpm db:migrate` → `pnpm db:types` → `pnpm dev` 순서로 실행한다. D4 migration은 기존 이슈를 기본값으로 확장하고 `20260920000100_d5_issue_transitions.sql`은 상태 조건·전환 명령·검증 기록을 추가한다. 기존 migration을 수정하거나 reset하지 않는다. `.env.local`·계정 재생성은 필요하지 않고 외부 OAuth 설정도 로컬 기능 개발의 선행 조건이 아니다.
+D3/D4 환경에서 올릴 때는 Docker 시작 후 `pnpm db:start` → `pnpm db:migrate` → `pnpm db:types` → `pnpm dev` 순서로 실행한다. D5 migration까지 적용돼 있다면 D6는 `pnpm install --frozen-lockfile` 후 개발 서버를 실행하면 된다. D6의 SQL/type/env 변경은 없다. 기존 migration 수정·reset·계정 재생성은 필요하지 않고 외부 OAuth 설정도 로컬 기능 개발의 선행 조건이 아니다.
 
 `db:seed`는 합성 계정 4개와 팀 2개를 생성한다. 무작위 비밀번호는 gitignore된 `.local/dev-accounts.json`에만 저장하며 터미널·채팅에 출력하지 않는다. 재실행 시 합성 계정의 비밀번호·역할을 준비하고 기존 이슈는 보존한다. 같은 예약 이메일/팀 UUID가 다른 데이터에 사용 중이면 중단한다. 테스트 DB에서만 고정된 합성 식별자를 사용한다. Supabase 기본 SQL seed는 꺼져 있어 명시적으로 이 명령을 실행해야 한다.
 
@@ -131,9 +137,9 @@ SSR 쿠키 갱신은 Proxy의 `getClaims()`가 검증하고 콜백은 `exchangeC
 
 설치: Next.js 16.3.5, React 19.3.0, TypeScript 5.9.3, TanStack Query 5.102.8, Vitest 5.0.0, Playwright 1.63.0. 전체 정확한 버전은 [package.json](package.json)과 lockfile이 기준이다. [Next 지원 조건](https://nextjs.org/docs/app/getting-started/installation)·[Node LTS](https://nodejs.org/en/blog/release/v24.19.0)·[Supabase 로컬 요구 조건](https://supabase.com/docs/guides/local-development/cli/getting-started)을 대조하고 실제 빌드로 확인했다.
 
-Supabase SDK **2.116.0**(Node ≥22), SSR **0.12.7**(SDK peer `^2.114.0`), 로컬 검증용 pg **8.23.0**(Node ≥16)을 정확히 고정했다. Root layout과 페이지는 Server Component이며 Query provider는 보드·초대 화면의 상호작용 경계에만 둔다. 이슈 목록은 `['issues', workspaceId]` Query 캐시에서 읽는다. 제목 초안은 폼 로컬 state, 팀 선택은 URL `?workspace=`에 둔다. 공유 임시 UI가 없어 Zustand는 도입하지 않았다.
+Supabase SDK **2.116.0**(Node ≥22), SSR **0.12.7**(SDK peer `^2.114.0`), 로컬 검증용 pg **8.23.0**(Node ≥16)을 정확히 고정했다. Root layout과 페이지는 Server Component이며 Query provider는 보드·초대 화면의 상호작용 경계에만 둔다. 이슈 목록은 `['issues', workspaceId]` Query 캐시에서 읽는다. 제목 초안은 폼 로컬 state, 팀 선택은 URL `?workspace=`에 둔다. D6에서 보드/상세가 공유하는 요청 잠금·임시 이동을 위해 Zustand 5.0.15를 도입했다. 서버 이슈 배열은 복제하지 않는다. DnD는 @dnd-kit/core 6.3.1을 정확히 고정하고 현재 React peer 범위와 대조했다.
 
-이슈 RPC `create_issue`/`update_issue`/`transition_issue`와 팀·초대·역할 명령은 `auth.uid()`·현재 팀 역할을 재검사하고 같은 사용자/팀/requestId를 트랜잭션 잠금으로 직렬화한다. 이슈 수정/전환은 expectedVersion, 역할 변경은 expectedRole을 검사한다. 검증 시 현재 version에 연결된 `verification_runs`와 상태·activity·receipt를 한 트랜잭션으로 저장한다. 결과·행위자·시각·version은 서버가 결정하며 클라이언트 직접 테이블 쓰기는 차단한다. 초대 원문은 receipt에도 저장하지 않는다. 동일 requestId/다른 payload는 VALIDATION, 오래된 기준은 CONFLICT다. 정상 거부와 전송 오류를 구분하며 미확정 결과는 같은 요청으로 명시적으로 확인한다. 자동 재시도·오프라인 큐는 없다. D5는 전송 전 abort/재확인을 검증했고 DB commit 후 응답 유실은 D6에서 검증한다.
+이슈 RPC `create_issue`/`update_issue`/`transition_issue`와 팀·초대·역할 명령은 `auth.uid()`·현재 팀 역할을 재검사하고 같은 사용자/팀/requestId를 트랜잭션 잠금으로 직렬화한다. 이슈 수정/전환은 expectedVersion, 역할 변경은 expectedRole을 검사한다. 검증 시 현재 version에 연결된 `verification_runs`와 상태·activity·receipt를 한 트랜잭션으로 저장한다. 결과·행위자·시각·version은 서버가 결정하며 클라이언트 직접 테이블 쓰기는 차단한다. 초대 원문은 receipt에도 저장하지 않는다. 동일 requestId/다른 payload는 VALIDATION, 오래된 기준은 CONFLICT다. 정상 거부와 전송 오류를 구분하며 미확정 결과는 같은 요청으로 명시적으로 확인한다. 자동 재시도·오프라인 큐는 없다. D6는 실제 DB commit 후 응답 유실·타임아웃과 같은 requestId 재확인을 검증했다. 앱에는 테스트 장애 주입 스위치가 없다.
 
 ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는 ESLint 10을 지원하지 않아, ESLint 10.10.0에 호환되는 TypeScript·React Hooks·공식 Next 플러그인을 직접 구성했다. 규칙 전체를 끄거나 peer 조건을 무시하지 않았다. `agentRules: false`는 Next 개발 서버가 기존 AGENTS.md를 자동 수정하는 것을 막는다.
 
@@ -145,7 +151,7 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 ## 코드 길잡이
 
-현재 파일과 책임이다. Realtime·낙관적 이동은 아직 구현하지 않았다.
+현재 파일과 책임이다. Realtime는 아직 구현하지 않았다.
 
 | 영역 | 책임 |
 |---|---|
@@ -153,6 +159,7 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 | [src/features/issues/board-shell.tsx](src/features/issues/board-shell.tsx) | 5단계의 데이터 없는 보드 |
 | [src/features/issues/live-board.tsx](src/features/issues/live-board.tsx), [issue-form.tsx](src/features/issues/issue-form.tsx) | Query 보드·구조화 생성/편집·상태별 필수 정보·초안 보존 |
 | [state-rules.ts](src/features/issues/state-rules.ts), [transition-menu.tsx](src/features/issues/transition-menu.tsx), [issue-history.tsx](src/features/issues/issue-history.tsx) | 순수 전환 규칙·입력 다이얼로그·통과/실패/이동 기록 |
+| [command-store.ts](src/features/issues/command-store.ts), [issue-commands.tsx](src/features/issues/issue-commands.tsx), [issue-cache.ts](src/features/issues/issue-cache.ts) | 공유 임시 요청·이슈별 잠금·결과 확정과 version 병합 |
 | [src/features/auth](src/features/auth), [src/proxy.ts](src/proxy.ts) | GitHub/개발 로그인·쿠키 갱신·만료 안내·로그아웃과 Query 캐시 정리 |
 | [src/features/workspaces](src/features/workspaces) | 팀 생성·초대 링크·초대 수락·Member/Viewer 변경 |
 | [scripts](scripts) | 로컬 대상 보호·migration/type/env·합성 계정 준비 |
@@ -170,4 +177,4 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 [기여 안내](CONTRIBUTING.md), [보안 제보 안내](SECURITY.md), [MIT 라이선스](LICENSE).
 
-개인 프로젝트이며 D1~D5 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 CASE_STUDY에 단계별 증거와 함께 정리한다. 실제 팀 사용·성능 개선 성과는 아직 측정하지 않았다.
+개인 프로젝트이며 D1~D6 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 CASE_STUDY에 단계별 증거와 함께 정리한다. 실제 팀 사용·성능 개선 성과는 아직 측정하지 않았다.

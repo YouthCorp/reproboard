@@ -65,7 +65,7 @@ test('D4 structured create/edit/reload/re-entry shares saved board data, with de
   await expect(card(page, title).getByText('재현 정보 4/4 충족', { exact: true })).toBeVisible();
   let row = (await db.query('select * from public.issues where workspace_id=$1 and title=$2', [id, title])).rows[0];
   expect(row.status).toBe('inbox'); expect(row.steps.startsWith('1.')).toBe(true); expect(row.severity).toBe('S2'); expect(row.priority).toBe('P3');
-  await card(page, title).getByRole('button').click();
+  await card(page, title).getByRole('button', { name: /상세 열기$/ }).click();
   await expect(page).toHaveURL(new RegExp(`issue=${row.id}`));
   const detail = page.getByRole('dialog');
   await expect(detail.getByRole('button', { name: '상세 닫기', exact: true })).toBeFocused();
@@ -87,7 +87,7 @@ test('D4 structured create/edit/reload/re-entry shares saved board data, with de
   // D4's committed evidence is historical; later regression runs attach fresh report images.
   const boardCapture = await page.screenshot({ fullPage: true });
   await info.attach('d4-board', { body: boardCapture, contentType: 'image/png' });
-  await card(page, title).getByRole('button').click();
+  await card(page, title).getByRole('button', { name: /상세 열기$/ }).click();
   await expect(detail.getByLabel('수정 메모', { exact: true })).toHaveValue('조회 조건 변경 시 목록을 재조회하도록 수정 예정');
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -96,7 +96,7 @@ test('D4 structured create/edit/reload/re-entry shares saved board data, with de
   await info.attach('d4-mobile-detail', { body: mobileCapture, contentType: 'image/png' });
   await page.keyboard.press('Escape');
   await expect(detail).toHaveCount(0);
-  await expect(card(page, title).getByRole('button')).toBeFocused();
+  await expect(card(page, title).getByRole('button', { name: /상세 열기$/ })).toBeFocused();
   await page.goBack();
   await expect(detail.getByLabel('이슈 제목', { exact: true })).toHaveValue(title);
   expect(errors).toEqual([]);
@@ -165,7 +165,7 @@ test('D4 loading, zero rows, read failure/retry, missing detail and refetch pres
   await expect(page.getByRole('alert').filter({ hasText: '이슈를 불러오지 못했습니다.' })).toHaveCount(0);
   const row = await fixture(id, { title: '원격 재조회 합성 이슈' });
   await page.getByRole('button', { name: '최신 목록 조회', exact: true }).click();
-  await card(page, row.title).getByRole('button').click();
+  await card(page, row.title).getByRole('button', { name: /상세 열기$/ }).click();
   const detail = page.getByRole('dialog');
   await detail.getByLabel('재현 단계', { exact: true }).fill('재조회해도 남는 로컬 초안');
   const result = await owner.rpc('update_issue', { p_workspace_id: id, p_issue_id: row.id, p_expected_version: row.version, p_request_id: randomUUID(), p_payload: { title: '서버의 새 제목', steps: '서버의 새 재현 단계' } });

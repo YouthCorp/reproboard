@@ -232,3 +232,13 @@ input, select { min-width: 0; max-width: 100%; padding: 10px 12px; border: 1px s
 .saved-issue-fields { margin: 18px 0; border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
 .saved-issue-fields summary { cursor: pointer; font-weight: 650; }
 .transition-dialog .stale-draft { overflow-wrap: anywhere; }
+.drag-handle { display: block; width: 100%; text-align: right; padding: 8px 12px; border: 0; border-bottom: 1px solid var(--line); background: #f5f8f5; color: var(--teal); cursor: grab; touch-action: none; font-size: 12px; }
+.drag-handle:active { cursor: grabbing; }
+.drag-handle:disabled { cursor: wait; opacity: .6; }
+.is-dragging { opacity: .35; }
+.live-board-grid .drop-target { outline: 2px solid var(--teal); outline-offset: 2px; }
+.drag-preview { max-width: 260px; padding: 18px; border: 2px solid var(--teal); border-radius: 8px; background: white; box-shadow: 0 10px 24px #183c2422; overflow-wrap: anywhere; }
+.card-command, .card-command-message { padding: 10px 12px; background: #eef5f0; font-size: 12px; overflow-wrap: anywhere; }
+.card-command.uncertain { background: #fff4dd; }
+.card-command .button { margin-top: 8px; font-size: 12px; padding: 8px; }
+.board-move-message { min-height: 1.5em; margin-top: 8px; font-size: 13px; color: #7c3023; }

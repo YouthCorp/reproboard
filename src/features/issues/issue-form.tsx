@@ -4,14 +4,17 @@ import { useId, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AppSupabase } from "@/lib/supabase/browser";
 import { useMembers } from "@/features/workspaces/use-members";
-import { executeIssueCommand, type Issue, type IssueCommand } from "./commands";
+import { type Issue, type IssueCommand } from "./commands";
 import { completeness, issueValues, normalized, priorities, priorityHelp, reproductions, severities, severityHelp, textFields, validateFields, type FieldErrors, type IssueValues } from "./fields";
 import { stateFieldErrors } from "./state-rules";
 import { TransitionMenu } from "./transition-menu";
+import { useIssueCommands, useIssueRequest } from "./issue-commands";
 
 export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase; workspaceId: string; issue?: Issue }) {
   const id = useId();
   const cache = useQueryClient();
+  const commands = useIssueCommands();
+  const sharedRequest = useIssueRequest(workspaceId, issue?.id);
   const members = useMembers(client, workspaceId);
   const form = useRef<HTMLFormElement>(null);
   const composing = useRef(false);
@@ -22,9 +25,9 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
   const [errors, setErrors] = useState<FieldErrors>({});
   const [unconfirmed, setUnconfirmed] = useState<IssueCommand | null>(null);
   const [message, setMessage] = useState("");
-  const mutation = useMutation({ mutationFn: (command: IssueCommand) => executeIssueCommand(client, command), retry: false, networkMode: "always" });
+  const mutation = useMutation({ mutationFn: (command: IssueCommand) => commands.run(command), retry: false, networkMode: "always" });
   const stale = !!issue && baseVersion !== issue.version;
-  const locked = mutation.isPending || !!unconfirmed;
+  const locked = mutation.isPending || !!unconfirmed || !!sharedRequest;
   const done = issue?.status === "done";
   const dirty = JSON.stringify(normalized(draft)) !== JSON.stringify(issueValues(issue));
   const fulfilled = completeness(draft);
@@ -37,7 +40,7 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
   }
   async function submit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (mutation.isPending || composing.current || done) return;
+    if (mutation.isPending || composing.current || done || (sharedRequest && sharedRequest.command.requestId !== unconfirmed?.requestId)) return;
     const assigneeValid = !!draft.assignee_id && !!members.data?.some((m) => m.user_id === draft.assignee_id && (m.role === "owner" || m.role === "member"));
     const validation = { ...validateFields(draft, members.data ?? [], issue?.assignee_id), ...stateFieldErrors(issue?.status ?? "inbox", draft, assigneeValid) };
     if (!unconfirmed && Object.keys(validation).length) {
@@ -119,7 +122,7 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
     {stale && <div className="stale-draft" role="alert"><p>다른 변경이 있습니다. 작성 중인 입력은 유지했습니다.</p>
       <p>현재 서버 제목: {issue.title}</p><p>최신 값을 불러오면 이 폼의 작성 중인 내용을 교체합니다.</p>
       <button type="button" className="button button-secondary" disabled={locked} onClick={() => { setDraft(issueValues(issue)); setBaseVersion(issue.version); setErrors({}); setMessage(""); }}>최신 값으로 다시 편집</button></div>}
-    <div className="form-actions"><button className="button button-primary" type="submit" disabled={mutation.isPending || (stale && !unconfirmed)}>{mutation.isPending ? "저장 중…" : unconfirmed ? "같은 요청으로 다시 확인" : issue ? "변경 저장" : "Inbox에 생성"}</button>
+    <div className="form-actions"><button className="button button-primary" type="submit" disabled={mutation.isPending || (sharedRequest && sharedRequest.command.requestId !== unconfirmed?.requestId) || (stale && !unconfirmed)}>{mutation.isPending ? "저장 중…" : unconfirmed ? "같은 요청으로 다시 확인" : issue ? "변경 저장" : "Inbox에 생성"}</button>
       <span className="form-hint">{issue ? "저장 전 입력은 이 폼에만 유지됩니다." : "제목만 입력해도 Inbox에 등록할 수 있습니다."}</span></div>
     <p className="form-message" role="status" tabIndex={-1}>{message}</p>
   </form></>;

@@ -1,6 +1,33 @@
 # 테스트 실행 보고서
 
-현재 상태: **D5 / P05 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03/V04/V05는 NOT_RUN이다. 기존 단계 기록은 아래에 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+현재 상태: **D6 / P06 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03~V06는 NOT_RUN이다. 기존 단계 기록은 아래에 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+
+## D6 실제 결과 — 2026-09-21
+
+Windows / PowerShell / Node 24.19.0 / pnpm 11.19.0 / Docker 29.7.2 / PostgreSQL 17.6 / Supabase CLI 2.117.0 / Playwright 1.63.0 Chromium. 시작 커밋 `05164e5`, working tree clean. DnD core 6.3.1·Zustand 5.0.15를 정확히 추가했고 SQL·생성 타입·env·기본 합성 계정은 유지했다. 외부 계정·공개·reset/seed 작업은 없다.
+
+| 명령/검증 | 결과 | 실제 근거와 한계 |
+|---|---|---|
+| 공식 문서·버전·설치 | PASS | dnd-kit core/PointerSensor, Query 낙관적 UI/structuralSharing, Zustand store/Next 경계 확인. npm registry의 core 6.3.1 React peer ≥16.8, Zustand 5.0.15 React ≥18·Node ≥12.20을 현재 버전과 대조. `pnpm add --save-exact` 및 `pnpm install --frozen-lockfile` exit 0. 공식 legacy core API만 사용 |
+| `pnpm lint`, `pnpm typecheck`, `pnpm test` | PASS / 39/39 | 기존 단위 32건 + D6 7건. 같은 이슈의 동기 예약·다른 이슈 독립·미확정 payload 고정·A만 제거·더 최신 서버 값 우선·실제 QueryClient의 늦은 snapshot/receipt 병합·정렬/빈 권한 snapshot·이전 요청 완료의 후속 잠금 제거 방지 |
+| `pnpm test:db-ui` | PASS 17/17 | 기존 D2~D5 13건 유지 + D6 실제 세션 4건. 최종 전체 실행 17/17. 영상 보고서 첨부·최소 1초 지연 조건을 확정한 뒤 시연 2건을 별도로 재실행. 보고서는 마지막 실행 범위로 갱신됨 |
+| 지연·카드별 실패 | PASS | A 전환 요청을 실제 서버 전송 전 gate로 최소 1초 보류. 응답 전 Ready/저장 중·DB Inbox·상세 Ready 표시와 편집 잠금 확인. B의 실제 Ready 저장 완료 후 Member가 A 제목 변경 → A RPC CONFLICT. A만 Inbox로 돌아가고 B·Member의 최신 제목 보존, A 거부 receipt 0 |
+| commit 후 응답 유실 | PASS | Verify→Done 입력을 제출한 뒤 `route.fetch()`로 실제 DB 명령을 끝내고 SQL Done 확인 후 브라우저 응답만 connectionreset. 입력·결과 확인 중·카드 잠금 유지. 창을 닫고 카드에서 재확인한 두 payload/requestId는 동일. version +1·verification/activity/receipt 각각 1건 |
+| 타임아웃 | PASS | 실제 RPC commit 후 응답을 보류해 앱의 10초 AbortSignal 만료 유도. DB Ready지만 UI는 결과 확인 중. 같은 요청으로 재확인 후 추가 version/activity/receipt 없음. 타임아웃을 확정 거부로 표시하지 않음 |
+| 응답 순서·권한·메뉴 | PASS | 성공 N+1 응답을 보류하고 Member가 N+2로 이동 → GET N+2 반영 후 N+1 성공 응답 해제. 보드/상세 N+2 상태 유지. 같은 열·금지 전환 요청 0, 필수 입력 취소 DB 불변, 키보드 Enter로 상세/메뉴/확정, Viewer 드래그 손잡이 없음 |
+| `pnpm test:db` | PASS 38/38 | 기존 D2~D5의 일반 사용자 RLS/RPC·version·중복·전환·검증·rollback 회귀. D6는 DB 규칙을 우회하는 쓰기 경로를 추가하지 않음 |
+| production·보호 | PASS | `pnpm build` exit 0, `pnpm test:e2e` 6/6, `pnpm test:local-tools` 2/2. production에 개발 인증·테스트 지연/응답 조작 기능 없음. 전체 실행 테스트 39 + 38 + 17 + 6 + 2 = 102건 |
+| 영상·기동 | PASS | `docs/evidence/d6-request-isolation.webm`, `d6-receipt-recovery.webm`은 실제 합성 DB 시나리오 녹화. ffprobe로 컨테이너 확인·추출 프레임으로 UI 확인. 1440×1050의 짧은 무음 원본, 속도 편집/사용자 피드백/성능 수치 없음. dev 보드 HTTP 200 |
+| 비밀 값·정리 | PASS | 소스 후보 106·production server/static 198개에서 실제 로컬 비밀번호/JWT/secret/service 값 일치 0, 값 미출력. 합성 사용자/프로필 각 4·팀 3·이슈 1·activity 3·receipt 7·초대 1 유지, 검증 0·오류 주입 함수 0. 테스트 소유 UUID만 정리 |
+| 후속·외부 | NOT_RUN | 독립 V03~V06·실제 GitHub OAuth(provider=false)·원격 CI·새 clone·전체 AC01~16·실제 터치 DnD·OS IME·스크린리더·Realtime·새로고침 후 미확정 명령 복원·전체 오프라인 복구·사용자 피드백 |
+
+중간 FAIL과 수정:
+
+- `useDraggable` 반환 객체를 통째로 접근하면 React Hooks refs 규칙이 ref가 아닌 표시 값까지 ref로 추론했다. 사용하는 callback ref/표시 값만 구조 분해해 해결했고 규칙 비활성화 없이 lint/typecheck/build를 통과했다.
+- core 6.3.1은 드롭 뒤 document click/selection 억제 listener를 50ms 유지한다. 즉시 시작한 자동 입력/키보드 클릭 두 건이 영향을 받았다. 설치 코드의 detach를 확인하고 테스트의 포인터 수명 정리만 60ms 대기한다. DB 완료는 sleep으로 추정하지 않고 DOM/실제 SQL/네트워크 gate로 검증한다.
+- 기존 카드 테스트 5건은 버튼이 하나라고 가정해 드래그 손잡이와 상세 버튼을 동시에 찾았다. 상세 열기 이름으로 선택자를 명시한 뒤 전체 17건 PASS. 기존 assertion·권한/충돌/재조회/모바일 검증을 제거하거나 skip하지 않았다.
+
+낙관적 표시 자체는 저장 성공의 증거가 아니다. 확정 거부는 해당 overlay만 지우며 응답 불명은 현재 팀의 요청 소유자에 보존한다. 같은 이슈는 결과 확인 전 잠기고 다른 이슈는 작업 가능하다. 이탈/로그아웃/새로고침은 메모리의 요청을 폐기하므로 이후 서버를 다시 읽어야 한다. 영속적인 미확정 요청 복구·실시간 순서·전체 접근성은 후속 단계이며 현재 범위의 알려진 차단 결함은 없다. AC05~07의 D6 부분을 검증했으며 댓글/알림 중복 등 전체 기준까지 PASS로 올리지 않았다.
 
 ## D5 실제 결과 — 2026-09-20, 재개·최종 확인 09-21
 

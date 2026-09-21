@@ -1,7 +1,6 @@
 /* global document, window */
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { localDb, localStack, readAccounts } from '../../scripts/local-stack.mjs';
 
@@ -68,7 +67,7 @@ test('D5 UI completes Inbox→Ready→In Progress→Verify→fail→Verify→Don
   await login(page, team);
   await page.getByLabel('새 이슈 제목', { exact: true }).fill(title);
   await page.getByRole('button', { name: 'Inbox에 생성', exact: true }).click();
-  await page.locator('.issue-card').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).getByRole('button').click();
+  await page.locator('.issue-card').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).getByRole('button', { name: /상세 열기$/ }).click();
   const row = (await db.query('select * from public.issues where workspace_id=$1', [team])).rows[0];
   await detail(page).getByRole('button', { name: 'Ready로 이동', exact: true }).click();
   await expect(modal(page).getByText('먼저 필수 정보를 저장하세요.', { exact: true })).toBeVisible();
@@ -107,8 +106,8 @@ test('D5 UI completes Inbox→Ready→In Progress→Verify→fail→Verify→Don
   await detail(page).getByRole('button', { name: '검증 통과 → Done', exact: true }).click();
   await modal(page).getByLabel('검증 환경', { exact: true }).fill('Windows · Chromium · 느린 연결 포함');
   await modal(page).getByLabel('검증 메모', { exact: true }).fill('필터를 연속 변경해도 최신 목록 유지 확인');
-  await page.setViewportSize({ width: 1440, height: 1050 }); mkdirSync('docs/evidence', { recursive: true });
-  await info.attach('d5-verification-dialog', { body: await page.screenshot({ path: 'docs/evidence/d5-verification-dialog.png' }), contentType: 'image/png' });
+  await page.setViewportSize({ width: 1440, height: 1050 });
+  await info.attach('d5-verification-dialog', { body: await page.screenshot(), contentType: 'image/png' });
   await modal(page).getByRole('button', { name: '통과 기록 후 Done', exact: true }).click(); await expect(modal(page)).toHaveCount(0);
   await expect(detail(page).getByText('Done의 본문은 잠겨 있습니다.', { exact: false })).toBeVisible();
   await expect(detail(page).getByLabel('이슈 제목', { exact: true })).toBeHidden();
@@ -117,7 +116,7 @@ test('D5 UI completes Inbox→Ready→In Progress→Verify→fail→Verify→Don
   const runs = (await db.query('select result,issue_version_before,actor_id from public.verification_runs where issue_id=$1 order by created_at', [row.id])).rows;
   expect(runs.map((run) => run.result)).toEqual(['fail','pass']); expect(runs.map((run) => run.issue_version_before)).toEqual([beforeFail.version,beforePass.version]);
   await detail(page).evaluate((element) => { element.scrollTop = 0; });
-  await info.attach('d5-done-history', { body: await page.screenshot({ path: 'docs/evidence/d5-done-history.png' }), contentType: 'image/png' });
+  await info.attach('d5-done-history', { body: await page.screenshot(), contentType: 'image/png' });
   const viewerContext = await browser.newContext({ baseURL: 'http://127.0.0.1:3000' });
   try {
     const viewer = await viewerContext.newPage(); await login(viewer, team, row.id, 'viewer');

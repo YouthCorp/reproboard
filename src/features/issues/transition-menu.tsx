@@ -4,31 +4,27 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AppSupabase } from "@/lib/supabase/browser";
 import { useMembers } from "@/features/workspaces/use-members";
-import type { CommandResult, Issue } from "./commands";
+import type { Issue, TransitionCommand } from "./commands";
+import { useIssueCommands } from "./issue-commands";
 import { boardColumns, issueValues, textFields } from "./fields";
 import { canTransition, isStatus, needsReason, needsVerification, stateFieldErrors, transitionInputErrors, transitions, type TransitionInputs } from "./state-rules";
 
-type TransitionCommand = { workspaceId: string; issueId: string; expectedVersion: number; requestId: string; payload: { target_status: string; reason?: string; verification?: { tested_build: string; tested_environment: string; note: string } } };
 const nameOf = (status: string) => boardColumns.find((column) => column.id === status)?.name ?? status;
 
-function TransitionDialog({ client, issue, target, close, saved }: { client: AppSupabase; issue: Issue; target: string; close: () => void; saved?: (issue: Issue) => void }) {
+export function TransitionDialog({ client, issue, target, close, saved }: { client: AppSupabase; issue: Issue; target: string; close: () => void; saved?: (issue: Issue) => void }) {
   const id = useId();
   const dialog = useRef<HTMLDialogElement>(null);
   const form = useRef<HTMLFormElement>(null);
   const composing = useRef(false);
   const cache = useQueryClient();
+  const commands = useIssueCommands();
   const members = useMembers(client, issue.workspace_id);
   const [base, setBase] = useState({ version: issue.version, status: issue.status });
   const [input, setInput] = useState<TransitionInputs>({ reason: "", tested_build: issue.target_build, tested_environment: "", note: "" });
   const [errors, setErrors] = useState<Partial<Record<keyof TransitionInputs, string>>>({});
   const [message, setMessage] = useState("");
   const [unconfirmed, setUnconfirmed] = useState<TransitionCommand | null>(null);
-  const mutation = useMutation({ retry: false, networkMode: "always", mutationFn: async (command: TransitionCommand) => {
-    if (!navigator.onLine) throw new Error("OFFLINE");
-    const result = await client.rpc("transition_issue", { p_workspace_id: command.workspaceId, p_issue_id: command.issueId, p_expected_version: command.expectedVersion, p_request_id: command.requestId, p_payload: command.payload });
-    if (result.error || !result.data || typeof result.data !== "object" || Array.isArray(result.data) || typeof result.data.ok !== "boolean") throw new Error("UNKNOWN_RESULT");
-    return result.data as CommandResult;
-  } });
+  const mutation = useMutation({ retry: false, networkMode: "always", mutationFn: (command: TransitionCommand) => commands.run(command) });
   useEffect(() => {
     const element = dialog.current!; const previous = document.activeElement as HTMLElement | null;
     element.showModal();
@@ -54,7 +50,7 @@ function TransitionDialog({ client, issue, target, close, saved }: { client: App
       }
       if (stale || !allowed || missing.length) return;
     }
-    const command: TransitionCommand = unconfirmed ?? { workspaceId: issue.workspace_id, issueId: issue.id, expectedVersion: base.version, requestId: crypto.randomUUID(), payload: {
+    const command: TransitionCommand = unconfirmed ?? { operation: "transition", workspaceId: issue.workspace_id, issueId: issue.id, expectedVersion: base.version, requestId: crypto.randomUUID(), payload: {
       target_status: target, ...(reason ? { reason: input.reason.trim() } : {}),
       ...(verification ? { verification: { tested_build: input.tested_build.trim(), tested_environment: input.tested_environment.trim(), note: input.note.trim() } } : {}),
     } };
@@ -64,7 +60,7 @@ function TransitionDialog({ client, issue, target, close, saved }: { client: App
       if (!result.ok) { setMessage(result.message); await refresh(); requestAnimationFrame(() => form.current?.querySelector<HTMLElement>(".transition-message")?.focus()); return; }
       saved?.(result.data);
       await refresh(); close();
-    } catch { setUnconfirmed(command); setMessage("이동 결과를 확인하지 못했습니다. 같은 요청으로 다시 확인하세요. 결과 확인 전에는 이 창을 닫지 마세요."); }
+    } catch { setUnconfirmed(command); setMessage("이동 결과를 확인하지 못했습니다. 결과 확인 중입니다. 같은 요청으로 다시 확인하세요. 보드에서 계속 작업해도 이 요청은 유지됩니다."); }
   }
   function field(key: keyof TransitionInputs, label: string, hint: string) {
     const props = { id: `${id}-${key}`, name: key, value: input[key], onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { setInput((old) => ({ ...old, [key]: event.target.value })); setErrors((old) => ({ ...old, [key]: undefined })); }, "aria-invalid": !!errors[key], "aria-describedby": `${id}-${key}-hint` };
@@ -92,6 +88,7 @@ function TransitionDialog({ client, issue, target, close, saved }: { client: App
       </fieldset>
       <p className="transition-message" role="status" tabIndex={-1}>{message}</p>
       <div className="form-actions"><button type="button" className="button button-secondary" disabled={busy} onClick={close} autoFocus>이동 취소</button>
+        {busy && <button type="button" className="button button-secondary" onClick={close}>보드에서 계속 작업</button>}
         <button className="button button-primary" type="submit" disabled={mutation.isPending || (!unconfirmed && (stale || !allowed || missing.length > 0))}>{mutation.isPending ? "이동 중…" : unconfirmed ? "같은 이동 요청으로 다시 확인" : verification ? target === "done" ? "통과 기록 후 Done" : "실패 기록 후 In Progress" : "이동 확인"}</button></div>
     </form>
   </dialog>;

@@ -6,6 +6,8 @@ import { useMembers } from "@/features/workspaces/use-members";
 import type { Issue } from "./commands";
 import { IssueForm } from "./issue-form";
 import { IssueHistory } from "./issue-history";
+import { useIssueRequest } from "./issue-commands";
+import { displayedStatus } from "./command-store";
 import { boardColumns, completeness, priorities, priorityHelp, reproductions, severities, severityHelp, textFields } from "./fields";
 
 export function IssueDetail({ client, workspaceId, issue, canWrite, loading, error, refreshing, retry, close }: {
@@ -14,6 +16,7 @@ export function IssueDetail({ client, workspaceId, issue, canWrite, loading, err
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const members = useMembers(client, workspaceId);
+  const pending = useIssueRequest(workspaceId, issue?.id);
   useEffect(() => {
     const element = dialog.current!;
     const previous = document.activeElement as HTMLElement | null;
@@ -25,9 +28,10 @@ export function IssueDetail({ client, workspaceId, issue, canWrite, loading, err
   const fulfilled = issue ? completeness(issue) : null;
   const assignee = members.data?.find((member) => member.user_id === issue?.assignee_id);
   return <dialog ref={dialog} className="issue-detail" aria-labelledby="detail-title" onCancel={(event) => { event.preventDefault(); close(); }}>
-    <div className="detail-toolbar"><span className="issue-key">{issue?.issue_key ?? "이슈 상세"} · {boardColumns.find((c) => c.id === issue?.status)?.name ?? "조회 중"}</span>
+    <div className="detail-toolbar"><span className="issue-key">{issue?.issue_key ?? "이슈 상세"} · {boardColumns.find((c) => c.id === (issue ? displayedStatus(issue, pending) : ""))?.name ?? "조회 중"}</span>
       <button type="button" className="button button-secondary" onClick={close} autoFocus>상세 닫기</button></div>
     <h2 id="detail-title">{issue?.title ?? "이슈 상세"}</h2>
+    {pending && <p role="status">{pending.phase === "pending" ? "저장 중…" : "결과 확인 중 · 보드 카드에서 같은 요청으로 확인할 수 있습니다."} 이 이슈의 추가 변경은 결과 확인 후 가능합니다.</p>}
     <div className="detail-refresh"><button type="button" className="button button-secondary" onClick={retry}>최신 상세 조회</button><span role="status">{refreshing ? "서버 확인 중…" : ""}</span></div>
     {error && <p role="alert">최신 이슈를 불러오지 못했습니다. {issue ? "마지막 조회 값과 입력을 유지했습니다." : "다시 조회해 주세요."}</p>}
     {loading ? <p role="status">이슈를 불러오는 중…</p> : !issue && !error ? <p role="alert">이슈가 없거나 접근 권한이 없습니다. 팀과 주소를 확인하세요.</p> : null}

@@ -57,7 +57,7 @@ test('real session creates, reads, edits and preserves the title after reload', 
   expect(row.version).toBe(1);
   expect(row.created_by).toBe(accounts.find((account) => account.role === 'owner').id);
   const finalTitle = `${title} 수정`;
-  await card(page, title).getByRole('button').click();
+  await card(page, title).getByRole('button', { name: /상세 열기$/ }).click();
   const original = page.getByRole('dialog');
   await original.getByLabel('이슈 제목', { exact: true }).fill(finalTitle);
   await original.getByRole('button', { name: '변경 저장', exact: true }).click();
@@ -81,7 +81,7 @@ test('Viewer reads without edit controls; logout and another team login clear vi
   await expect(page.getByText('Viewer는 조회만 할 수 있습니다.', { exact: true })).toBeVisible();
   await expect(page.getByLabel('새 이슈 제목', { exact: true })).toHaveCount(0);
   await expect(card(page, row.title).getByRole('textbox')).toHaveCount(0);
-  await card(page, row.title).getByRole('button').click();
+  await card(page, row.title).getByRole('button', { name: /상세 열기$/ }).click();
   await expect(page.getByRole('dialog').getByText('Viewer는 조회만 할 수 있습니다.', { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog').getByRole('textbox')).toHaveCount(0);
   await page.getByRole('button', { name: '상세 닫기', exact: true }).click();
@@ -101,8 +101,8 @@ test('two independent users keep a stale draft on conflict and explicitly reload
   try {
     await login(page, 'owner');
     await login(otherPage, 'member');
-    await card(page, row.title).getByRole('button').click();
-    await card(otherPage, row.title).getByRole('button').click();
+    await card(page, row.title).getByRole('button', { name: /상세 열기$/ }).click();
+    await card(otherPage, row.title).getByRole('button', { name: /상세 열기$/ }).click();
     const own = page.getByRole('dialog');
     const other = otherPage.getByRole('dialog');
     await other.getByLabel('이슈 제목', { exact: true }).fill('Member가 작성 중인 초안');

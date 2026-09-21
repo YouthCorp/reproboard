@@ -1,6 +1,18 @@
 # 기술 계약과 아키텍처
 
-상태: D5 상태 전환·재검증·재오픈과 D3~D4 인증·팀·권한·구조화 보드 구현. 아래 전체 계약 중 실제 경로는 다음 절과 PROGRESS에 표시하며 이후 단계의 기능을 구현 완료로 간주하지 않는다.
+상태: D6 DnD·요청별 낙관적 이동·결과 재확인과 D3~D5 인증·팀·구조화 보드·상태 규칙 구현. 아래 전체 계약 중 실제 경로는 다음 절과 PROGRESS에 표시하며 이후 단계의 기능을 구현 완료로 간주하지 않는다.
+
+## D6 실제 구현과 경계
+
+- `@dnd-kit/core@6.3.1`의 PointerSensor(8px 활성화)·고정 5열 droppable을 사용한다. 드래그는 상태 변경이며 같은 열은 no-op, 금지 전환은 요청 없이 안내한다. 열 내부는 서버 updated_at 내림차순/id 오름차순이며 수동 정렬·sortable은 없다. 키보드 대안은 기존 상세 이동 메뉴다.
+- `IssueCommands`는 사용자/팀 경계 안에 Zustand vanilla store를 생성한다. store에는 요청 입력·식별자·단계와 안내 문구만 있으며 이슈 배열은 없다. `begin`의 동기 예약으로 같은 이슈 편집/이동 한 건만 허용하며 다른 이슈는 독립적으로 실행한다. 각 UI의 Query mutation은 retry=false/networkMode=always다.
+- `displayedStatus`가 Query 행 위에 요청의 target_status만 투영한다. 보드 열과 상세 상태 표시는 같은 규칙을 사용하고 본문/폼 기준은 서버 값이다. 드래그 입력이 필요한 전환은 다이얼로그 제출 전에는 overlay도 DB 요청도 만들지 않는다. 필수 정보 누락은 D5의 순수 규칙과 기존 DB 명령이 검사한다.
+- 성공은 `acceptIssue`로 Query 반영 → 해당 요청 제거 → 관련 목록/기록 재조회 순서다. 거부는 해당 요청만 제거하고 최신 조회한다. `mergeIssueSnapshot`은 Query structuralSharing의 실제 캐시 반영 시 각 반환 행의 version을 비교해 진행 중 GET이 더 최신 성공을 덮지 않게 한다. 서버 snapshot에서 사라진 행은 보존하지 않으며 권한 없는 빈 조회를 임의로 채우지 않는다.
+- 실제 RPC 전송에 10초 AbortSignal을 적용한다. 타임아웃/SDK 오류는 DB의 거부 응답과 구분해 uncertain으로 남기며 자동 재전송하지 않는다. 카드/입력 창의 명시적 확인은 기존 requestId·expectedVersion·payload를 그대로 사용한다. 더 높은 서버 version을 조회해도 receipt의 확정 결과를 받기 전에는 요청 잠금을 풀지 않는다.
+- 요청 수명은 상세/카드 컴포넌트보다 길다. 미확정 입력 창을 닫고 다른 카드를 조작해도 요청과 카드의 재확인 버튼은 남는다. 사용자/팀 경계가 사라지면 store는 폐기하고 늦은 명령 결과로 캐시를 다시 채우지 않는다. reload/팀 이탈 후 미확정 요청 복원은 미지원이며 서버를 다시 읽는다.
+- 장애 주입은 `tests/db-ui/optimistic.spec.mjs`의 Playwright route에만 있다. 실제 사용자 RPC를 `route.fetch()`로 완료한 뒤 응답만 abort/보류한다. 앱에는 테스트 지연·강제 성공·거부 스위치가 없고 DB/RPC/migration은 D5 그대로다.
+
+공식 근거: [dnd-kit core 문서](https://dndkit.com/legacy/introduction/getting-started/), [PointerSensor](https://dndkit.com/legacy/api-documentation/sensors/pointer/), [Zustand의 Next.js store 경계](https://zustand.docs.pmnd.rs/learn/guides/nextjs), [Query 낙관적 UI](https://tanstack.com/query/latest/docs/framework/react/guides/optimistic-updates). npm metadata의 core 6.3.1 peer는 React/React DOM ≥16.8, Zustand 5.0.15는 React ≥18·Node ≥12.20이며 설치된 React 19.3.0·Node 24.19.0과 대조했다. core는 공식 문서상 legacy 계열이며 최신 react 계열로 혼용하지 않았다.
 
 ## D5 실제 구현과 경계
 

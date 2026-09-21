@@ -1,18 +1,18 @@
 # 기술 결정 기록
 
-ADR 01/03은 설계 제안이며 ADR 02는 D2 제목 흐름에서 시작해 D4 구조화 필드와 D5 재검증으로 확장했다. 선택을 바꾸면 실제 이유와 영향을 기록한다. 중요한 세 가지를 자세히 남기고 사소한 라이브러리 설정은 늘어놓지 않는다.
+ADR 01은 D6 실제 구현을 반영한 초안이고 ADR 02는 D2~D5 편집·재검증에 적용했다. ADR 03은 설계 제안이다. 선택을 바꾸면 실제 이유와 영향을 기록한다. 중요한 세 가지를 자세히 남기고 사소한 라이브러리 설정은 늘어놓지 않는다.
 
 ## ADR 01 — 낙관적 이동을 서버 값과 분리
 
-- 상태: 제안
+- 상태: D6 구현·로컬 검증을 반영한 초안. 독립 V06과 Realtime 결합은 후속 검증.
 - 문제: 카드 A의 실패 때 보드 전체 이전 스냅샷을 복원하면 B 또는 다른 사용자의 성공 변경을 잃을 수 있다.
 - 고려한 방법: 전체 snapshot rollback / 캐시의 이슈별 변경·복구 / 서버 캐시와 요청별 overlay 분리.
-- 계획된 선택: 서버 캐시+overlay, 같은 이슈 로컬 pending 1개.
+- 선택: Query의 서버 목록 + Zustand의 요청별 임시 overlay. 이슈 배열/본문은 복제하지 않고 requestId·expectedVersion·입력 payload·pending/uncertain만 보관한다. 드래그와 메뉴가 같은 명령 소유자를 사용하며 같은 이슈의 편집/이동을 동기적으로 하나만 예약한다.
 - 장점: 실패한 요청의 임시 상태만 제거하고 최신 서버 값을 유지하기 쉽다.
-- 비용: overlay와 원격 업데이트의 순서·version을 일관되게 처리해야 한다.
-- 실제 구현 파일:
-- 실제 반례/검증: AC05~07.
-- 결과와 남은 한계:
+- 비용: 명확한 거부와 응답 불명을 구별하고, 상세를 닫아도 미확정 요청을 보존해야 한다. 목록과 성공 응답 양쪽의 version 비교도 필요하다.
+- 실제 구현 파일: `src/features/issues/command-store.ts`, `issue-commands.tsx`, `issue-cache.ts`, `issue-board.tsx`, `transition-menu.tsx`. DnD는 `@dnd-kit/core@6.3.1`의 PointerSensor/열 droppable만 쓰고 수동 정렬·sortable은 도입하지 않았다.
+- 실제 반례/검증: `tests/db-ui/optimistic.spec.mjs`에서 A를 전송 전 보류→B 저장 성공→Member의 A 수정→A의 실제 CONFLICT를 재현했다. A만 Inbox로 돌아오며 B의 Ready와 Member의 최신 제목이 남았다. 실제 Verify→Done commit 뒤 응답만 끊은 요청은 같은 requestId 재전송 후 검증/activity/receipt 각 1건이었다. 10초 응답 타임아웃도 같은 요청으로 확인했다.
+- 결과와 남은 한계: `acceptIssue`로 성공 값을 먼저 반영하고 해당 overlay만 제거한다. GET version N+2 이후 도착한 성공 N+1은 낮아지지 않았으며 순수 Query 테스트도 늦은 snapshot/receipt를 검사한다. 더 높은 서버 version을 읽으면 미확정 표시를 유지하되 그 서버 상태를 표시한다. 전체 스냅샷 롤백·자동 재시도/오프라인 큐는 없다. 요청은 현재 팀/로그인 수명의 메모리에만 남으며 이탈·로그아웃·새로고침 후 미확정 요청 복구와 실제 Realtime 순서는 D7~D8 범위다.
 
 ## ADR 02 — 이슈 단위 version 충돌
 

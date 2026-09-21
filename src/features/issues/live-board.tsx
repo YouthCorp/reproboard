@@ -9,6 +9,9 @@ import { IssueBoard } from "./issue-board";
 import { IssueDetail } from "./issue-detail";
 import { WorkspaceCreate } from "@/features/workspaces/workspace-create";
 import { TeamManagement } from "@/features/workspaces/team-management";
+import { IssueCommands } from "./issue-commands";
+import { mergeIssueSnapshot } from "./issue-cache";
+import type { Issue } from "./commands";
 
 export function LiveBoard({ client, user, signOut, signOutError }: { client: AppSupabase; user: User; signOut: () => Promise<void>; signOutError: string }) {
   const router = useRouter();
@@ -27,6 +30,7 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
       return result.data;
     } });
   const issues = useQuery({ queryKey: ["issues", workspaceId], enabled: !!workspace && !!membership.data,
+    structuralSharing: (old, next) => mergeIssueSnapshot(old as Issue[] | undefined, next as Issue[]),
     queryFn: async ({ signal }) => {
       const result = await client.from("issues").select("*").eq("workspace_id", workspaceId)
         .order("updated_at", { ascending: false }).order("id").range(0, 500).abortSignal(signal);
@@ -50,7 +54,7 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
     </div>
     {signOutError && <p role="alert">{signOutError}</p>}
     <div className="page-heading"><div><h1>버그 보드</h1><p>재현에 필요한 정보를 모으고, 다음 작업을 준비하세요.</p></div></div>
-    <p className="connection-notice">실제 팀 데이터가 DB에 저장됩니다. 개발 계정의 팀은 합성 데이터입니다. 상세에서 상태 이동·재검증을 기록할 수 있습니다. 실시간 반영은 아직 지원하지 않습니다.</p>
+    <p className="connection-notice">실제 팀 데이터가 DB에 저장됩니다. 개발 계정의 팀은 합성 데이터입니다. 드래그 또는 상세 메뉴로 상태를 이동하고 재검증을 기록하세요. 저장 중·결과 확인 중 표시는 아직 확정되지 않은 요청입니다. 실시간 반영은 아직 지원하지 않습니다.</p>
     <WorkspaceCreate client={client} />
     {workspaces.isError && workspaces.data && <p role="alert">최신 팀을 확인하지 못했습니다. <button onClick={() => workspaces.refetch()}>팀 다시 조회</button></p>}
     {workspaces.isPending ? <p role="status">팀을 불러오는 중…</p> : !workspaces.data ?
@@ -69,7 +73,7 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
       {!workspace ? <p role="status">접근할 수 있는 팀이 없습니다. 팀 주소와 로그인 계정을 확인하세요.</p> :
         membership.isPending ? <p role="status">권한을 확인하는 중…</p> : !membership.data ?
           <p role="alert">팀 권한을 확인할 수 없습니다. <button onClick={() => { membership.refetch(); workspaces.refetch(); }}>다시 조회</button></p> :
-          <section className="live-inbox" key={`${user.id}/${workspaceId}`} aria-labelledby="inbox-title">
+          <IssueCommands key={`${user.id}/${workspaceId}`} client={client}><section className="live-inbox" aria-labelledby="inbox-title">
             <div className="board-caption"><h2 id="inbox-title">팀 이슈 · {issues.data?.length ?? "…"}개</h2>
               <button className="button button-secondary" onClick={() => { issues.refetch(); membership.refetch(); workspaces.refetch(); }}>최신 목록 조회</button></div>
             <TeamManagement client={client} workspaceId={workspaceId} isOwner={membership.data.role === "owner"} />
@@ -79,11 +83,11 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
             {issues.isError && <p role="alert">{issues.error.message} {issues.data && "마지막 조회 값을 표시합니다."} <button onClick={() => issues.refetch()}>다시 조회</button></p>}
             {issues.isFetching && !issues.isPending && <p role="status">최신 목록 확인 중…</p>}
             {issues.data && <>{issues.data.length === 0 && <p className="empty-inbox">아직 등록된 이슈가 없습니다.</p>}
-              <IssueBoard issues={issues.data} select={selectIssue} /></>}
+              <IssueBoard client={client} workspaceId={workspaceId} issues={issues.data} canWrite={canWrite} select={selectIssue} /></>}
             {selectedId && <IssueDetail key={selectedId} client={client} workspaceId={workspaceId} issue={selectedIssue} canWrite={canWrite}
               loading={issues.isPending} error={issues.isError} refreshing={issues.isFetching}
               retry={() => { issues.refetch(); membership.refetch(); }} close={() => selectIssue(null)} />}
-          </section>}
+          </section></IssueCommands>}
     </>}
   </>;
 }
