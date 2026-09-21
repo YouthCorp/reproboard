@@ -1,10 +1,10 @@
 # 진행 기록
 
-현재 상태: D4 / P04 실제 Query 보드·URL 상세·Inbox 구조화 생성/편집 로컬 구현 및 관련 검증 완료. 상태 전환은 D5 범위이며 실제 GitHub OAuth 왕복은 외부 앱 미설정으로 NOT_RUN.
+현재 상태: D5 / P05 상태 전환·재검증·재오픈 로컬 구현 및 관련 검증 완료. 순수 규칙과 DB 명령이 필수 조건·권한·version을 검사하며 과거 검증 기록을 보존한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
 
-현재 단계: D4 / P04 로컬 PASS, V04 독립 검증 대기 (2026-09-20, Asia/Seoul). 사용자의 D4 지시에 따라 진행했으며 별도 V03은 여전히 NOT_RUN이다.
+현재 단계: D5 / P05 로컬 PASS, V05 독립 검증 대기 (구현·DB/UI 검증 2026-09-20, 재개·최종 확인 09-21, Asia/Seoul). 사용자의 D5 지시에 따라 진행했으며 별도 V03/V04는 여전히 NOT_RUN이다.
 
-선행 조건: D2/V02·D3 기록과 기존 사용자 데이터를 보존했다. D4 migration·타입 생성 완료, 기본 합성 계정 4개의 실제 세션 사용 가능. 09-20 Docker/Supabase/dev를 reset 없이 재기동했다. 다음 실행 때 엔진 상태를 재확인하며 D5 전에 V04로 입력/복구 경계를 검증한다. 실제 GitHub smoke에는 README의 외부 앱 설정이 필요하다.
+선행 조건: 기존 문서·사용자 데이터를 보존했고 D5 migration·타입 생성 완료. 기본 합성 계정 4개의 실제 세션으로 검증했다. 09-21 종료된 Docker/Supabase를 reset 없이 재기동했다. 다음 실행 때 엔진 상태를 재확인하며 V05로 완료 조건을 독립 검증한 뒤 P06으로 진행한다. 실제 GitHub smoke에는 README의 외부 앱 설정이 필요하다.
 
 ## 범위와 근거
 
@@ -23,15 +23,15 @@
 | D2 DB·명령 | DONE: P02 | V02 PASS | reset/migration 재적용·실제 세션 UI/reload·직접 DML 거부·경합·멱등성·거부 원자성 독립 확인. TEST_REPORT 참조 |
 | D3 인증·권한 | DONE: P03 로컬 구현 | 로컬 PASS / V03·실제 OAuth NOT_RUN | SSR/PKCE·팀 생성·초대·역할 UI·프로필/RLS. DB 25·DB UI 7건 회귀 PASS. 검증/댓글은 권한표만, 기능은 D5/D9 |
 | D4 보드·폼 | DONE: P04 로컬 구현 | 로컬 PASS / V04 NOT_RUN | 5열 Query 보드·URL 상세·구조화 폼·충족/누락·초안 보존. DB 29·DB UI 10건 및 캡처 2장. 상태 이동은 없음 |
-| D5 상태·검증 | TODO | NOT_RUN | 전환 명령·재검증 코드 없음 |
-| D6 낙관적 UI | TODO | NOT_RUN | D4 Inbox 생성/편집 mutation만 있음. 낙관적 이동·overlay 없음 |
+| D5 상태·검증 | DONE: P05 로컬 구현 | 로컬 PASS / V05 NOT_RUN | 순수 규칙·전환 RPC·원자적 통과/실패·재오픈·편집 우회 차단. DB 38·DB UI 13건 및 캡처 2장 |
+| D6 낙관적 UI | TODO | NOT_RUN | D5 서버 성공 후 이동·미확정 요청 재확인만 구현. DnD·낙관적 이동·overlay·commit 후 응답 유실 검증 없음 |
 | D7 실시간·충돌 | TODO | 전체 NOT_RUN | D4 구조화 필드 version 경합·초안 유지 검증 PASS. Realtime 구독·변경 전파 없음 |
 | D8 연결 복구 | TODO | NOT_RUN | 재연결·HTTP/WS 장애 처리 코드 없음 |
 | D9 댓글·알림 | TODO | NOT_RUN | 댓글·알림 코드 없음 |
 | D10 URL | TODO | 전체 NOT_RUN | D4 팀/상세 `?workspace=&issue=` 복원·뒤로가기만 구현. 검색·필터·정렬 없음 |
 | D11 접근성·UX | TODO | 핵심 흐름 NOT_RUN | D1 skip link·오류 재시도·좁은 화면 smoke만 PASS |
-| D12 회귀·CI | TODO | 전체 회귀·원격 CI NOT_RUN | Vitest 3·보호 2·DB 25·production smoke 6·DB UI 7건. CI는 정적/보호/production smoke 구성 |
-| D13 재현·시연 | TODO | NOT_RUN | D1~D3 화면 캡처 있음. 전체 시연·영상·새 clone 검증 없음 |
+| D12 회귀·CI | TODO | 전체 제품 회귀·원격 CI NOT_RUN | D5까지 Vitest 32·보호 2·DB 38·production smoke 6·DB UI 13건. CI는 정적/보호/production smoke 구성 |
+| D13 재현·시연 | TODO | NOT_RUN | D1~D5 화면 캡처 있음. 전체 시연·영상·새 clone 검증 없음 |
 | D14 문서·릴리스 | TODO | NOT_RUN | 문서 키트 존재는 구현·릴리스 완료 근거가 아님 |
 
 ## 환경 확인 — P00 당시 기록 (현재 결과는 아래 D1 및 TEST_REPORT)
@@ -63,10 +63,10 @@
 
 ## 다음 실행 프롬프트
 
-[PROMPTS.md의 V04 — 폼·실제 데이터·상태 경계 검증](planning/PROMPTS.md#v04--폼실제-데이터상태-경계-검증)을 수행한 뒤 P05로 진행한다. 독립 V03 미실행 사실은 유지한다.
+[PROMPTS.md의 V05 — 완료 조건의 서버 검증](planning/PROMPTS.md#v05--완료-조건의-서버-검증)을 수행한 뒤 P06으로 진행한다. 독립 V03/V04 미실행 사실은 유지한다.
 
 ```text
-AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V04를 수행해라. 실제 DB에서 제목만 생성→구조화 편집→새로고침→상세 재진입, 공백·최대 길이·한글 조합·잘못된 담당자를 독립 검증해라. 재조회 성공/실패와 version 충돌에서 초안 보존, Query 단일 소유, URL 뒤로가기, 0건·로딩·권한 없음·390px 상세·오류 포커스를 확인해라. 기존 데이터와 문서를 보존하고 PASS/FAIL/NOT_RUN을 기록해라. 실제 OS 한글 IME는 실행 가능한 환경에서 직접 확인하고 자동 composition 이벤트와 구분해라. 통과하면 P05를 다음 프롬프트로 지정해라.
+AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V05를 수행해라. PRD의 허용/금지 전환과 필수 조건을 직접 RPC로 독립 검증해라. 검증 없는 Done·타팀 담당자·오래된 version의 통과·현재 상태 필수 필드 삭제·Done 편집을 거부하는지 확인하고, 통과/실패 중간 오류의 상태·검증·activity·receipt 롤백과 재오픈 후 기록 보존을 확인해라. UI의 누락 안내·입력 보존·다이얼로그 취소도 확인하고 FE/DB 불일치를 기록해라. 기존 데이터·문서·V03/V04 NOT_RUN 사실을 보존하고 통과하면 P06을 다음 프롬프트로 지정해라.
 ```
 
 ### D1 / P00 / 2026-09-13
@@ -149,6 +149,18 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V04를 수�
 - 결정: 기존 ADR 02를 전체 Inbox 필드 경합·초안 보존으로 확장. 발생 조건/수정 메모 4,000자·대상 빌드 120자를 PRD에 명시. 패키지/lockfile 버전 변경 없음.
 - NOT_RUN/남음: 독립 V03/V04, 실제 OS 한글 IME·스크린리더·GitHub OAuth·원격 CI·새 clone·전체 AC·사용자 피드백. D4 범위의 알려진 차단 결함 없음. D5에서 상태 CHECK/필수 조건·검증 기록을 함께 확장해야 함.
 - 다음: V04→P05. 핵심 경로는 issues UI/fields, D4 migration, DB/UI tests, README/TEST_REPORT. 로컬 커밋 식별자는 종료 보고 참조; 공개/운영 변경 없음.
+
+### D5 / P05 / 2026-09-20 구현·검증 · 09-21 마무리
+
+- 완료: 상세의 상태 이동 메뉴·입력 다이얼로그로 Inbox→Ready→In Progress→Verify→통과/실패·Done 재오픈. 누락 조건·오류 포커스·취소·기록 조회·Done 편집 잠금 제공.
+- DB: `20260920000100_d5_issue_transitions.sql`을 `pnpm db:migrate`로 적용하고 `pnpm db:types`로 타입 생성. 8개 전환·현재 상태 필수 조건·유효 담당자·최신 version·requestId·검증/activity/receipt 원자성을 강제. reset/seed 재실행 없음.
+- PASS: lint/typecheck/build, Vitest 32/32·실제 DB 38/38·DB UI 13/13(09-20), production smoke 6/6·보호 2/2(09-21 재확인). 기존 테스트 제거/skip 없음.
+- 검증: 25개 상태쌍·필드 편집 우회·오래된 검증·통과/실패 경합·중복 명령·검증/activity 실패 롤백·Viewer/타팀 거부. 실제 브라우저의 실패→수정→통과→재오픈과 390px·초안 유지·같은 요청 재확인 확인.
+- 증거: `docs/evidence/d5-verification-dialog.png`, `d5-done-history.png` 각 1440×1050 실제 DB 흐름 캡처·직접 이미지 확인. D4 캡처는 보존하고 회귀 캡처는 테스트 보고서에 첨부한다.
+- 결정: ADR 02만 version에 묶인 검증/전환으로 확장. 이슈는 Query 목록 1개, 입력은 폼 state, 상세는 URL. 기존 패키지/lockfile·D2~D4 migration 유지, DnD/낙관적 이동 없음.
+- 재개/정리: 종료된 Docker/Supabase 재기동 PASS. 실제 비밀 값 대조는 소스 99·production 198개 일치 0. 최종 사용자/프로필 각 4·팀 3·이슈 1·activity 3·receipt 7·초대 1·검증 0을 보존하고 오류 주입 함수 0 확인.
+- NOT_RUN/남음: 독립 V03/V04/V05·실제 GitHub OAuth·OS IME·스크린리더·원격 CI·전체 AC·사용자 피드백. D5 차단 결함은 발견하지 못했으며 commit 후 응답 유실·DnD/낙관적 이동은 D6, Realtime는 D7이다.
+- 다음: V05→P06. 핵심 파일은 state-rules/transition-menu/issue-history·D5 migration·DB/UI tests·README/TEST_REPORT. 로컬 커밋 식별자는 종료 보고 참조; 외부 공개/운영 변경 없음.
 
 ## 하루 기록 양식
 

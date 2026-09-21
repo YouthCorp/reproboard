@@ -5,6 +5,7 @@ import type { AppSupabase } from "@/lib/supabase/browser";
 import { useMembers } from "@/features/workspaces/use-members";
 import type { Issue } from "./commands";
 import { IssueForm } from "./issue-form";
+import { IssueHistory } from "./issue-history";
 import { boardColumns, completeness, priorities, priorityHelp, reproductions, severities, severityHelp, textFields } from "./fields";
 
 export function IssueDetail({ client, workspaceId, issue, canWrite, loading, error, refreshing, retry, close }: {
@@ -33,8 +34,10 @@ export function IssueDetail({ client, workspaceId, issue, canWrite, loading, err
     {issue && <>
       <div className="completeness"><strong>저장된 재현 정보 {fulfilled!.count}/4 충족</strong><p>{fulfilled!.missing.length ? `누락: ${fulfilled!.missing.join(" · ")}` : "재현 정보 4개를 모두 입력했습니다."}</p></div>
       {issue.assignee_id && assignee?.role === "viewer" && <p role="alert">담당자 재지정 필요: 기존 담당자가 Viewer로 변경됐습니다.</p>}
-      {canWrite ? <IssueForm key={issue.id} client={client} workspaceId={workspaceId} issue={issue} /> : <>
-        <p className="read-only-note">Viewer는 조회만 할 수 있습니다.</p>
+      {canWrite && <IssueForm key={issue.id} client={client} workspaceId={workspaceId} issue={issue} />}
+      {!canWrite && <p className="read-only-note">Viewer는 조회만 할 수 있습니다.</p>}
+      {(!canWrite || issue.status === "done") && <details className="saved-issue-fields" open={issue.status !== "done"}>
+        <summary>저장된 이슈 내용</summary>
         <dl className="issue-read-view">
           {textFields.slice(1).map((field) => <div key={field.key}><dt>{field.label}</dt><dd>{issue[field.key] || "미입력"}</dd></div>)}
           <div><dt>재현 상태</dt><dd>{reproductions[issue.reproduction as keyof typeof reproductions]}</dd></div>
@@ -42,7 +45,8 @@ export function IssueDetail({ client, workspaceId, issue, canWrite, loading, err
           <div><dt>우선순위 (priority)</dt><dd>{priorities[issue.priority as keyof typeof priorities]}<p className="form-hint">{priorityHelp}</p></dd></div>
           <div><dt>담당자</dt><dd>{issue.assignee_id ? assignee?.display_name ?? "담당자 확인 필요" : "미지정"}</dd></div>
         </dl>
-      </>}
+      </details>}
+      <IssueHistory client={client} workspaceId={workspaceId} issueId={issue.id} />
     </>}
   </dialog>;
 }

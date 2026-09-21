@@ -152,6 +152,56 @@ export type Database = {
         }
         Relationships: []
       }
+      verification_runs: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: string
+          issue_id: string
+          issue_version_before: number
+          note: string
+          request_id: string
+          result: string
+          tested_build: string
+          tested_environment: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: string
+          issue_id: string
+          issue_version_before: number
+          note?: string
+          request_id: string
+          result: string
+          tested_build: string
+          tested_environment: string
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: string
+          issue_id?: string
+          issue_version_before?: number
+          note?: string
+          request_id?: string
+          result?: string
+          tested_build?: string
+          tested_environment?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_runs_workspace_id_issue_id_fkey"
+            columns: ["workspace_id", "issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       workspace_members: {
         Row: {
           created_at: string
@@ -234,6 +284,16 @@ export type Database = {
           role: string
           user_id: string
         }[]
+      }
+      transition_issue: {
+        Args: {
+          p_expected_version: number
+          p_issue_id: string
+          p_payload: Json
+          p_request_id: string
+          p_workspace_id: string
+        }
+        Returns: Json
       }
       update_issue: {
         Args: {

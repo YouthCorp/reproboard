@@ -1,8 +1,6 @@
 /* global document, window, KeyboardEvent, CompositionEvent, Event, Option */
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { localDb, localStack, readAccounts } from '../../scripts/local-stack.mjs';
 
@@ -85,16 +83,16 @@ test('D4 structured create/edit/reload/re-entry shares saved board data, with de
   await expect(detail).toHaveCount(0);
   for (const name of ['Inbox','Ready','In Progress','Verify','Done']) await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
   await form.getByRole('button', { name: '추가 필드 입력 (선택)', exact: true }).count().then(async (count) => { if (!count) await form.getByRole('button', { name: '추가 필드 접기', exact: true }).click(); });
-  mkdirSync(resolve('docs/evidence'), { recursive: true });
   await page.setViewportSize({ width: 1440, height: 1050 });
-  const boardCapture = await page.screenshot({ path: 'docs/evidence/d4-board.png', fullPage: true });
+  // D4's committed evidence is historical; later regression runs attach fresh report images.
+  const boardCapture = await page.screenshot({ fullPage: true });
   await info.attach('d4-board', { body: boardCapture, contentType: 'image/png' });
   await card(page, title).getByRole('button').click();
   await expect(detail.getByLabel('수정 메모', { exact: true })).toHaveValue('조회 조건 변경 시 목록을 재조회하도록 수정 예정');
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   expect(await detail.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  const mobileCapture = await page.screenshot({ path: 'docs/evidence/d4-mobile-detail.png' });
+  const mobileCapture = await page.screenshot();
   await info.attach('d4-mobile-detail', { body: mobileCapture, contentType: 'image/png' });
   await page.keyboard.press('Escape');
   await expect(detail).toHaveCount(0);

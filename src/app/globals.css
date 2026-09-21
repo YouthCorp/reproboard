@@ -210,3 +210,25 @@ input, select { min-width: 0; max-width: 100%; padding: 10px 12px; border: 1px s
   .compact-create { grid-template-columns: 1fr; padding: 16px; }
   .compact-create .form-actions { margin-top: 14px; }
 }
+.transition-menu { padding: 16px; margin: 20px 0; background: #f5f7f4; border: 1px solid var(--line); border-radius: 8px; }
+.transition-menu > .form-hint { margin-top: 5px; }
+.transition-options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.transition-dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; padding: 24px; color: var(--ink); background: white; }
+.transition-dialog::backdrop { background: #152b2280; }
+.transition-dialog h2 { font-size: 22px; margin-bottom: 8px; }
+.transition-dialog fieldset { border: 0; padding: 0; margin: 20px 0 0; min-width: 0; }
+.transition-requirements { margin-top: 20px; padding: 14px; background: #fff4dd; border-radius: 6px; }
+.transition-requirements ul { padding-left: 22px; margin-bottom: 0; }
+.verification-intent { margin-bottom: 20px; font-weight: 650; }
+.issue-history { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); }
+.issue-history h3 { font-size: 16px; margin-bottom: 12px; }
+.verification-list, .transition-history { list-style: none; padding: 0; margin: 0 0 24px; }
+.verification-list li, .transition-history li { border-left: 3px solid #cfddd4; padding: 10px 14px; margin-bottom: 12px; overflow-wrap: anywhere; }
+.verification-list p, .transition-history p { margin-top: 6px; white-space: pre-wrap; }
+.verification-pass { color: #12634c; }
+.verification-fail { color: #9d251c; }
+.issue-edit-form[hidden] { display: none; }
+@media (max-width: 650px) { .transition-dialog { padding: 18px; } }
+.saved-issue-fields { margin: 18px 0; border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+.saved-issue-fields summary { cursor: pointer; font-weight: 650; }
+.transition-dialog .stale-draft { overflow-wrap: anywhere; }

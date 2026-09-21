@@ -1,6 +1,31 @@
 # 테스트 실행 보고서
 
-현재 상태: **D4 / P04 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03/V04는 NOT_RUN이다. 기존 V02/D3 본문은 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+현재 상태: **D5 / P05 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03/V04/V05는 NOT_RUN이다. 기존 단계 기록은 아래에 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+
+## D5 실제 결과 — 2026-09-20, 재개·최종 확인 09-21
+
+Windows / PowerShell / Node 24.19.0 / pnpm 11.19.0 / Docker 29.7.2 / PostgreSQL 17.6 / Supabase CLI 2.117.0 / Playwright 1.63.0 Chromium 환경. D4 커밋 `e228a95`의 clean working tree에서 시작했다. 기존 버전·lockfile·D2~D4 migration을 유지하고 데이터 보존형 migration만 추가했다. 일반 터미널의 다른 Node와 섞이지 않도록 검증 프로세스 PATH를 고정했다.
+
+| 명령/검증 | 결과 | 실제 근거와 한계 |
+|---|---|---|
+| `pnpm db:migrate` → `pnpm db:types` | PASS | 09-20 `20260920000100_d5_issue_transitions.sql` 적용과 public 타입 재생성. verification_runs·RLS/SELECT·전환 EXECUTE·상태 CHECK·필드 편집 명령 확장. reset/seed 재실행 없음 |
+| `pnpm lint`, `pnpm typecheck`, `pnpm test` | PASS / 32/32 | 09-20 정적 검사와 Vitest. 기존 3건 + 순수 상태 규칙 29건: 25개 상태쌍·필수 필드·담당자·사유/검증 입력·공백/길이 경계 |
+| `pnpm test:db` | PASS 38/38 | 09-20 기존 D2~D4 29건 + D5 9건. Owner/Member/Viewer/타팀 실제 password 세션의 RPC와 PostgreSQL 사후 조회. test fixture·오류 주입·정리만 postgres 사용 |
+| 전환·편집 우회 | PASS | 실제 DB 25개 상태쌍 중 8개 허용/17개 거부. Ready 재현/분류, In Progress 현재 Owner/Member 담당자, Verify 수정 메모/빌드 조건 검사. 각 상태의 필수 필드 삭제·Done 전체 편집 가능 필드·직접 issues 쓰기 거부. 담당자 강등 후 진행/편집 거부, Ready 복귀·재지정 가능 |
+| 검증 version·입력 | PASS | 버전/환경 필수·실패 이유 필수·최대 길이/공백·null/임의 metadata 주입 거부. 검증 창을 연 뒤 실제 Member가 수정하면 오래된 통과 요청 CONFLICT, 검증/activity/receipt 추가 0 |
+| 동시성·멱등성·원자성 | PASS | 같은 version 통과/실패 경합 성공 1·CONFLICT 1. 같은 requestId 동시 재전송 효과 1회, 다른 payload 재사용 거부, 재오픈 후 과거 receipt 재전송도 추가 효과 없음. request 전용 verification insert 실패와 activity insert 실패를 각각 주입해 이슈/version·검증·activity·receipt 전체 롤백 확인 |
+| 검증 기록·권한 | PASS | 실패→수정→통과→재오픈 후 두 기록과 version_before·행위자·사유 보존. Viewer 읽기 허용/쓰기 거부, 타팀 읽기 0·명령 거부, anon/auth.uid 없는 호출·private helper·직접 verification DML 차단 |
+| `pnpm test:db-ui` | PASS 13/13 | 09-20 기존 10건 + D5 3건. 실제 화면의 제목만 생성→누락 안내/취소→Ready→담당자→In Progress→수정 정보→Verify→실패→수정→통과→Done→재오픈과 DB 확인. 오류 첫 필드 포커스·Escape로 내부 다이얼로그만 닫기·Viewer 기록 읽기·Done 본문 잠금·390px 수평 overflow 없음 |
+| 충돌·전송 장애 UI | PASS / 일부 NOT_RUN | 실제 원격 수정 후 오래된 검증 거부·입력 보존·최신 내용 펼치기·명시적 재검증 성공. 전송 전 route.abort는 DB/상태 불변, 같은 requestId 재확인으로 검증 1회. **DB commit 후 응답 유실은 NOT_RUN**이며 D6에서 별도로 검증한다 |
+| `pnpm build`, `pnpm test:e2e` | PASS / 6/6 | 09-20 production build exit 0. 중단된 실행 세션의 완료 출력은 복구되지 않아 09-21 smoke를 다시 실행해 6/6 확인. 익명 보드/로그인·404·키보드·390px·개발 자격 미노출·응답 캐시 경계 |
+| `pnpm test:local-tools` | PASS 2/2 | 09-21 원격/잘못된 DB 대상 및 확인 없는 reset 거부. 전체 실행 테스트는 Vitest 32 + DB 38 + DB UI 13 + smoke 6 + 보호 2 = 91건 |
+| 캡처 | PASS | `docs/evidence/d5-verification-dialog.png`, `d5-done-history.png`, 각각 1440×1050. 실제 별도 합성 팀의 UI/DB 흐름에서 생성 후 이미지 직접 확인. D4의 기존 PNG는 보존하며 회귀 캡처를 실행 보고서 첨부로 전환. 실제 사용자 피드백·영상은 없음 |
+| 환경 재개·비밀 값·정리 | PASS / 초기 환경 FAIL 복구 | 09-21 초기 Docker 엔진 파이프 부재로 localStack 조회 실패. `docker desktop start --timeout 45` → `pnpm db:start` exit 0, 엔진 29.7.2·dev Ready 복구. 소스 후보 99·production 198개에서 실제 합성 비밀번호/JWT/secret/service 값 일치 0. 원문 미출력 |
+| 후속·외부 검증 | NOT_RUN | 독립 V03/V04/V05·실제 GitHub OAuth(provider=false)·원격 CI·새 clone·전체 AC01~16·OS 한글 IME 후보창·스크린리더·DnD·Realtime·전체 오프라인 복구·실제 사용자 피드백 |
+
+재개 후 SQL 조회는 합성 사용자/프로필 각 4·팀 3·이슈 1·activity 3·receipt 7·초대 1·검증 0, D2~D5 오류 주입 함수 0이었다. 기존 팀의 이슈와 기록은 그대로 보존했다. DB/UI 테스트는 자신이 만든 팀 UUID와 관련 행만 finally에서 정리하며 원래 데이터를 삭제하지 않는다. 생성된 브라우저 인증 정보·trace·storageState는 커밋하지 않는다.
+
+알려진 D5 차단 결함은 발견하지 못했다. 일반 거부와 다이얼로그 취소는 상태를 바꾸지 않는다. 상태 변경은 서버 성공 후 조회로 반영하며 낙관적 이동은 아직 없다. 검증 기록은 특정 이슈 version에 연결되며 새 수정 내용을 과거 통과 기록으로 완료 처리할 수 없다. 상세 닫기/페이지 이탈의 미저장 초안 복구와 전체 네트워크 장애 복구는 제공하지 않는다. D5 관련 검증 통과를 독립 V05 또는 전체 수용 기준 통과로 올리지 않았다.
 
 ## D4 실제 결과 — 2026-09-16, 재개·최종 검증 09-20
 

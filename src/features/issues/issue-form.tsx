@@ -6,6 +6,8 @@ import type { AppSupabase } from "@/lib/supabase/browser";
 import { useMembers } from "@/features/workspaces/use-members";
 import { executeIssueCommand, type Issue, type IssueCommand } from "./commands";
 import { completeness, issueValues, normalized, priorities, priorityHelp, reproductions, severities, severityHelp, textFields, validateFields, type FieldErrors, type IssueValues } from "./fields";
+import { stateFieldErrors } from "./state-rules";
+import { TransitionMenu } from "./transition-menu";
 
 export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase; workspaceId: string; issue?: Issue }) {
   const id = useId();
@@ -23,6 +25,8 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
   const mutation = useMutation({ mutationFn: (command: IssueCommand) => executeIssueCommand(client, command), retry: false, networkMode: "always" });
   const stale = !!issue && baseVersion !== issue.version;
   const locked = mutation.isPending || !!unconfirmed;
+  const done = issue?.status === "done";
+  const dirty = JSON.stringify(normalized(draft)) !== JSON.stringify(issueValues(issue));
   const fulfilled = completeness(draft);
   function change(key: keyof IssueValues, value: string | null) {
     setDraft((previous) => ({ ...previous, [key]: value }));
@@ -33,8 +37,9 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
   }
   async function submit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (mutation.isPending || composing.current) return;
-    const validation = validateFields(draft, members.data ?? [], issue?.assignee_id);
+    if (mutation.isPending || composing.current || done) return;
+    const assigneeValid = !!draft.assignee_id && !!members.data?.some((m) => m.user_id === draft.assignee_id && (m.role === "owner" || m.role === "member"));
+    const validation = { ...validateFields(draft, members.data ?? [], issue?.assignee_id), ...stateFieldErrors(issue?.status ?? "inbox", draft, assigneeValid) };
     if (!unconfirmed && Object.keys(validation).length) {
       setErrors(validation); setExpanded(true); setMessage("입력 오류를 확인하세요.");
       focusField(Object.keys(validation)[0]); return;
@@ -80,10 +85,15 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
         {Object.entries(options).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
       </select><p className="form-hint" id={`${id}-${key}-hint`}>{errors[key] || help}</p></div>;
   }
-  return <form ref={form} className={issue ? "issue-edit-form" : `issue-create-form${expanded ? "" : " compact-create"}`} onSubmit={submit} noValidate
+  return <>
+    {issue && <TransitionMenu client={client} issue={issue} blocked={locked || (!done && (dirty || stale))} saved={(saved) => {
+      if (!dirty) { setDraft(issueValues(saved)); setBaseVersion(saved.version); }
+    }} />}
+    {done && <p className="read-only-note">Done의 본문은 잠겨 있습니다. 재오픈 후 편집할 수 있습니다.{dirty && " 작성 중이던 초안은 재오픈 전까지 보존합니다."}</p>}
+    <form ref={form} hidden={done} className={issue ? "issue-edit-form" : `issue-create-form${expanded ? "" : " compact-create"}`} onSubmit={submit} noValidate
     onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }}
     onKeyDown={(event) => { if (event.key === "Enter" && (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229)) event.preventDefault(); }}>
-    <fieldset disabled={locked}>
+    <fieldset disabled={locked || done}>
       <legend className="sr-only">{issue ? "이슈 편집" : "Inbox 이슈 등록"}</legend>
       {textControl(textFields[0])}
       {!issue && <button className="disclosure-button" type="button" aria-expanded={expanded} aria-controls={`${id}-fields`} onClick={() => setExpanded(!expanded)}>{expanded ? "추가 필드 접기" : "추가 필드 입력 (선택)"}</button>}
@@ -102,7 +112,7 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
           {members.isPending && <p role="status">담당자 목록을 불러오는 중…</p>}
           {members.isError && <p role="alert">담당자를 불러오지 못했습니다. <button type="button" onClick={() => members.refetch()}>담당자 다시 조회</button></p>}
         </div>
-        <p className="form-hint">수정 메모·대상 빌드는 선택 입력입니다. Verify 진입 시 필수이며 상태 이동은 다음 단계에서 제공됩니다.</p>
+        <p className="form-hint">수정 메모·대상 빌드는 Verify부터 필수입니다. 현재 상태의 필수 정보는 이전 상태로 이동한 뒤 지울 수 있습니다.</p>
         {textFields.slice(6).map(textControl)}
       </div>
     </fieldset>
@@ -112,5 +122,5 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
     <div className="form-actions"><button className="button button-primary" type="submit" disabled={mutation.isPending || (stale && !unconfirmed)}>{mutation.isPending ? "저장 중…" : unconfirmed ? "같은 요청으로 다시 확인" : issue ? "변경 저장" : "Inbox에 생성"}</button>
       <span className="form-hint">{issue ? "저장 전 입력은 이 폼에만 유지됩니다." : "제목만 입력해도 Inbox에 등록할 수 있습니다."}</span></div>
     <p className="form-message" role="status" tabIndex={-1}>{message}</p>
-  </form>;
+  </form></>;
 }

@@ -2,7 +2,7 @@
 
 소규모 개발팀이 버그 재현 정보를 모으고, 수정 후 재검증까지 관리하는 협업 보드.
 
-**현재 상태: D4 실제 보드·상세·구조화 입력 구현.** 제목만으로 Inbox에 등록하고 재현 정보·분류·담당자·수정 메모를 편집할 수 있다. D3의 팀 생성, 1회용 Member 초대, Member↔Viewer 변경을 유지한다. GitHub OAuth·PKCE 콜백 코드는 있으며 외부 OAuth 앱 등록 전 실제 GitHub 로그인은 NOT_RUN이다. 상태 전환·실시간 협업은 아직 없다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)를 기준으로 구분한다.
+**현재 상태: D5 상태 전환·재검증·재오픈 구현.** 제목만으로 Inbox에 등록하고 재현 정보·분류·담당자·수정 내용을 갖춰 상태를 이동한다. Verify에서 통과/실패를 기록하고, Done은 사유를 남겨 재오픈한다. D3의 팀·초대·역할 기능을 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN이며 DnD·낙관적 이동·Realtime는 후속 단계다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)를 기준으로 구분한다.
 
 ## 왜 만드는가
 
@@ -12,9 +12,17 @@
 
 로그인 전 `/board`는 데이터 없는 5단계 미리보기다. 로컬 설정 후 `/login`에서 합성 Owner/Member/Viewer/다른 팀 Owner를 선택하면 실제 Supabase 세션으로 전환한다. 로그인 후 새 팀을 만들면 Owner가 되고, 팀 멤버 패널에서 초대 링크를 생성하거나 Member↔Viewer를 변경한다. `/invite`에서 로그인 후 명시적으로 수락한다. Viewer는 읽기 전용이고 다른 팀 데이터는 표시되지 않는다. GitHub 버튼은 실제 provider 설정 상태에 따라 활성화된다. 실제 협업 영상과 `/demo`는 D13 범위이며 아직 없다.
 
-로그인한 보드의 5개 열은 같은 Query 목록에서 렌더링된다. D4에서는 Inbox 등록·편집만 제공하므로 나머지 열은 비어 있다. 카드를 누르면 `?workspace=…&issue=…`의 상세가 열리고 새로고침·주소 공유·뒤로가기로 복원된다. 제목은 1~120자, 재현 본문·발생 조건·수정 메모는 각각 4,000자, 대상 빌드는 120자까지이며 trim 후 코드 포인트로 센다. 재현 정보 0~4 충족 수와 누락 항목은 입력 상태를 나타낸다.
+로그인한 보드의 5개 열은 같은 Query 목록에서 렌더링된다. 카드를 누르면 `?workspace=…&issue=…`의 상세가 열리고 새로고침·주소 공유·뒤로가기로 복원된다. 제목은 1~120자, 재현 본문·발생 조건·수정 메모는 각각 4,000자, 대상 빌드는 120자까지이며 trim 후 코드 포인트로 센다. 재현 정보 0~4 충족 수와 누락 항목은 입력 상태를 나타낸다.
 
 편집 초안은 저장된 값과 분리한다. 다른 저장 후 최신 상세를 조회해도 초안은 유지하며, 충돌 안내에서 **최신 값으로 다시 편집**을 누르면 폼 전체가 최신 서버 값으로 교체된다. 저장하지 않고 상세를 닫으면 초안은 폐기된다. 심각도는 영향, 우선순위는 처리 순서이며 자동으로 연결하지 않는다. [실제 보드 캡처](docs/evidence/d4-board.png) · [390px 상세 캡처](docs/evidence/d4-mobile-detail.png)는 합성 팀의 실제 DB 흐름에서 생성했다.
+
+D5의 상태 이동은 상세 상단 메뉴에서 확정하며 서버 성공 후 보드에 반영한다. 아래 순서로 직접 확인할 수 있다.
+
+1. 제목만 생성한 이슈에서 Ready 이동을 누르면 누락 조건이 보인다. 재현 4개 필드·재현됨/간헐적 재현(발생 조건 포함)·심각도·우선순위를 저장한 뒤 Ready로 이동한다. 같은 팀 Owner/Member를 담당자로 저장하면 In Progress로 이동할 수 있다.
+2. 수정 메모·대상 빌드를 저장하고 Verify로 이동한다. **검증 실패 → In Progress**는 검증한 앱 버전·환경·실패 이유를 요구한다. 수정 후 다시 Verify에서 **검증 통과 → Done**을 선택하고 실제 검증 버전·환경을 남긴다.
+3. Done에서 본문 편집이 잠겼는지 확인한다. **재오픈 → Inbox**에 사유를 입력하면 다시 편집할 수 있고 과거 통과/실패 기록은 남는다. Ready→Inbox와 In Progress→Ready도 이동 사유가 필요하다.
+
+입력 다이얼로그의 취소는 상태를 바꾸지 않는다. 현재 상태의 필수 정보는 일반 편집으로 지울 수 없다. 검증 중 이슈 version이 달라지면 입력을 보존하고 최신 내용을 확인한 뒤 다시 검증하도록 안내한다. 결과를 확인하지 못한 전송은 같은 requestId로 명시적으로 재확인한다. [검증 다이얼로그](docs/evidence/d5-verification-dialog.png) · [Done과 과거 기록](docs/evidence/d5-done-history.png)은 실제 DB 흐름의 캡처다.
 
 ## 구현 목표
 
@@ -44,7 +52,7 @@ pnpm dev
 |---|---|
 | `pnpm lint` | ESLint·TypeScript·React Hooks·Next Core Web Vitals 규칙 |
 | `pnpm typecheck` | Next 라우트 타입 생성 후 TypeScript 검사 |
-| `pnpm test` | Vitest + Testing Library UI 테스트 |
+| `pnpm test` | Vitest 순수 상태 규칙 + Testing Library UI 테스트 |
 | `pnpm test:watch` | 같은 테스트의 개발용 watch 모드 |
 | `pnpm build` | production build |
 | `pnpm start` | 빌드된 앱 실행, 기본 3000 포트 |
@@ -52,7 +60,7 @@ pnpm dev
 | `pnpm test:e2e` | production 서버를 3100 포트에서 자동 실행·종료하는 smoke 테스트 |
 | `pnpm test:local-tools` | 원격/잘못된 DB 대상·확인 없는 reset 거부 검사, Docker 없이 실행 가능 |
 | `pnpm test:db` | 실제 로컬 세션의 RLS/RPC·동시성·원자성 검증. 로컬 스택·migration·seed 필요 |
-| `pnpm test:db-ui` | 실제 구조화 생성·편집·URL 상세·초안 보존·오류/재시도·모바일·IME 이벤트, 기존 팀/인증 흐름 |
+| `pnpm test:db-ui` | 실제 생성/편집·상태 이동·실패/통과/재오픈·version 충돌·명령 재확인, URL·초안·모바일·IME 이벤트·팀/인증 회귀 |
 
 `test:e2e` 전에 `pnpm build`와 브라우저 설치가 필요하다. 보드↔로그인, 404, 키보드, 390px 및 production의 개발 로그인 미노출을 검증한다. 이 smoke와 실제 DB 테스트는 별도다. `test:db-ui`는 아래 로컬 준비 후 실행하며, 3000 포트의 기존 개발 서버를 사용하거나 없으면 자동 시작한다. 기존 서버의 환경 값이 바뀌었다면 재시작한다. 실행 중에는 동일한 합성 계정을 수동 조작하지 않는다.
 
@@ -80,7 +88,7 @@ Studio는 [127.0.0.1:54323](http://127.0.0.1:54323), API는 `http://127.0.0.1:54
 
 `db:migrate`는 `supabase migration up --local`, `db:types`는 `supabase gen types typescript --local --schema public`을 실행하는 보호된 wrapper다. 생성된 `src/lib/supabase/database.types.ts`는 커밋하며 SQL 변경 후 다시 생성한다. 타입의 Insert/Update 정의는 DB 쓰기 권한을 뜻하지 않는다.
 
-D3 환경에서 D4로 올릴 때는 Docker 시작 후 `pnpm db:start` → `pnpm db:migrate` → `pnpm db:types` → `pnpm dev` 순서로 실행한다. `20260916000100_d4_issue_fields.sql`은 기존 이슈를 기본값으로 확장한다. `.env.local`·계정 재생성이나 DB reset은 필요하지 않다. 외부 OAuth 설정도 D4 로컬 개발의 선행 조건이 아니다.
+D3/D4 환경에서 D5로 올릴 때는 Docker 시작 후 `pnpm db:start` → `pnpm db:migrate` → `pnpm db:types` → `pnpm dev` 순서로 실행한다. D4 migration은 기존 이슈를 기본값으로 확장하고 `20260920000100_d5_issue_transitions.sql`은 상태 조건·전환 명령·검증 기록을 추가한다. 기존 migration을 수정하거나 reset하지 않는다. `.env.local`·계정 재생성은 필요하지 않고 외부 OAuth 설정도 로컬 기능 개발의 선행 조건이 아니다.
 
 `db:seed`는 합성 계정 4개와 팀 2개를 생성한다. 무작위 비밀번호는 gitignore된 `.local/dev-accounts.json`에만 저장하며 터미널·채팅에 출력하지 않는다. 재실행 시 합성 계정의 비밀번호·역할을 준비하고 기존 이슈는 보존한다. 같은 예약 이메일/팀 UUID가 다른 데이터에 사용 중이면 중단한다. 테스트 DB에서만 고정된 합성 식별자를 사용한다. Supabase 기본 SQL seed는 꺼져 있어 명시적으로 이 명령을 실행해야 한다.
 
@@ -125,7 +133,7 @@ SSR 쿠키 갱신은 Proxy의 `getClaims()`가 검증하고 콜백은 `exchangeC
 
 Supabase SDK **2.116.0**(Node ≥22), SSR **0.12.7**(SDK peer `^2.114.0`), 로컬 검증용 pg **8.23.0**(Node ≥16)을 정확히 고정했다. Root layout과 페이지는 Server Component이며 Query provider는 보드·초대 화면의 상호작용 경계에만 둔다. 이슈 목록은 `['issues', workspaceId]` Query 캐시에서 읽는다. 제목 초안은 폼 로컬 state, 팀 선택은 URL `?workspace=`에 둔다. 공유 임시 UI가 없어 Zustand는 도입하지 않았다.
 
-제목 RPC `create_issue`/`update_issue`에 D3의 `create_workspace`, `create_invite`, `accept_invite`, `change_member_role`을 추가했다. 읽기 RPC는 최소 표시 이름·역할 목록과 권한표만 제공한다. `auth.uid()`·현재 팀 역할을 재검사하고 같은 사용자/팀/requestId의 실행을 트랜잭션 잠금으로 직렬화한다. 이슈 수정은 expectedVersion, 역할 변경은 expectedRole을 검사한다. 명령 효과와 receipt를 함께 저장하며 이슈는 activity도 포함한다. 초대 원문은 receipt에도 저장하지 않는다. 동일 requestId/다른 payload는 VALIDATION, 오래된 기준은 CONFLICT다. 정상 거부와 SDK/전송 오류를 구분하며 미확정 결과는 같은 요청으로 명시적으로 확인한다. 자동 재시도·오프라인 큐는 없다. 응답 유실 장애 주입 검증은 D6 이후다.
+이슈 RPC `create_issue`/`update_issue`/`transition_issue`와 팀·초대·역할 명령은 `auth.uid()`·현재 팀 역할을 재검사하고 같은 사용자/팀/requestId를 트랜잭션 잠금으로 직렬화한다. 이슈 수정/전환은 expectedVersion, 역할 변경은 expectedRole을 검사한다. 검증 시 현재 version에 연결된 `verification_runs`와 상태·activity·receipt를 한 트랜잭션으로 저장한다. 결과·행위자·시각·version은 서버가 결정하며 클라이언트 직접 테이블 쓰기는 차단한다. 초대 원문은 receipt에도 저장하지 않는다. 동일 requestId/다른 payload는 VALIDATION, 오래된 기준은 CONFLICT다. 정상 거부와 전송 오류를 구분하며 미확정 결과는 같은 요청으로 명시적으로 확인한다. 자동 재시도·오프라인 큐는 없다. D5는 전송 전 abort/재확인을 검증했고 DB commit 후 응답 유실은 D6에서 검증한다.
 
 ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는 ESLint 10을 지원하지 않아, ESLint 10.10.0에 호환되는 TypeScript·React Hooks·공식 Next 플러그인을 직접 구성했다. 규칙 전체를 끄거나 peer 조건을 무시하지 않았다. `agentRules: false`는 Next 개발 서버가 기존 AGENTS.md를 자동 수정하는 것을 막는다.
 
@@ -137,13 +145,14 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 ## 코드 길잡이
 
-현재 파일과 책임이다. 구조화 재현 정보·상태 전환·실시간 협업 코드는 아직 없다.
+현재 파일과 책임이다. Realtime·낙관적 이동은 아직 구현하지 않았다.
 
 | 영역 | 책임 |
 |---|---|
 | [src/app](src/app) | Root layout, `/board`, `/login`, `/invite`, `/auth/callback`, 오류·로딩·404 경계 |
 | [src/features/issues/board-shell.tsx](src/features/issues/board-shell.tsx) | 5단계의 데이터 없는 보드 |
-| [src/features/issues/live-board.tsx](src/features/issues/live-board.tsx), [issue-form.tsx](src/features/issues/issue-form.tsx) | 세션별 읽기·Inbox 제목 생성/수정·충돌 입력 보존 |
+| [src/features/issues/live-board.tsx](src/features/issues/live-board.tsx), [issue-form.tsx](src/features/issues/issue-form.tsx) | Query 보드·구조화 생성/편집·상태별 필수 정보·초안 보존 |
+| [state-rules.ts](src/features/issues/state-rules.ts), [transition-menu.tsx](src/features/issues/transition-menu.tsx), [issue-history.tsx](src/features/issues/issue-history.tsx) | 순수 전환 규칙·입력 다이얼로그·통과/실패/이동 기록 |
 | [src/features/auth](src/features/auth), [src/proxy.ts](src/proxy.ts) | GitHub/개발 로그인·쿠키 갱신·만료 안내·로그아웃과 Query 캐시 정리 |
 | [src/features/workspaces](src/features/workspaces) | 팀 생성·초대 링크·초대 수락·Member/Viewer 변경 |
 | [scripts](scripts) | 로컬 대상 보호·migration/type/env·합성 계정 준비 |
@@ -161,4 +170,4 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 [기여 안내](CONTRIBUTING.md), [보안 제보 안내](SECURITY.md), [MIT 라이선스](LICENSE).
 
-개인 프로젝트이며 D1~D3 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 CASE_STUDY에 단계별 증거와 함께 정리한다. 실제 팀 사용·성능 개선 성과는 아직 측정하지 않았다.
+개인 프로젝트이며 D1~D5 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 CASE_STUDY에 단계별 증거와 함께 정리한다. 실제 팀 사용·성능 개선 성과는 아직 측정하지 않았다.

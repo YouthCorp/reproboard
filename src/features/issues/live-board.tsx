@@ -50,7 +50,7 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
     </div>
     {signOutError && <p role="alert">{signOutError}</p>}
     <div className="page-heading"><div><h1>버그 보드</h1><p>재현에 필요한 정보를 모으고, 다음 작업을 준비하세요.</p></div></div>
-    <p className="connection-notice">실제 팀 데이터가 DB에 저장됩니다. 개발 계정의 팀은 합성 데이터입니다. 상태 전환·재검증·실시간 반영은 아직 지원하지 않습니다.</p>
+    <p className="connection-notice">실제 팀 데이터가 DB에 저장됩니다. 개발 계정의 팀은 합성 데이터입니다. 상세에서 상태 이동·재검증을 기록할 수 있습니다. 실시간 반영은 아직 지원하지 않습니다.</p>
     <WorkspaceCreate client={client} />
     {workspaces.isError && workspaces.data && <p role="alert">최신 팀을 확인하지 못했습니다. <button onClick={() => workspaces.refetch()}>팀 다시 조회</button></p>}
     {workspaces.isPending ? <p role="status">팀을 불러오는 중…</p> : !workspaces.data ?

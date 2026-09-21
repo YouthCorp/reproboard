@@ -1,6 +1,17 @@
 # 기술 계약과 아키텍처
 
-상태: D4 구조화 입력·보드·상세와 D3 인증·팀·권한 구현. 아래 전체 계약 중 실제 경로는 다음 절과 PROGRESS에 표시하며 이후 단계의 기능을 구현 완료로 간주하지 않는다.
+상태: D5 상태 전환·재검증·재오픈과 D3~D4 인증·팀·권한·구조화 보드 구현. 아래 전체 계약 중 실제 경로는 다음 절과 PROGRESS에 표시하며 이후 단계의 기능을 구현 완료로 간주하지 않는다.
+
+## D5 실제 구현과 경계
+
+- migration `20260920000100_d5_issue_transitions.sql`은 상태 CHECK를 5개로 확장하고 상태별 정적 필드 CHECK 및 `public.verification_runs`를 추가한다. 검증 기록은 같은 팀/이슈 복합 FK, 사용자/팀/requestId receipt FK, `(workspace_id, issue_id, issue_version_before)` unique로 묶는다. RLS는 팀 멤버 SELECT만, anon/클라이언트 직접 DML은 거부한다.
+- 순수 `state-rules.ts`와 DB `private.issue_state_errors`가 Ready 재현/분류·In Progress 유효 담당자·Verify/Done 수정 메모/빌드 조건을 표현한다. DB helper는 직접 실행을 허용하지 않고 현재 담당자 membership을 잠근 명령에서 호출한다. 기존 `update_issue`도 제안된 필드 전체의 현재 상태 조건을 검증하며 Done의 새 편집은 거부한다.
+- `transition_issue(workspace, issue, expectedVersion, requestId, payload)`는 auth.uid 확인 → 요청 advisory lock → Owner·Member membership 잠금/receipt 확인 → 이슈 행 잠금/version 비교 → 8개 전환과 입력/담당자 검사 → 검증 기록/상태/version/activity/receipt 단일 트랜잭션 순서다. public 명령은 빈 search_path SECURITY DEFINER이며 일반 사용자에게 해당 EXECUTE만 추가한다.
+- payload는 `{target_status}`, 되돌림/재오픈은 `{target_status, reason}`, Verify 결과는 `{target_status, verification: {tested_build, tested_environment, note?}}`만 받는다. 검증 결과 pass/fail은 이동 방향에서, actor/issue_version_before/시각은 현재 세션·잠근 이슈에서 정한다. 추가 사용자/결과/version 주입과 허용되지 않는 필드는 거부한다.
+- 검증한 버전/환경·실패 이유와 돌아간 사유를 별도 기록으로 보존한다. Verify→Done의 pass는 바로 이전 version과 일치하며 같은 요청 중복은 기록을 추가하지 않는다. 오래된 성공 receipt를 다시 받아도 Query를 그 응답으로 덮지 않고 현재 이슈·기록을 재조회한다.
+- `transition-menu.tsx`는 저장된 이슈만 이동한다. 편집 초안/미확정 저장이 있으면 이동을 잠그고 이동 입력은 중첩 HTML dialog에서 관리한다. 취소/확정 거부 시 상태 캐시를 바꾸지 않는다. 검증 중 version 변경은 입력을 보존하고 최신 본문 확인과 명시적 재시도를 요구한다. 전송 결과 불명은 같은 requestId로 재확인하며 자동 쓰기 재시도는 없다.
+- Done에서는 저장된 본문을 읽기 전용으로 접어 보여주고 검증/상태 이력을 표시한다. 다른 사용자에 의한 Done 전환 때 작성 중이던 폼 초안은 숨겨 보존하며 재오픈 후 명시적으로 최신 값과 비교할 수 있다. `verification-runs`/`transitions` Query는 각각 별도 서버 기록의 소유자이며 이슈 자체는 여전히 보드와 상세가 같은 `issues` Query를 사용한다.
+- 기존 D2~D4 migration과 requestId 해시 형식을 유지한다. DnD/낙관적 overlay/Realtime/댓글은 추가하지 않았다. 이후 명령도 동일한 상태 불변 조건을 검사해야 한다.
 
 ## D4 실제 구현과 경계
 
