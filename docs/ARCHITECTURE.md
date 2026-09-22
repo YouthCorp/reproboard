@@ -1,6 +1,19 @@
 # 기술 계약과 아키텍처
 
-상태: D6 DnD·요청별 낙관적 이동·결과 재확인과 D3~D5 인증·팀·구조화 보드·상태 규칙 구현. 아래 전체 계약 중 실제 경로는 다음 절과 PROGRESS에 표시하며 이후 단계의 기능을 구현 완료로 간주하지 않는다.
+상태: D7 실제 실시간 구독·충돌 복구와 D3~D6 인증·팀·보드·상태 규칙·낙관적 이동 구현. 아래 전체 계약 중 실제 경로는 다음 절과 PROGRESS에 표시하며 이후 단계의 기능을 구현 완료로 간주하지 않는다.
+
+## D7 실제 구현과 경계
+
+- `20260921000100_d7_issue_realtime.sql`이 `public.issues`만 `supabase_realtime` publication에 추가한다. 기존 RLS·SELECT grant·RPC-only 쓰기는 변경하지 않는다. receipt·프로필·초대는 publication에 넣지 않으며 DELETE 구독/하드 삭제 기능은 없다.
+- `IssueRealtime`은 로그인 사용자/팀의 `IssueCommands` 경계에서 현재 세션의 Supabase client로 INSERT/UPDATE를 구독한다. `workspace_id=eq.<id>`는 조회 범위를 줄이는 필터이며 권한 판단은 서버 RLS다. cleanup은 coordinator를 중지하고 해당 channel을 제거한다.
+- 초기 일반 조회는 먼저 화면을 채울 수 있다. `SUBSCRIBED` 뒤에는 이전 진행 중 조회를 `cancelQueries`로 취소하고 관련 Query를 강제 재조회한다. SDK GET에 Query AbortSignal을 연결한다. 구독 전에 시작한 요청을 구독 후의 최신 조회로 재사용하지 않는다.
+- `realtime-refresh.ts`는 50ms 병합 대기와 dirty bit를 사용한다. 조회 도중 수신한 이벤트는 다음 조회를 예약하며, 그 조회까지 끝나야 구독 중 안내로 바뀐다. 데이터는 이벤트 payload에서 가져오지 않고 issues/verification-runs/transitions/membership/members Query를 통해 다시 읽는다. 같은 이벤트를 두 번 전달해도 배열 append가 없다.
+- D6의 version 병합과 overlay를 그대로 사용한다. 더 높은 서버 version은 pending 표시/잠금을 유지하면서 실제 상태를 표시한다. 늦은 성공·거부가 최신 Query나 다른 카드의 성공을 이전 값으로 복구하지 않는다.
+- `ConflictRecovery`는 같은 Query의 서버 값과 폼 로컬 초안을 비교한다. 입력 복사는 명시적 클릭에서만 클립보드에 쓰며 거부 시 선택 가능한 읽기 전용 텍스트를 제공한다. 최신 값으로 다시 편집은 폼과 기준 version만 교체하고 다음 명시적 저장이 새 requestId를 만든다. Done으로 바뀌어도 보존한 초안 복사/비교는 노출한다.
+- 충돌 정책은 이슈 단위이며 서로 다른 필드도 충돌한다. 실제 두 browser context의 Owner/Member가 version N으로 보낸 서로 다른 필드 수정은 성공 1·CONFLICT 1이었다. DB의 기존 행 잠금/expectedVersion/원자적 activity·receipt를 사용하며 새 우회 명령을 추가하지 않았다.
+- 최초 구독·조회 중 변경, 실제 프레임 중복, 두 사용자 초안·pending·다른 카드·늦은 성공은 D7 검증 범위다. HTTP/WS 구분·폴링·단절 복구·권한 철회/재마운트 전체 행렬·영속 초안/미확정 요청 복원은 D8 이후다. Realtime의 정확히 한 번 전달을 보장하지 않는다.
+
+공식 근거(2026-09-21 확인): [Supabase Postgres Changes와 publication/RLS](https://supabase.com/docs/guides/realtime/postgres-changes), [QueryClient cancel/invalidate](https://tanstack.com/query/latest/docs/framework/react/reference/classes/QueryClient), [Playwright의 실제 WebSocket 프록시](https://playwright.dev/docs/api/class-websocketroute). SDK 2.116.0과 Query 5.102.8의 설치 코드/타입으로 API를 대조했으며 패키지·lockfile 변경은 없다. 구독 후 조회와 dirty bit는 프로젝트의 조정 로직이다.
 
 ## D6 실제 구현과 경계
 

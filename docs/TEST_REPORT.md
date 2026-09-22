@@ -1,6 +1,36 @@
 # 테스트 실행 보고서
 
-현재 상태: **D6 / P06 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03~V06는 NOT_RUN이다. 기존 단계 기록은 아래에 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+현재 상태: **D7 / P07 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03~V07는 NOT_RUN이다. 기존 단계 기록은 아래에 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+
+## D7 실제 결과 — 2026-09-21, 최종 점검 09-22
+
+Windows 25H2 / PowerShell 7.6.5 / Node 24.19.0 / pnpm 11.19.0 / Docker 29.7.2 / PostgreSQL 17.6 / Supabase CLI 2.117.0 / Playwright 1.63.0 Chromium. 시작 커밋 `d94bb30`, working tree clean. 기존 이슈 1개·activity 11·검증 1·receipt 15 등 작업 시작 시 실제 수를 기준으로 보존했다. 패키지·lockfile·env 변경, reset/seed, 외부 공개는 없다.
+
+| 명령/검증 | 결과 | 실제 근거와 한계 |
+|---|---|---|
+| `pnpm db:migrate` → `pnpm db:types` | PASS | 보호된 loopback DB에 `20260921000100_d7_issue_realtime.sql` 적용. public.issues만 supabase_realtime에 등록, RLS 유지. 생성 타입은 기존과 동일. 기존 migration은 수정하지 않음 |
+| `pnpm lint`, `pnpm typecheck`, `pnpm build` | PASS | 기존 pin 환경, lint 경고 0·타입·production build 성공. 마지막 테마 변수 정정 뒤 lint/build 재실행 PASS |
+| `pnpm test` | PASS 44/44 | D6 39건 + coordinator 5건. 구독 전 이벤트/중복, 조회 중 trailing read, 오류 후 잘못된 정상 표시 차단, cleanup 후 timer/late callback 차단, read 오류의 무한 재시도 방지. 이 5건은 fake timer/adapter 검사이며 실제 backend 증거는 아래 |
+| `pnpm test:db-ui` | PASS 20/20 | 기존 17건 모두 유지 + D7 3건. 서로 다른 browser context·각각 Owner/Member 실제 로그인. 전체 통과 뒤 상대 필드 보존 assertion을 포함한 D7 3건 재실행, 최종 녹화 1건도 PASS. HTML 보고서는 마지막 1건으로 갱신됨 |
+| 동시 수정·복구 | PASS | 두 폼이 version N에서 제목/환경을 각각 수정. 실제 RPC 전송을 두 건 모두 모아 해제해 성공 1·CONFLICT 1, 최종 N+1, 두 requestId의 activity/receipt 합계 각각 1. 패자의 초안·clipboard 내용 유지. 비교/복사만으로 추가 POST 없음. 명시적 다시 편집 후 새 requestId·expectedVersion N+1로 저장, 상대가 수정한 필드 유지·N+2 |
+| 첫 진입·중복 이벤트 | PASS | A의 실제 WS phx_join을 전송 전 보류, 초기 GET 뒤 B가 변경. 구독을 완료시킨 후 최신 GET을 실제 응답 생성 뒤 보류하고 B가 다시 변경. 실제 postgres_changes 프레임을 프록시에서 두 번 전달. trailing GET 후 최신 제목·카드 1개, B의 추가 생성도 A에 1개만 표시. 가짜 성공/가짜 DB 이벤트는 만들지 않음 |
+| pending·늦은 응답 | PASS | A의 전환을 DB 전송 전 보류하는 동안 B 카드 이동 성공·Member의 A 수정이 실제 Realtime로 반영. A는 새 서버 상태를 표시하면서 저장 중/잠금 유지, 뒤늦은 CONFLICT는 B를 취소하지 않음. 후속 A 이동은 실제 commit 후 성공 응답만 보류→Member가 더 높은 version으로 이동→원격 최신 상태 반영→과거 성공 해제, 최신 상태 유지 |
+| `pnpm test:db` | PASS 39/39 | 기존 권한·직접 DML 거부·version/멱등성·원자성 38건 + 실제 Realtime/RLS 1건. Viewer/타팀 사용자가 필터 없는 INSERT/UPDATE를 구독해도 각자 팀만 수신. 양쪽 허용 이벤트 도착 후 2초의 명시적 부재 관찰·타팀 REST 빈 결과. 이 한정된 관찰을 모든 네트워크/권한 철회 상황의 증명으로 확장하지 않음 |
+| `pnpm test:e2e`, `pnpm test:local-tools` | PASS 6/6, 2/2 | production smoke와 로컬 대상 보호. 전체 고유 테스트 44+39+20+6+2 = 111건. DB/사용자 UI는 개발 서버, 일반 production smoke는 3100 포트의 빌드 서버 |
+| 영상 | PASS | 같은 실제 두 사용자 실행의 `d7-owner.webm`(9.20초/922,215바이트)·`d7-member.webm`(9.16초/901,891바이트), 1440×1050. 검증 조건을 통과한 뒤 총 6.2초의 녹화 가독성 대기를 넣었으며 성공 판정은 DOM/RPC/SQL 조건 기반. 무음 원본, 속도 편집·가짜 UI 없음. ffprobe와 추출 프레임 확인; 사용자 관찰/성능 측정 아님 |
+| 비밀 값·데이터 | PASS | 09-22 실제 로컬 비밀번호/JWT/secret/service 값을 소스 후보 115개·production server/static 198개에서 비교해 각각 일치 0, 값 미출력. 기존 합성 사용자/프로필 각 4·팀 3·이슈 1·activity 11·검증 1·receipt 15·초대 1 유지. 테스트 소유 UUID만 정리 |
+| 후속/외부 | NOT_RUN | 독립 V03~V07, GitHub OAuth(provider=false), 원격 CI, 새 clone/reset 재현, HTTP/WS 분리·오프라인/재연결·권한 철회 전체 행렬, 100개 이슈/20회 전파 시간, 실제 OS IME/스크린리더/터치, 사용자 피드백 |
+
+중간 FAIL과 수정:
+
+- 09-21 최종 점검 명령은 자동 승인 검토의 사용량 한도로 실행되지 못했다. 09-22 재개 후 점검은 실행돼 비밀 값/기존 데이터 확인 PASS. 안전성 거부나 DB 초기화는 없었다. 재개 시 개발 서버의 3000 포트는 연결 거부였으며 `pnpm dev` 재기동 후 보드 HTTP 200을 확인했다.
+- 새 테스트의 browser `navigator` 전역 선언 누락과 finally 내부 throw lint를 정정했다. production 규칙을 끄지 않았다.
+- 새 테스트가 존재하지 않는 “상태 이동 메뉴/이동 저장” 버튼을 선택했다. 실제 “In Progress로 이동/이동 확인” 버튼으로 수정했다. 무한 gate 대기도 조건 기반 timeout으로 바꿔 실패 위치를 드러냈다.
+- 상세 닫기 클릭 직후 완료를 기다리지 않고 생성 폼에 입력해 빈 제목이 제출되는 자동 조작 경합이 있었다. dialog가 실제로 사라졌음을 확인한 뒤 입력하도록 수정했고 구독/중복 검증이 통과했다.
+- 기존 충돌 테스트 2건은 Realtime 도착 후 알려진 stale 폼이 잠길 수 있다. 명령을 먼저 제출·전송 보류한 뒤 상대 저장→보류 해제 순서로 기존 DB CONFLICT/초안/검증 assertion을 유지했다. 테스트 삭제/skip은 없다.
+- 화면 대조에서 비교 표의 테마 변수 이름을 기존 `--line`으로 맞췄다. 최종 build와 녹화를 다시 실행했다.
+
+AC08의 현재 이슈 단위 충돌 흐름과 AC06/09의 이슈 Realtime 부분을 확인했다. 댓글/알림은 아직 없고 전체 AC01~16 릴리스 판정은 NOT_RUN이다. 현재 D7 범위의 알려진 차단 결함은 없으며, 상세 닫기·팀 이탈·로그아웃·reload 후 초안/미확정 요청 복원은 미지원이다. `IssueRealtime`은 연결/조회 오류를 한 안내로 표시하고 수동 최신 조회를 제공한다. HTTP/WS 구분과 전체 복구는 D8에서 구현·검증한다.
 
 ## D6 실제 결과 — 2026-09-21
 
@@ -248,6 +278,4 @@ V01은 D1 앱 골격을 PASS로 판정한다. 실제 이슈 생성·조회·수�
 
 ## 최종 판정
 
-D1/V01·D2/V02 및 D3/P03·D4/P04의 위에 명시한 로컬 범위는 PASS. D4 최종 테스트는 단위 3·보호 2·실제 DB 29·DB UI 10·production 6으로 합계 50건 PASS다. 다음은 V04 독립 검증이며 제품 MVP 전체 릴리스 판정은 아직 하지 않는다. 별도 V03과 P01 이전 파일 보존 독립 증명은 NOT_RUN이다.
-
-공개 저장소·공개 배포·영상 제작·OAuth 검증은 모두 NOT_RUN. 테스트와 캡처에 실제 사용자 데이터는 없다.
+D7/P07의 위 로컬 범위는 PASS이며 전체 고유 테스트 111건이 통과했다. 과거 단계의 상세 기록은 당시 결과로 보존한다. 다음은 V07 독립 검증이며 MVP 전체 릴리스 판정은 아직 하지 않는다. 독립 V03~V07·실제 GitHub OAuth·원격 CI·공개 배포·새 clone 검증은 NOT_RUN이다. 합성 데이터로 생성한 D6/D7 영상은 위 경로에 있으며 실제 사용자 피드백·전파 성능 주장은 하지 않는다.

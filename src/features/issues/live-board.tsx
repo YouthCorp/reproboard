@@ -12,6 +12,7 @@ import { TeamManagement } from "@/features/workspaces/team-management";
 import { IssueCommands } from "./issue-commands";
 import { mergeIssueSnapshot } from "./issue-cache";
 import type { Issue } from "./commands";
+import { IssueRealtime } from "./issue-realtime";
 
 export function LiveBoard({ client, user, signOut, signOutError }: { client: AppSupabase; user: User; signOut: () => Promise<void>; signOutError: string }) {
   const router = useRouter();
@@ -54,7 +55,7 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
     </div>
     {signOutError && <p role="alert">{signOutError}</p>}
     <div className="page-heading"><div><h1>버그 보드</h1><p>재현에 필요한 정보를 모으고, 다음 작업을 준비하세요.</p></div></div>
-    <p className="connection-notice">실제 팀 데이터가 DB에 저장됩니다. 개발 계정의 팀은 합성 데이터입니다. 드래그 또는 상세 메뉴로 상태를 이동하고 재검증을 기록하세요. 저장 중·결과 확인 중 표시는 아직 확정되지 않은 요청입니다. 실시간 반영은 아직 지원하지 않습니다.</p>
+    <p className="connection-notice">실제 팀 데이터가 DB에 저장됩니다. 개발 계정의 팀은 합성 데이터입니다. 변경 알림을 받으면 서버를 다시 조회합니다. 저장 중·결과 확인 중 표시는 아직 확정되지 않은 요청입니다.</p>
     <WorkspaceCreate client={client} />
     {workspaces.isError && workspaces.data && <p role="alert">최신 팀을 확인하지 못했습니다. <button onClick={() => workspaces.refetch()}>팀 다시 조회</button></p>}
     {workspaces.isPending ? <p role="status">팀을 불러오는 중…</p> : !workspaces.data ?
@@ -74,6 +75,7 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
         membership.isPending ? <p role="status">권한을 확인하는 중…</p> : !membership.data ?
           <p role="alert">팀 권한을 확인할 수 없습니다. <button onClick={() => { membership.refetch(); workspaces.refetch(); }}>다시 조회</button></p> :
           <IssueCommands key={`${user.id}/${workspaceId}`} client={client}><section className="live-inbox" aria-labelledby="inbox-title">
+            <IssueRealtime client={client} workspaceId={workspaceId} />
             <div className="board-caption"><h2 id="inbox-title">팀 이슈 · {issues.data?.length ?? "…"}개</h2>
               <button className="button button-secondary" onClick={() => { issues.refetch(); membership.refetch(); workspaces.refetch(); }}>최신 목록 조회</button></div>
             <TeamManagement client={client} workspaceId={workspaceId} isOwner={membership.data.role === "owner"} />

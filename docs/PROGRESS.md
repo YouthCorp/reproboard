@@ -1,10 +1,10 @@
 # 진행 기록
 
-현재 상태: D6 / P06 DnD·요청별 낙관적 이동·거부/미확정 결과 복구 로컬 구현 및 관련 검증 완료. D5의 필수 조건·권한·version·원자적 검증 기록을 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
+현재 상태: D7 / P07 실제 Postgres Changes·구독 후 최신 조회·동시 수정 충돌 복구 로컬 구현 및 관련 검증 완료. D2~D6의 DB 권한·원자성·낙관적 이동·응답 유실 재확인을 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
 
-현재 단계: D6 / P06 로컬 PASS, V06 독립 검증 대기 (2026-09-21, Asia/Seoul). 사용자의 D6 지시에 따라 진행했으며 별도 V03/V04/V05는 여전히 NOT_RUN이다.
+현재 단계: D7 / P07 로컬 PASS, V07 독립 검증 대기 (2026-09-22 최종 확인, Asia/Seoul). 사용자의 D7 지시에 따라 진행했으며 독립 V03~V06는 여전히 NOT_RUN이다.
 
-선행 조건: D5 migration·타입을 그대로 사용하고 D6의 정확한 패키지/lockfile을 설치했다. Docker/Supabase와 합성 4계정의 실제 세션을 확인했으며 기존 데이터는 보존했다. 다음 실행 때 엔진 상태를 재확인하며 V06으로 롤백·중복 방지를 독립 검증한 뒤 P07로 진행한다. 실제 GitHub smoke에는 README의 외부 앱 설정이 필요하다.
+선행 조건: D7 publication migration 적용·타입 재생성 완료(타입 내용 동일). Node/패키지/lockfile/env는 유지했다. Docker/Supabase·실제 합성 세션으로 검증했고 기존 데이터는 보존했다. 다음 실행 때 엔진 상태를 재확인하고 V07→P08 순서로 진행한다. 실제 GitHub smoke는 README의 외부 앱 설정이 필요하다.
 
 ## 범위와 근거
 
@@ -25,13 +25,13 @@
 | D4 보드·폼 | DONE: P04 로컬 구현 | 로컬 PASS / V04 NOT_RUN | 5열 Query 보드·URL 상세·구조화 폼·충족/누락·초안 보존. DB 29·DB UI 10건 및 캡처 2장. 상태 이동은 없음 |
 | D5 상태·검증 | DONE: P05 로컬 구현 | 로컬 PASS / V05 NOT_RUN | 순수 규칙·전환 RPC·원자적 통과/실패·재오픈·편집 우회 차단. DB 38·DB UI 13건 및 캡처 2장 |
 | D6 낙관적 UI | DONE: P06 로컬 구현 | 로컬 PASS / V06 NOT_RUN | DnD·이슈별 잠금·overlay·최신 version 병합, A 실패/B 성공·commit 후 응답 유실·타임아웃 확인. WebM 2개 |
-| D7 실시간·충돌 | TODO | 전체 NOT_RUN | D4 구조화 필드 version 경합·초안 유지 검증 PASS. Realtime 구독·변경 전파 없음 |
-| D8 연결 복구 | TODO | NOT_RUN | 재연결·HTTP/WS 장애 처리 코드 없음 |
+| D7 실시간·충돌 | DONE: P07 로컬 구현 | 로컬 PASS / V07 NOT_RUN | 실제 Postgres Changes·구독 공백/중복 프레임·독립 2사용자 경합/입력 복구·pending/늦은 응답, 영상 2개 |
+| D8 연결 복구 | TODO | NOT_RUN | D7의 구독 후 조회 기반만 존재. HTTP/WS 구분·전체 단절 복구는 미구현/미검증 |
 | D9 댓글·알림 | TODO | NOT_RUN | 댓글·알림 코드 없음 |
 | D10 URL | TODO | 전체 NOT_RUN | D4 팀/상세 `?workspace=&issue=` 복원·뒤로가기만 구현. 검색·필터·정렬 없음 |
 | D11 접근성·UX | TODO | 핵심 흐름 NOT_RUN | D1 skip link·오류 재시도·좁은 화면 smoke만 PASS |
-| D12 회귀·CI | TODO | 전체 제품 회귀·원격 CI NOT_RUN | D6까지 Vitest 39·보호 2·DB 38·production smoke 6·DB UI 17건. CI는 정적/보호/production smoke 구성 |
-| D13 재현·시연 | TODO | NOT_RUN | D1~D5 캡처·D6 장애 재현 영상 2개. 전체 제품 시연·새 clone 검증 없음 |
+| D12 회귀·CI | TODO | 전체 제품 회귀·원격 CI NOT_RUN | D7까지 Vitest 44·보호 2·DB 39·production smoke 6·DB UI 20건. CI는 정적/보호/production smoke 구성 |
+| D13 재현·시연 | TODO | NOT_RUN | D1~D5 캡처·D6 장애 영상 2개·D7 두 사용자 영상 2개. 전체 제품 시연·새 clone 검증 없음 |
 | D14 문서·릴리스 | TODO | NOT_RUN | 문서 키트 존재는 구현·릴리스 완료 근거가 아님 |
 
 ## 환경 확인 — P00 당시 기록 (현재 결과는 아래 D1 및 TEST_REPORT)
@@ -63,10 +63,10 @@
 
 ## 다음 실행 프롬프트
 
-[PROMPTS.md의 V06 — 롤백과 중복 방지 검증](planning/PROMPTS.md#v06--롤백과-중복-방지-검증)을 수행한 뒤 P07로 진행한다. 독립 V03/V04/V05 미실행 사실은 유지한다.
+[PROMPTS.md의 V07 — 경쟁 상태·실시간의 실제성 검증](planning/PROMPTS.md#v07--경쟁-상태실시간의-실제성-검증)을 수행한 뒤 P08로 진행한다. 독립 V03~V06 미실행 사실은 유지한다.
 
 ```text
-AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V06을 수행해라. 실제 로컬 DB에서 1초 지연·A 거부/B 성공·같은 카드 연속 이동·빈 열·금지 전환·키보드 메뉴·입력 취소를 독립 검증해라. commit 전 거부와 commit 후 응답 유실을 구분하고 동일 requestId 재확인의 version/activity/검증/receipt가 한 번인지 확인해라. 늦은 조회·성공·실패 응답이 최신 값을 덮지 않는지 검사하고 실제 장애 주입 방법과 PASS/FAIL/NOT_RUN을 기록해라. 기존 데이터·문서·독립 V03~V05 미실행 사실을 보존하고 통과하면 P07을 다음 프롬프트로 지정해라.
+AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V07을 수행해라. 서로 다른 로그인 사용자 2명이 같은 version에서 수정해 성공 1·CONFLICT 1·version +1·activity/receipt 각 1건인지 실제 DB와 UI로 확인해라. 초안 보존·최신 값 비교·입력 복사·명시적 재편집, 구독 완료 전/조회 중 변경, 실제 중복 프레임, pending A와 B 성공 및 늦은 응답의 최신 값 보존을 검증해라. 타팀 구독/조회 RLS도 확인하고 mock과 실제 backend 결과를 구분해라. 기존 데이터와 독립 V03~V06 NOT_RUN을 보존하며 통과하면 P08을 다음 프롬프트로 지정해라.
 ```
 
 ### D1 / P00 / 2026-09-13
@@ -173,6 +173,18 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V06을 수�
 - 증거/결정: `docs/evidence/d6-request-isolation.webm`, `d6-receipt-recovery.webm` 실제 합성 DB 녹화·프레임 확인. ADR 01을 실제 실패/응답 유실 사례로 작성하고 기존 3개 틀 유지. 이후 테스트 캡처/영상은 보고서 첨부로 남겨 역사 자료를 덮지 않는다.
 - NOT_RUN/남음: 독립 V03~V06·실제 OAuth·원격 CI·전체 AC·실제 터치 DnD/OS IME/스크린리더·사용자 피드백. D6 차단 결함은 발견하지 못했다. 새로고침/팀 이탈 후 미확정 요청 복원·전체 오프라인/Realtime는 D7~D8 범위.
 - 정리/다음: 실제 비밀 값 대조 소스 106·production 198개 일치 0, 기존 사용자/프로필 4·팀 3·이슈 1·activity 3·receipt 7·초대 1 유지, 검증/오류 주입 함수 0. V06→P07; 로컬 커밋은 종료 보고 참조, 외부 공개/운영 변경 없음.
+
+### D7 / P07 / 2026-09-21, 최종 확인 09-22
+
+- 완료: 실제 이슈 INSERT/UPDATE 알림 후 관련 Query 재조회. 구독 완료 뒤 기존 조회 취소/최신 조회, 조회 중 이벤트 dirty 추가 조회, 50ms 병합으로 중복 알림에도 카드 중복 없음.
+- 변경: D7 publication migration, issue-realtime/realtime-refresh, conflict-recovery/issue-form. 기존 RLS·RPC·version/receipt·Query/overlay 소유권 유지, 패키지/env 변경·reset/seed 없음.
+- 사용자 흐름: 최신 값 보기·내 입력 복사(거부 시 수동 복사)·명시적 최신 값으로 다시 편집. 서로 다른 필드도 이슈 단위 충돌하며 원격 조회가 초안/version을 자동 교체하거나 재전송하지 않는다.
+- PASS: migration/type 생성, lint/typecheck/build, Vitest 44·실제 DB 39·DB UI 20·production smoke 6·보호 2, 총 111건. 최종 D7 3건도 재실행, 보고서는 마지막 실행 범위로 갱신됨.
+- 실제 검증: 독립 Owner/Member가 같은 version에서 제목/환경 수정→성공 1/CONFLICT 1·activity/receipt 각 1, 명시적 재편집 후 상대 필드 보존. 실제 WS 프레임 중복·초기 구독 공백/조회 중 변경·A 거부/B 성공·늦은 성공과 원격 최신 값 유지.
+- 권한/보존: Viewer는 자기 팀 알림 수신, 타팀에는 내용 미전달·REST 빈 결과. 일반 사용자 세션만 명령에 사용, 기존 사용자 4·팀 3·이슈 1·activity 11·검증 1·receipt 15·초대 1 보존, 테스트 소유 UUID만 정리.
+- 수정한 실패: 새 테스트의 존재하지 않는 메뉴 이름/상세 닫기 전 입력 경합·테스트 lint를 수정. 기존 충돌 회귀는 Realtime가 제출을 잠그기 전 요청을 보류하는 순서로 조정, assertion 삭제/skip 없음.
+- 증거/결정: docs/evidence/d7-owner.webm·d7-member.webm의 같은 실행 두 사용자 녹화와 추출 프레임, TEST_REPORT·ADR 02. 09-22 최종 비밀 값/데이터 점검 PASS. 로컬 커밋 식별자는 종료 보고 참조, 외부 공개 없음.
+- 남음/다음: V07→P08. 독립 V03~V07·실제 GitHub OAuth·원격 CI·전체 연결 복구/권한 철회 행렬·100개/20회 성능·실제 사용자 피드백은 NOT_RUN. 초안/미확정 요청의 reload·이탈 후 복원은 미지원.
 
 ## 하루 기록 양식
 

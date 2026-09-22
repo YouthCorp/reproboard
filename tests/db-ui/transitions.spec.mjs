@@ -144,9 +144,14 @@ test('D5 stale verification keeps entered evidence, rejects the old version and 
   await detail(page).getByRole('button', { name: '검증 통과 → Done', exact: true }).click();
   await modal(page).getByLabel('검증 환경', { exact: true }).fill('검증 중인 환경');
   await modal(page).getByLabel('검증 메모', { exact: true }).fill('내가 작성하던 검증 메모');
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  await page.route('**/rpc/transition_issue', async (route) => { await gate; await route.continue(); });
+  // Preserve the actual DB-CONFLICT check with Realtime now disabling known-stale input.
+  await modal(page).getByRole('button', { name: '통과 기록 후 Done', exact: true }).click();
   const update = await clients.member.rpc('update_issue', { p_workspace_id: team, p_issue_id: row.id, p_expected_version: row.version, p_request_id: randomUUID(), p_payload: { fix_note: 'Member가 검증 도중 수정 내용을 변경' } });
   expect(update.error).toBeNull(); expect(update.data.ok).toBe(true);
-  await modal(page).getByRole('button', { name: '통과 기록 후 Done', exact: true }).click();
+  release();
   await expect(modal(page).getByText('다른 변경이 먼저 저장됐습니다.', { exact: false })).toBeVisible();
   expect((await stored(row.id)).status).toBe('verify');
   expect((await db.query('select count(*)::int as n from public.verification_runs where issue_id=$1', [row.id])).rows[0].n).toBe(0);

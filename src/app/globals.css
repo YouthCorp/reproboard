@@ -242,3 +242,8 @@ input, select { min-width: 0; max-width: 100%; padding: 10px 12px; border: 1px s
 .card-command.uncertain { background: #fff4dd; }
 .card-command .button { margin-top: 8px; font-size: 12px; padding: 8px; }
 .board-move-message { min-height: 1.5em; margin-top: 8px; font-size: 13px; color: #7c3023; }
+.realtime-status { color: var(--muted); font-size: 0.9rem; }
+.conflict-comparison { overflow-x: auto; }
+.conflict-comparison table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.conflict-comparison th, .conflict-comparison td { padding: 0.6rem; border: 1px solid var(--line); text-align: left; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; }
+.conflict-comparison caption { text-align: left; font-weight: 600; padding: 0.5rem 0; }

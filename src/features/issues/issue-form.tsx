@@ -9,6 +9,7 @@ import { completeness, issueValues, normalized, priorities, priorityHelp, reprod
 import { stateFieldErrors } from "./state-rules";
 import { TransitionMenu } from "./transition-menu";
 import { useIssueCommands, useIssueRequest } from "./issue-commands";
+import { ConflictRecovery } from "./conflict-recovery";
 
 export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase; workspaceId: string; issue?: Issue }) {
   const id = useId();
@@ -25,6 +26,7 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
   const [errors, setErrors] = useState<FieldErrors>({});
   const [unconfirmed, setUnconfirmed] = useState<IssueCommand | null>(null);
   const [message, setMessage] = useState("");
+  const [conflict, setConflict] = useState(false);
   const mutation = useMutation({ mutationFn: (command: IssueCommand) => commands.run(command), retry: false, networkMode: "always" });
   const stale = !!issue && baseVersion !== issue.version;
   const locked = mutation.isPending || !!unconfirmed || !!sharedRequest;
@@ -54,6 +56,7 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
       const result = await mutation.mutateAsync(command);
       setUnconfirmed(null);
       if (!result.ok) {
+        if (result.code === "CONFLICT") setConflict(true);
         setMessage(result.message);
         if (["CONFLICT", "FORBIDDEN", "NOT_FOUND"].includes(result.code)) {
           await Promise.all([cache.invalidateQueries({ queryKey: ["issues", workspaceId] }), cache.invalidateQueries({ queryKey: ["membership", workspaceId] }), cache.invalidateQueries({ queryKey: ["members", workspaceId] })]);
@@ -62,7 +65,7 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
         return;
       }
       setDraft(issue ? issueValues(result.data) : issueValues()); setBaseVersion(issue ? result.data.version : undefined);
-      setErrors({}); setMessage(`${result.data.issue_key} 저장했습니다.`);
+      setErrors({}); setConflict(false); setMessage(`${result.data.issue_key} 저장했습니다.`);
       // A receipt can describe an older success; fetch the current server row.
       await cache.invalidateQueries({ queryKey: ["issues", workspaceId] });
     } catch {
@@ -93,6 +96,9 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
       if (!dirty) { setDraft(issueValues(saved)); setBaseVersion(saved.version); }
     }} />}
     {done && <p className="read-only-note">Done의 본문은 잠겨 있습니다. 재오픈 후 편집할 수 있습니다.{dirty && " 작성 중이던 초안은 재오픈 전까지 보존합니다."}</p>}
+    {issue && (stale || conflict) && <ConflictRecovery issue={issue} draft={draft} members={members.data ?? []} locked={locked} newer={stale} restart={() => {
+      setDraft(issueValues(issue)); setBaseVersion(issue.version); setErrors({}); setConflict(false); setMessage(""); focusField("title");
+    }} />}
     <form ref={form} hidden={done} className={issue ? "issue-edit-form" : `issue-create-form${expanded ? "" : " compact-create"}`} onSubmit={submit} noValidate
     onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }}
     onKeyDown={(event) => { if (event.key === "Enter" && (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229)) event.preventDefault(); }}>
@@ -119,9 +125,6 @@ export function IssueForm({ client, workspaceId, issue }: { client: AppSupabase;
         {textFields.slice(6).map(textControl)}
       </div>
     </fieldset>
-    {stale && <div className="stale-draft" role="alert"><p>다른 변경이 있습니다. 작성 중인 입력은 유지했습니다.</p>
-      <p>현재 서버 제목: {issue.title}</p><p>최신 값을 불러오면 이 폼의 작성 중인 내용을 교체합니다.</p>
-      <button type="button" className="button button-secondary" disabled={locked} onClick={() => { setDraft(issueValues(issue)); setBaseVersion(issue.version); setErrors({}); setMessage(""); }}>최신 값으로 다시 편집</button></div>}
     <div className="form-actions"><button className="button button-primary" type="submit" disabled={mutation.isPending || (sharedRequest && sharedRequest.command.requestId !== unconfirmed?.requestId) || (stale && !unconfirmed)}>{mutation.isPending ? "저장 중…" : unconfirmed ? "같은 요청으로 다시 확인" : issue ? "변경 저장" : "Inbox에 생성"}</button>
       <span className="form-hint">{issue ? "저장 전 입력은 이 폼에만 유지됩니다." : "제목만 입력해도 Inbox에 등록할 수 있습니다."}</span></div>
     <p className="form-message" role="status" tabIndex={-1}>{message}</p>

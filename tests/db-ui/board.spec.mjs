@@ -107,10 +107,15 @@ test('two independent users keep a stale draft on conflict and explicitly reload
     const other = otherPage.getByRole('dialog');
     await other.getByLabel('이슈 제목', { exact: true }).fill('Member가 작성 중인 초안');
     await other.getByLabel('재현 단계', { exact: true }).fill('아직 저장하지 않은 여러 줄\n로컬 입력');
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    await otherPage.route('**/rpc/update_issue', async (route) => { await gate; await route.continue(); });
+    // Submit the stale command before Realtime can disable its form, then hold transport.
+    await other.getByRole('button', { name: '변경 저장', exact: true }).click();
     await own.getByLabel('이슈 제목', { exact: true }).fill('Owner가 먼저 저장');
     await own.getByRole('button', { name: '변경 저장', exact: true }).click();
     await expect(own.getByRole('heading', { name: 'Owner가 먼저 저장', exact: true })).toBeVisible();
-    await other.getByRole('button', { name: '변경 저장', exact: true }).click();
+    release();
     const conflicted = otherPage.getByRole('dialog');
     await expect(conflicted.getByLabel('이슈 제목', { exact: true })).toHaveValue('Member가 작성 중인 초안');
     await expect(conflicted.getByLabel('재현 단계', { exact: true })).toHaveValue('아직 저장하지 않은 여러 줄\n로컬 입력');
