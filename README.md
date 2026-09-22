@@ -2,7 +2,7 @@
 
 소규모 개발팀이 버그 재현 정보를 모으고, 수정 후 재검증까지 관리하는 협업 보드.
 
-**현재 상태: D7 실제 실시간 협업·충돌 복구 구현.** 다른 사용자의 이슈 변경 알림을 받으면 서버를 재조회한다. 같은 version의 수정 중 한 건만 성공하고 나머지는 입력을 보존해 비교·복사·재편집할 수 있다. D3~D6의 권한·상태 규칙·검증·낙관적 이동을 유지한다. 실제 GitHub OAuth와 전체 연결 복구는 아직 검증하지 않았다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)가 기준이다.
+**현재 상태: D8 연결 장애·복구 구현.** HTTP와 Realtime 상태를 구분하고 전체 단절/부분 장애에서 초안을 유지한다. 재구독 후 최신 조회와 조회 중 변경 재확인을 마쳐야 정상으로 표시한다. D3~D7의 권한·상태 규칙·검증·낙관적 이동·충돌 복구를 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN이다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)가 기준이다.
 
 ## 왜 만드는가
 
@@ -40,6 +40,22 @@ D7 실제 두 사용자 영상: [Owner 브라우저](docs/evidence/d7-owner.webm
 
 이미 변경 알림을 받았으면 저장 버튼이 잠기는 것이 정상이다. 정확한 동시 DB 경합은 자동 테스트가 전송 gate로 재현한다.
 
+### D8 연결 안내와 장애 시연
+
+보드와 상세/이동 창은 **오프라인 / 실시간 불안정 / 동기화 중 / 정상**을 안내한다. **HTTP 요청 실패**는 WS 연결 여부와 별도로 표시한다. `navigator.onLine=true`나 구독 성공은 저장 완료 증거가 아니다. 각 명령의 서버 응답과 미확정 표시를 확인한다.
+
+오프라인에는 새 저장을 보내지 않고 입력을 계속 작성할 수 있다. 복귀해도 쓰기는 자동 재개하지 않는다. WS만 실패하면 HTTP 저장은 허용하며 foreground에서 15초마다 임시 조회한다. 멤버십은 정상 연결 중에도 15초마다, focus/복귀/명령 거부 때 재확인한다. Member→Viewer 강등 시 기존 초안을 읽기 전용으로 유지하고 저장/이동을 막는다. 팀 접근을 잃거나 로그아웃하면 해당 캐시·입력·요청·구독을 제거한다. UI 감지에는 조회 간격이 있지만 DB 권한 검사는 매 명령에 적용된다.
+
+실제 합성 세션 장애 영상: [전체 단절→복구 중 추가 변경→초안 보존](docs/evidence/d8-offline-recovery.webm) · [WS 단절의 HTTP 저장/폴링→HTTP 응답 유실 재확인](docs/evidence/d8-partial-failures.webm). 장애는 Playwright의 네트워크 제어로 주입하며 앱/production에는 장애 스위치가 없다. 시연을 다시 실행하려면 준비된 로컬 스택에서 `pnpm test:db-ui tests/db-ui/recovery.spec.mjs`를 실행한다.
+
+직접 조작할 세 가지:
+
+1. 별도 프로필 A/B로 로그인한다. A에서 새 이슈 제목을 쓰고 DevTools의 Offline을 켠 뒤 B에서 기존 이슈를 바꾼다. A를 Online으로 돌려 최신 카드·남은 초안·자동 생성 0건을 확인한다.
+2. 장애 영상 또는 위 테스트에서 WS만 끊긴 동안 저장이 되는 것과, HTTP 응답 유실은 **같은 요청으로 결과 확인**을 눌러야 끝나는 것을 비교한다. 정상 네트워크 안내만으로 미확정 표시가 사라지지 않는다.
+3. Member 창에서 초안을 쓰고 Owner 창에서 Viewer로 강등한다. 다음 멤버십 조회 후 저장/이동 비활성화와 읽기 전용 초안을 확인하고, 로그아웃 뒤 팀 데이터가 사라지는지 본다.
+
+이해할 개념: **재구독 성공과 동기화 완료는 다르다.** 연결 중 놓친 변경은 새 조회로, 조회하는 동안 발생한 변경은 dirty 후 추가 조회로 확인한다. 구현 근거와 비용은 [ADR 03](docs/DECISIONS.md)에 기록했다.
+
 ## 구현 목표
 
 - 재현 정보가 갖춰진 버그를 Ready로 분류하고, 수정 후 Verify에서 재검증.
@@ -76,7 +92,7 @@ pnpm dev
 | `pnpm test:e2e` | production 서버를 3100 포트에서 자동 실행·종료하는 smoke 테스트 |
 | `pnpm test:local-tools` | 원격/잘못된 DB 대상·확인 없는 reset 거부 검사, Docker 없이 실행 가능 |
 | `pnpm test:db` | 실제 로컬 세션의 RLS/RPC·동시성·원자성 검증. 로컬 스택·migration·seed 필요 |
-| `pnpm test:db-ui` | 독립 로그인 2개·실제 Realtime/동시 편집·구독 공백·프레임 중복·pending과 늦은 응답, DnD 지연·카드별 실패·commit 후 응답 유실·10초 타임아웃·늦은 응답, 기존 생성/편집·검증·URL·초안·모바일·IME 이벤트·팀/인증 회귀 |
+| `pnpm test:db-ui` | 독립 로그인 2개·실제 Realtime/동시 편집·전체/HTTP/WS 단절·복구 중 변경·권한 강등·갱신 만료·구독/타이머/캐시 정리, 기존 생성/편집·검증·DnD·응답 유실·모바일·IME 이벤트·인증 회귀 |
 
 `test:e2e` 전에 `pnpm build`와 브라우저 설치가 필요하다. 보드↔로그인, 404, 키보드, 390px 및 production의 개발 로그인 미노출을 검증한다. 이 smoke와 실제 DB 테스트는 별도다. `test:db-ui`는 아래 로컬 준비 후 실행하며, 3000 포트의 기존 개발 서버를 사용하거나 없으면 자동 시작한다. 기존 서버의 환경 값이 바뀌었다면 재시작한다. 실행 중에는 동일한 합성 계정을 수동 조작하지 않는다.
 
@@ -104,7 +120,7 @@ Studio는 [127.0.0.1:54323](http://127.0.0.1:54323), API는 `http://127.0.0.1:54
 
 `db:migrate`는 `supabase migration up --local`, `db:types`는 `supabase gen types typescript --local --schema public`을 실행하는 보호된 wrapper다. 생성된 `src/lib/supabase/database.types.ts`는 커밋하며 SQL 변경 후 다시 생성한다. 타입의 Insert/Update 정의는 DB 쓰기 권한을 뜻하지 않는다.
 
-D3~D6 환경에서 올릴 때는 Docker 시작 후 `pnpm install --frozen-lockfile` → `pnpm db:start` → `pnpm db:migrate` → `pnpm db:types` → `pnpm dev` 순서로 실행한다. D7 migration은 `public.issues`를 `supabase_realtime` publication에 추가한다. 타입 생성 결과는 D5와 동일하며 새 환경 변수·의존성·계정 설정은 없다. 기존 migration 수정·reset·계정 재생성은 필요하지 않다. 외부 OAuth 설정도 로컬 개발의 선행 조건이 아니다.
+D3~D6 환경에서 올릴 때는 Docker 시작 후 `pnpm install --frozen-lockfile` → `pnpm db:start` → `pnpm db:migrate` → `pnpm db:types` → `pnpm dev` 순서로 실행한다. D7 migration은 `public.issues`를 `supabase_realtime` publication에 추가한다. D8은 schema/type/env/의존성을 변경하지 않아 D7 적용 환경에서는 migration·타입 재생성·reset·계정 재생성이 필요 없다. 외부 OAuth 설정도 로컬 개발의 선행 조건이 아니다.
 
 `db:seed`는 합성 계정 4개와 팀 2개를 생성한다. 무작위 비밀번호는 gitignore된 `.local/dev-accounts.json`에만 저장하며 터미널·채팅에 출력하지 않는다. 재실행 시 합성 계정의 비밀번호·역할을 준비하고 기존 이슈는 보존한다. 같은 예약 이메일/팀 UUID가 다른 데이터에 사용 중이면 중단한다. 테스트 DB에서만 고정된 합성 식별자를 사용한다. Supabase 기본 SQL seed는 꺼져 있어 명시적으로 이 명령을 실행해야 한다.
 
@@ -182,10 +198,10 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 ## 한계
 
-이슈 단위 version 경합을 지원하며 같은 텍스트의 동시 타이핑·자동 병합은 제외한다. Realtime는 이벤트 재생 로그가 아니며 구독 후 다시 조회한다. HTTP/WS 장애 구분·단절 복구·폴링·권한 철회 전체 검증은 D8 이후다. 오프라인 자동 저장 큐·열 내부 수동 정렬·파일 업로드·외부 시스템 연동은 없다. 전파 지연/100개 이슈 성능과 실제 사용자 피드백은 미측정이다.
+이슈 단위 version 경합을 지원하며 같은 텍스트의 동시 타이핑·자동 병합은 제외한다. Realtime는 이벤트 재생 로그가 아니며 구독 후 다시 조회한다. D8의 지정된 로컬 장애/권한/만료 시나리오는 검증했지만 모든 네트워크 환경이나 운영 규모를 보장하지 않는다. 초안과 미확정 요청의 reload/팀 이탈/로그아웃 후 복원, 오프라인 자동 저장 큐·열 내부 수동 정렬·파일 업로드·외부 시스템 연동은 없다. 전파 지연/100개 이슈 성능과 실제 사용자 피드백은 미측정이다.
 
 ## 기여와 라이선스
 
 [기여 안내](CONTRIBUTING.md), [보안 제보 안내](SECURITY.md), [MIT 라이선스](LICENSE).
 
-개인 프로젝트이며 D1~D7 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 CASE_STUDY에 단계별 증거와 함께 정리한다. 실제 팀 사용·성능 개선 성과는 아직 측정하지 않았다.
+개인 프로젝트이며 D1~D8 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 단계 기록과 ADR의 증거로 확인한다. CASE_STUDY의 작성자 역할/성과는 아직 작성 양식이며 실제 팀 사용·성능 개선 성과는 측정하지 않았다.

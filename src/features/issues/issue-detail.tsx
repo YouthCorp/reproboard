@@ -4,10 +4,11 @@ import { useEffect, useRef } from "react";
 import type { AppSupabase } from "@/lib/supabase/browser";
 import { useMembers } from "@/features/workspaces/use-members";
 import type { Issue } from "./commands";
-import { IssueForm } from "./issue-form";
+import { PermissionIssueForm } from "./issue-form";
 import { IssueHistory } from "./issue-history";
 import { useIssueRequest } from "./issue-commands";
 import { displayedStatus } from "./command-store";
+import { ConnectionHint } from "./issue-realtime";
 import { boardColumns, completeness, priorities, priorityHelp, reproductions, severities, severityHelp, textFields } from "./fields";
 
 export function IssueDetail({ client, workspaceId, issue, canWrite, loading, error, refreshing, retry, close }: {
@@ -28,9 +29,10 @@ export function IssueDetail({ client, workspaceId, issue, canWrite, loading, err
   const fulfilled = issue ? completeness(issue) : null;
   const assignee = members.data?.find((member) => member.user_id === issue?.assignee_id);
   return <dialog ref={dialog} className="issue-detail" aria-labelledby="detail-title" onCancel={(event) => { event.preventDefault(); close(); }}>
-    <div className="detail-toolbar"><span className="issue-key">{issue?.issue_key ?? "이슈 상세"} · {boardColumns.find((c) => c.id === (issue ? displayedStatus(issue, pending) : ""))?.name ?? "조회 중"}</span>
+    <div className="detail-toolbar"><span className="issue-key">{issue?.issue_key ?? "이슈 상세"} · {boardColumns.find((c) => c.id === (issue ? displayedStatus(issue, canWrite ? pending : undefined) : ""))?.name ?? "조회 중"}</span>
       <button type="button" className="button button-secondary" onClick={close} autoFocus>상세 닫기</button></div>
     <h2 id="detail-title">{issue?.title ?? "이슈 상세"}</h2>
+    <ConnectionHint />
     {pending && <p role="status">{pending.phase === "pending" ? "저장 중…" : "결과 확인 중 · 보드 카드에서 같은 요청으로 확인할 수 있습니다."} 이 이슈의 추가 변경은 결과 확인 후 가능합니다.</p>}
     <div className="detail-refresh"><button type="button" className="button button-secondary" onClick={retry}>최신 상세 조회</button><span role="status">{refreshing ? "서버 확인 중…" : ""}</span></div>
     {error && <p role="alert">최신 이슈를 불러오지 못했습니다. {issue ? "마지막 조회 값과 입력을 유지했습니다." : "다시 조회해 주세요."}</p>}
@@ -38,7 +40,7 @@ export function IssueDetail({ client, workspaceId, issue, canWrite, loading, err
     {issue && <>
       <div className="completeness"><strong>저장된 재현 정보 {fulfilled!.count}/4 충족</strong><p>{fulfilled!.missing.length ? `누락: ${fulfilled!.missing.join(" · ")}` : "재현 정보 4개를 모두 입력했습니다."}</p></div>
       {issue.assignee_id && assignee?.role === "viewer" && <p role="alert">담당자 재지정 필요: 기존 담당자가 Viewer로 변경됐습니다.</p>}
-      {canWrite && <IssueForm key={issue.id} client={client} workspaceId={workspaceId} issue={issue} />}
+      <PermissionIssueForm key={issue.id} client={client} workspaceId={workspaceId} issue={issue} canWrite={canWrite} />
       {!canWrite && <p className="read-only-note">Viewer는 조회만 할 수 있습니다.</p>}
       {(!canWrite || issue.status === "done") && <details className="saved-issue-fields" open={issue.status !== "done"}>
         <summary>저장된 이슈 내용</summary>

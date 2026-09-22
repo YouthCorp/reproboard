@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import type { AppSupabase } from "@/lib/supabase/browser";
-import { IssueForm } from "./issue-form";
+import { PermissionIssueForm } from "./issue-form";
 import { IssueBoard } from "./issue-board";
 import { IssueDetail } from "./issue-detail";
 import { WorkspaceCreate } from "@/features/workspaces/workspace-create";
@@ -12,7 +12,7 @@ import { TeamManagement } from "@/features/workspaces/team-management";
 import { IssueCommands } from "./issue-commands";
 import { mergeIssueSnapshot } from "./issue-cache";
 import type { Issue } from "./commands";
-import { IssueRealtime } from "./issue-realtime";
+import { IssueRealtime, WorkspaceConnection } from "./issue-realtime";
 
 export function LiveBoard({ client, user, signOut, signOutError }: { client: AppSupabase; user: User; signOut: () => Promise<void>; signOutError: string }) {
   const router = useRouter();
@@ -39,7 +39,7 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
       if (result.data.length > 500) throw new Error("지원 범위인 500개를 초과했습니다. 전체 조회를 표시할 수 없습니다.");
       return result.data;
     } });
-  const canWrite = membership.data?.role === "owner" || membership.data?.role === "member";
+  const canWrite = !membership.isError && (membership.data?.role === "owner" || membership.data?.role === "member");
   const selectedId = params.get("issue");
   const selectedIssue = issues.data?.find((issue) => issue.id === selectedId);
   function selectIssue(id: string | null) {
@@ -74,13 +74,14 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
       {!workspace ? <p role="status">접근할 수 있는 팀이 없습니다. 팀 주소와 로그인 계정을 확인하세요.</p> :
         membership.isPending ? <p role="status">권한을 확인하는 중…</p> : !membership.data ?
           <p role="alert">팀 권한을 확인할 수 없습니다. <button onClick={() => { membership.refetch(); workspaces.refetch(); }}>다시 조회</button></p> :
-          <IssueCommands key={`${user.id}/${workspaceId}`} client={client}><section className="live-inbox" aria-labelledby="inbox-title">
-            <IssueRealtime client={client} workspaceId={workspaceId} />
+          <WorkspaceConnection key={`${user.id}/${workspaceId}`} client={client} workspaceId={workspaceId}><IssueCommands client={client} canWrite={canWrite}><section className="live-inbox" aria-labelledby="inbox-title">
+            <IssueRealtime />
             <div className="board-caption"><h2 id="inbox-title">팀 이슈 · {issues.data?.length ?? "…"}개</h2>
               <button className="button button-secondary" onClick={() => { issues.refetch(); membership.refetch(); workspaces.refetch(); }}>최신 목록 조회</button></div>
-            <TeamManagement client={client} workspaceId={workspaceId} isOwner={membership.data.role === "owner"} />
+            <TeamManagement client={client} workspaceId={workspaceId} isOwner={!membership.isError && membership.data.role === "owner"} />
             {membership.isError && <p role="alert">최신 권한 확인에 실패했습니다. <button onClick={() => membership.refetch()}>권한 다시 조회</button></p>}
-            {canWrite ? <IssueForm client={client} workspaceId={workspaceId} /> : <p className="read-only-note">Viewer는 조회만 할 수 있습니다.</p>}
+            {membership.data.role === "viewer" && <p className="read-only-note">Viewer는 조회만 할 수 있습니다.</p>}
+            <PermissionIssueForm client={client} workspaceId={workspaceId} canWrite={canWrite} />
             {issues.isPending && <p role="status">이슈를 불러오는 중…</p>}
             {issues.isError && <p role="alert">{issues.error.message} {issues.data && "마지막 조회 값을 표시합니다."} <button onClick={() => issues.refetch()}>다시 조회</button></p>}
             {issues.isFetching && !issues.isPending && <p role="status">최신 목록 확인 중…</p>}
@@ -89,7 +90,7 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
             {selectedId && <IssueDetail key={selectedId} client={client} workspaceId={workspaceId} issue={selectedIssue} canWrite={canWrite}
               loading={issues.isPending} error={issues.isError} refreshing={issues.isFetching}
               retry={() => { issues.refetch(); membership.refetch(); }} close={() => selectIssue(null)} />}
-          </section></IssueCommands>}
+          </section></IssueCommands></WorkspaceConnection>}
     </>}
   </>;
 }

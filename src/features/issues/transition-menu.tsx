@@ -6,6 +6,7 @@ import type { AppSupabase } from "@/lib/supabase/browser";
 import { useMembers } from "@/features/workspaces/use-members";
 import type { Issue, TransitionCommand } from "./commands";
 import { useIssueCommands } from "./issue-commands";
+import { ConnectionHint, useConnection } from "./issue-realtime";
 import { boardColumns, issueValues, textFields } from "./fields";
 import { canTransition, isStatus, needsReason, needsVerification, stateFieldErrors, transitionInputErrors, transitions, type TransitionInputs } from "./state-rules";
 
@@ -18,6 +19,7 @@ export function TransitionDialog({ client, issue, target, close, saved }: { clie
   const composing = useRef(false);
   const cache = useQueryClient();
   const commands = useIssueCommands();
+  const connection = useConnection();
   const members = useMembers(client, issue.workspace_id);
   const [base, setBase] = useState({ version: issue.version, status: issue.status });
   const [input, setInput] = useState<TransitionInputs>({ reason: "", tested_build: issue.target_build, tested_environment: "", note: "" });
@@ -41,7 +43,7 @@ export function TransitionDialog({ client, issue, target, close, saved }: { clie
     await Promise.all([cache.invalidateQueries({ queryKey: ["issues", issue.workspace_id] }), cache.invalidateQueries({ queryKey: ["verification-runs", issue.workspace_id, issue.id] }), cache.invalidateQueries({ queryKey: ["transitions", issue.workspace_id, issue.id] }), cache.invalidateQueries({ queryKey: ["members", issue.workspace_id] }), cache.invalidateQueries({ queryKey: ["membership", issue.workspace_id] })]);
   }
   async function submit(event: React.SubmitEvent<HTMLFormElement>) {
-    event.preventDefault(); if (mutation.isPending || composing.current) return;
+    event.preventDefault(); if (!commands.canWrite || mutation.isPending || composing.current) return;
     if (!unconfirmed) {
       const validation = transitionInputErrors(base.status, target, input);
       setErrors(validation);
@@ -60,7 +62,10 @@ export function TransitionDialog({ client, issue, target, close, saved }: { clie
       if (!result.ok) { setMessage(result.message); await refresh(); requestAnimationFrame(() => form.current?.querySelector<HTMLElement>(".transition-message")?.focus()); return; }
       saved?.(result.data);
       await refresh(); close();
-    } catch { setUnconfirmed(command); setMessage("이동 결과를 확인하지 못했습니다. 결과 확인 중입니다. 같은 요청으로 다시 확인하세요. 보드에서 계속 작업해도 이 요청은 유지됩니다."); }
+    } catch (error) {
+      if (error instanceof Error && error.message === "OFFLINE") setMessage("오프라인이라 이동 요청을 보내지 않았습니다. 입력을 유지했습니다.");
+      else { setUnconfirmed(command); setMessage("이동 결과를 확인하지 못했습니다. 결과 확인 중입니다. 같은 요청으로 다시 확인하세요. 보드에서 계속 작업해도 이 요청은 유지됩니다."); }
+    }
   }
   function field(key: keyof TransitionInputs, label: string, hint: string) {
     const props = { id: `${id}-${key}`, name: key, value: input[key], onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { setInput((old) => ({ ...old, [key]: event.target.value })); setErrors((old) => ({ ...old, [key]: undefined })); }, "aria-invalid": !!errors[key], "aria-describedby": `${id}-${key}-hint` };
@@ -70,7 +75,9 @@ export function TransitionDialog({ client, issue, target, close, saved }: { clie
   }
   return <dialog ref={dialog} className="transition-dialog" aria-labelledby={`${id}-heading`} onCancel={(event) => { event.preventDefault(); event.stopPropagation(); if (!busy) close(); }}>
     <h2 id={`${id}-heading`}>{nameOf(base.status)} → {nameOf(target)}</h2>
+    <ConnectionHint />
     <p className="form-hint">{issue.issue_key} · 저장된 내용으로 이동합니다. 취소하면 이동하지 않습니다.</p>
+    {!commands.canWrite && <p role="alert">쓰기 권한을 확인할 수 없습니다. 이동 입력을 유지했습니다.</p>}
     <form ref={form} onSubmit={submit} noValidate onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }} onKeyDown={(event) => { if (event.key === "Enter" && (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229)) event.preventDefault(); }}>
       {missing.length > 0 && <div className="transition-requirements" role="alert"><strong>먼저 필수 정보를 저장하세요.</strong><ul>{missing.map((message) => <li key={message}>{message}</li>)}</ul></div>}
       {!allowed && <p role="alert">현재 상태에서는 이 이동을 할 수 없습니다. 취소 후 이동 대상을 다시 선택하세요.</p>}
@@ -89,7 +96,7 @@ export function TransitionDialog({ client, issue, target, close, saved }: { clie
       <p className="transition-message" role="status" tabIndex={-1}>{message}</p>
       <div className="form-actions"><button type="button" className="button button-secondary" disabled={busy} onClick={close} autoFocus>이동 취소</button>
         {busy && <button type="button" className="button button-secondary" onClick={close}>보드에서 계속 작업</button>}
-        <button className="button button-primary" type="submit" disabled={mutation.isPending || (!unconfirmed && (stale || !allowed || missing.length > 0))}>{mutation.isPending ? "이동 중…" : unconfirmed ? "같은 이동 요청으로 다시 확인" : verification ? target === "done" ? "통과 기록 후 Done" : "실패 기록 후 In Progress" : "이동 확인"}</button></div>
+        <button className="button button-primary" type="submit" disabled={!commands.canWrite || connection?.online === false || mutation.isPending || (!unconfirmed && (stale || !allowed || missing.length > 0))}>{mutation.isPending ? "이동 중…" : unconfirmed ? "같은 이동 요청으로 다시 확인" : verification ? target === "done" ? "통과 기록 후 Done" : "실패 기록 후 In Progress" : "이동 확인"}</button></div>
     </form>
   </dialog>;
 }

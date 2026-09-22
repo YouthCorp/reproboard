@@ -53,6 +53,8 @@ const stored = async (row) => (await db.query('select * from public.issues where
 function deferred() { let resolve, settled = false; const promise = new Promise((done) => { resolve = () => { settled = true; done(); }; }); return { promise, resolve, wait: () => expect.poll(() => settled, { timeout: 8000 }).toBe(true) }; }
 async function drag(page, row, status) {
   const handle = card(page, row).locator('.drag-handle');
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+  await handle.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await handle.scrollIntoViewIfNeeded();
   const source = await handle.boundingBox(), target = await column(page, status).boundingBox();
   expect(source).toBeTruthy(); expect(target).toBeTruthy();

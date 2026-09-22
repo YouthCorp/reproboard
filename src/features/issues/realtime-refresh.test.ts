@@ -4,6 +4,24 @@ import { createRealtimeRefresh } from "./realtime-refresh";
 afterEach(() => vi.useRealTimers());
 function deferred() { let resolve!: () => void; const promise = new Promise<void>((done) => { resolve = done; }); return { promise, resolve }; }
 
+it("fallback polling works without WS but never claims a healthy subscription", async () => {
+  vi.useFakeTimers(); const read = vi.fn(async () => {}), report = vi.fn();
+  const sync = createRealtimeRefresh(read, report);
+  sync.failed(); sync.poll(); sync.poll(); await vi.advanceTimersByTimeAsync(50);
+  expect(read).toHaveBeenCalledTimes(1); expect(report).not.toHaveBeenCalledWith("subscribed");
+  sync.subscribed(); await vi.advanceTimersByTimeAsync(50);
+  expect(read).toHaveBeenCalledTimes(2); expect(report).toHaveBeenLastCalledWith("subscribed"); sync.stop();
+});
+it("rejoining during a fallback read requires a fresh trailing read before normal", async () => {
+  vi.useFakeTimers(); const gate = deferred(), report = vi.fn();
+  const read = vi.fn().mockImplementationOnce(() => gate.promise).mockResolvedValue(undefined);
+  const sync = createRealtimeRefresh(read, report);
+  sync.poll(); await vi.advanceTimersByTimeAsync(50); sync.subscribed(); sync.changed();
+  expect(report).not.toHaveBeenCalledWith("subscribed");
+  gate.resolve(); await vi.advanceTimersByTimeAsync(0);
+  expect(read).toHaveBeenCalledTimes(2); expect(report).toHaveBeenLastCalledWith("subscribed"); sync.stop();
+});
+
 it("waits for subscription then reads, coalescing duplicate notifications", async () => {
   vi.useFakeTimers(); const read = vi.fn(async () => {}), report = vi.fn();
   const sync = createRealtimeRefresh(read, report);

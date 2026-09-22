@@ -243,6 +243,10 @@ input, select { min-width: 0; max-width: 100%; padding: 10px 12px; border: 1px s
 .card-command .button { margin-top: 8px; font-size: 12px; padding: 8px; }
 .board-move-message { min-height: 1.5em; margin-top: 8px; font-size: 13px; color: #7c3023; }
 .realtime-status { color: var(--muted); font-size: 0.9rem; }
+.realtime-status { padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px; background: #f5f8f5; }
+.realtime-status p { margin-bottom: 8px; color: var(--ink); }
+.realtime-status[data-connection-state="offline"], .realtime-status[data-connection-state="http-error"], .realtime-status[data-connection-state="degraded"], .connection-hint { background: #fff4dd; }
+.connection-hint { padding: 12px; border-radius: 6px; font-size: 0.9rem; margin: 14px 0; }
 .conflict-comparison { overflow-x: auto; }
 .conflict-comparison table { width: 100%; table-layout: fixed; border-collapse: collapse; }
 .conflict-comparison th, .conflict-comparison td { padding: 0.6rem; border: 1px solid var(--line); text-align: left; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; }

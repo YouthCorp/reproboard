@@ -1,10 +1,10 @@
 # 진행 기록
 
-현재 상태: D7 / P07 실제 Postgres Changes·구독 후 최신 조회·동시 수정 충돌 복구 로컬 구현 및 관련 검증 완료. D2~D6의 DB 권한·원자성·낙관적 이동·응답 유실 재확인을 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
+현재 상태: D8 / P08 HTTP·Realtime 분리, 전체/부분 장애 복구·초안 보존·자동 큐 차단·권한/세션 재검사 로컬 구현 및 관련 검증 완료. D2~D7의 DB 권한·원자성·낙관적 이동·충돌/응답 유실 재확인을 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
 
-현재 단계: D7 / P07 로컬 PASS, V07 독립 검증 대기 (2026-09-22 최종 확인, Asia/Seoul). 사용자의 D7 지시에 따라 진행했으며 독립 V03~V06는 여전히 NOT_RUN이다.
+현재 단계: D8 / P08 로컬 PASS, V08 독립 검증 대기 (2026-09-22, Asia/Seoul). 사용자의 D8 지시에 따라 진행했으며 독립 V03~V07는 여전히 NOT_RUN이다.
 
-선행 조건: D7 publication migration 적용·타입 재생성 완료(타입 내용 동일). Node/패키지/lockfile/env는 유지했다. Docker/Supabase·실제 합성 세션으로 검증했고 기존 데이터는 보존했다. 다음 실행 때 엔진 상태를 재확인하고 V07→P08 순서로 진행한다. 실제 GitHub smoke는 README의 외부 앱 설정이 필요하다.
+선행 조건: D7 publication을 사용하며 D8의 새 migration/type/env/의존성은 없다. Node/패키지/lockfile을 유지하고 Docker/Supabase·실제 합성 세션으로 검증했다. 다음 실행 때 엔진 상태를 재확인하고 V08→P09 순서로 진행한다. 실제 GitHub smoke는 README의 외부 앱 설정이 필요하다.
 
 ## 범위와 근거
 
@@ -26,12 +26,12 @@
 | D5 상태·검증 | DONE: P05 로컬 구현 | 로컬 PASS / V05 NOT_RUN | 순수 규칙·전환 RPC·원자적 통과/실패·재오픈·편집 우회 차단. DB 38·DB UI 13건 및 캡처 2장 |
 | D6 낙관적 UI | DONE: P06 로컬 구현 | 로컬 PASS / V06 NOT_RUN | DnD·이슈별 잠금·overlay·최신 version 병합, A 실패/B 성공·commit 후 응답 유실·타임아웃 확인. WebM 2개 |
 | D7 실시간·충돌 | DONE: P07 로컬 구현 | 로컬 PASS / V07 NOT_RUN | 실제 Postgres Changes·구독 공백/중복 프레임·독립 2사용자 경합/입력 복구·pending/늦은 응답, 영상 2개 |
-| D8 연결 복구 | TODO | NOT_RUN | D7의 구독 후 조회 기반만 존재. HTTP/WS 구분·전체 단절 복구는 미구현/미검증 |
+| D8 연결 복구 | DONE: P08 로컬 구현 | 로컬 PASS / V08 NOT_RUN | 전체/WS/HTTP 단절·복구 중 변경·무자동 큐·초안·강등/멤버십 소실·갱신 만료·구독/타이머/캐시 정리, 장애 영상 2개·ADR 03 |
 | D9 댓글·알림 | TODO | NOT_RUN | 댓글·알림 코드 없음 |
 | D10 URL | TODO | 전체 NOT_RUN | D4 팀/상세 `?workspace=&issue=` 복원·뒤로가기만 구현. 검색·필터·정렬 없음 |
 | D11 접근성·UX | TODO | 핵심 흐름 NOT_RUN | D1 skip link·오류 재시도·좁은 화면 smoke만 PASS |
-| D12 회귀·CI | TODO | 전체 제품 회귀·원격 CI NOT_RUN | D7까지 Vitest 44·보호 2·DB 39·production smoke 6·DB UI 20건. CI는 정적/보호/production smoke 구성 |
-| D13 재현·시연 | TODO | NOT_RUN | D1~D5 캡처·D6 장애 영상 2개·D7 두 사용자 영상 2개. 전체 제품 시연·새 clone 검증 없음 |
+| D12 회귀·CI | TODO | 전체 제품 회귀·원격 CI NOT_RUN | D8까지 Vitest 47·보호 2·DB 39·production smoke 6·DB UI 25건. CI는 정적/보호/production smoke 구성 |
+| D13 재현·시연 | TODO | NOT_RUN | D1~D5 캡처·D6 장애 영상 2개·D7 두 사용자 영상 2개·D8 연결 장애 영상 2개. 전체 제품 시연·새 clone 검증 없음 |
 | D14 문서·릴리스 | TODO | NOT_RUN | 문서 키트 존재는 구현·릴리스 완료 근거가 아님 |
 
 ## 환경 확인 — P00 당시 기록 (현재 결과는 아래 D1 및 TEST_REPORT)
@@ -185,6 +185,18 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V07을 수�
 - 수정한 실패: 새 테스트의 존재하지 않는 메뉴 이름/상세 닫기 전 입력 경합·테스트 lint를 수정. 기존 충돌 회귀는 Realtime가 제출을 잠그기 전 요청을 보류하는 순서로 조정, assertion 삭제/skip 없음.
 - 증거/결정: docs/evidence/d7-owner.webm·d7-member.webm의 같은 실행 두 사용자 녹화와 추출 프레임, TEST_REPORT·ADR 02. 09-22 최종 비밀 값/데이터 점검 PASS. 로컬 커밋 식별자는 종료 보고 참조, 외부 공개 없음.
 - 남음/다음: V07→P08. 독립 V03~V07·실제 GitHub OAuth·원격 CI·전체 연결 복구/권한 철회 행렬·100개/20회 성능·실제 사용자 피드백은 NOT_RUN. 초안/미확정 요청의 reload·이탈 후 복원은 미지원.
+
+### D8 / P08 / 2026-09-22
+
+- 완료: offline/실시간 불안정/동기화 중/정상 및 별도 HTTP 실패 안내. WS만 실패하면 저장 허용·foreground 15초 조회, 구독 후 최신 조회→dirty 추가 조회 뒤 정상 표시.
+- 초안/요청: 전송 전 offline은 저장 차단·초안 편집 유지. mutations의 pause/자동 재개를 막고 전송 후 결과 불명만 같은 requestId로 명시적 확인한다. 서버 Query/요청 overlay/초안 소유권 유지.
+- 권한/수명: 멤버십 주기/focus/복귀/거부 재검사, Viewer 강등 시 쓰기 차단·기존 초안 읽기 전용 보존. 팀 소실/이탈/로그아웃 시 구독·타이머·캐시 제거, 늦은 응답 재삽입 차단. 실제 Auth 갱신 거부는 로그인 안내.
+- PASS: lint/typecheck/build, Vitest 47·보호 2·실제 DB 39·DB UI 25·production smoke 6, 총 119건. 전체 DB UI/DB 최종 회귀 모두 PASS, 시연 2건도 별도 출력 경로로 재실행/녹화 PASS.
+- 실제 장애: A 단절→B 저장→A 복귀 GET 중 B 추가 변경·초안 보존·자동 POST 0. WS만 차단해 HTTP 저장/폴링, HTTP만 유실해 같은 요청 효과 1회. 실제 강등 FORBIDDEN·멤버십 소실·세션 revoke 후 시계로 갱신 유도·실제 Auth 거부 확인.
+- 수정한 실패: DnD 자동 테스트의 초기 조회/화면 가장자리·모달 종료 전 좌표 조작 경합을 안정화했다. 기존 assertion/테스트 유지. Windows 제한 실행에서 production 서버 종료 지연은 해당 테스트 서버만 정리 후 종료 가능한 환경에서 전체 smoke 재실행 PASS.
+- 증거/결정: `docs/evidence/d8-offline-recovery.webm`, `d8-partial-failures.webm`와 ADR 03/TEST_REPORT. README에 실행·직접 확인 3개/개념 1개 기록. 소스 120/production 198개 실제 비밀 값 일치 0, 기존 사용자 4·팀 3·이슈 1·activity 11·검증 1·receipt 15 유지. 기존 문서/영상·버전/lockfile/env 보존; reset/seed/운영 변경/외부 공개 없음.
+- NOT_RUN/한계: 독립 V03~V08·실제 OAuth·원격 CI·새 clone/reset·100개/20회 성능·OS IME/스크린리더/실제 사용자 피드백. reload/팀 이탈/로그아웃 후 초안/미확정 요청 복원은 미지원. D8 차단 결함은 현재 발견하지 못했다.
+- 다음: V08→P09. 다음 프롬프트는 `docs/planning/PROMPTS.md`의 V08(재연결·큐·구독 누수 검증). 로컬 커밋 식별자는 종료 보고 참조.
 
 ## 하루 기록 양식
 

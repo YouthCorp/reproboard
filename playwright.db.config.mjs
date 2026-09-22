@@ -5,6 +5,7 @@ localStack();
 readAccounts();
 export default defineConfig({
   testDir: './tests/db-ui',
+  outputDir: './test-results/db',
   fullyParallel: false,
   workers: 1,
   retries: 0,

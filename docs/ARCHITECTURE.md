@@ -199,6 +199,8 @@ receipt를 먼저 클라이언트에서 확인한 뒤 별도 insert하는 구현
 
 실시간 전파의 정확히 한 번 전달, 완전한 오프라인 지원, 운영 규모 확장성을 보장한다고 쓰지 않는다.
 
+D8 구현: `WorkspaceConnection`이 팀 수명의 채널·50ms dirty coordinator·foreground 15초 복구/멤버십 조회를 소유한다. SDK가 WS 재연결을 맡으며 같은 채널을 별도 타이머로 중복 생성하지 않는다. 브라우저 offline 후에는 채널을 제거하고 online 때 새로 구독한다. Query와 mutation은 `networkMode: always`, `retry: false`로 숨은 pause/resume를 막고 명령의 전송 전 offline 검사 및 명시적 재확인을 사용한다. HTTP는 10초 제한이며 시간 초과는 명령 거부 증거가 아니다. 캐시 제거 전에 쿼리를 취소하고 실제 unmount의 늦은 명령은 캐시에 쓰지 않는다. Viewer 강등 후에는 허용된 읽기 캐시는 유지하고 기존 초안을 읽기 전용으로 보존한다. 멤버십 소실/팀 이탈/세션 종료는 해당 캐시·초안·요청을 제거한다. 세션 검사는 focus/online/REST 401 및 60초 간격의 실제 Auth 응답을 사용하며, 통신 오류만으로 로그아웃하지 않는다. JWT의 즉시 전역 무효화를 보장하지 않는다.
+
 ## 7. 권한 구현
 
 읽기는 노출된 모든 테이블의 RLS와 필요한 grant로 제한한다. 클라이언트의 직접 insert/update/delete는 기본적으로 닫고 검증된 RPC에만 변경 권한을 부여한다. RPC가 SECURITY DEFINER이면 RLS 우회 가능성을 고려해 auth.uid, 실제 멤버십, 역할, 리소스 소속을 **함수 내부에서 매번** 확인한다.

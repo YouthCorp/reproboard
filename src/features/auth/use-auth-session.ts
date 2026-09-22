@@ -22,6 +22,26 @@ export function useAuthSession() {
   useEffect(() => {
     if (!client) return;
     let userId: string | undefined;
+    let active = true, checking = false;
+    async function checkSession() {
+      if (!userId || checking || !navigator.onLine || document.visibilityState !== "visible") return;
+      checking = true;
+      try {
+        const { error } = await client!.auth.getUser();
+        // Network failures keep the draft/session. Only a server auth rejection expires it.
+        if (active && error && [400, 401, 403].includes(error.status ?? 0)) {
+          void cache.cancelQueries(); cache.clear();
+          setState({ session: null, ready: true });
+          router.replace(`/login?reason=session-expired&next=${encodeURIComponent(returnPath.current)}`);
+          await client!.auth.signOut({ scope: "local" });
+        }
+      } catch { /* A failed transport is not proof of session expiry. */ }
+      finally { checking = false; }
+    }
+    const check = () => { void checkSession(); };
+    window.addEventListener("online", check); window.addEventListener("focus", check);
+    window.addEventListener("reproboard:auth-check", check);
+    const timer = setInterval(check, 60_000);
     const { data } = client.auth.onAuthStateChange((_event, session) => {
       const expired = !!userId && !session && !intentionalSignOut.current;
       if (userId !== session?.user.id) {
@@ -32,7 +52,11 @@ export function useAuthSession() {
       setState({ session, ready: true });
       if (expired) router.replace(`/login?reason=session-expired&next=${encodeURIComponent(returnPath.current)}`);
     });
-    return () => data.subscription.unsubscribe();
+    return () => {
+      active = false; clearInterval(timer); data.subscription.unsubscribe();
+      window.removeEventListener("online", check); window.removeEventListener("focus", check);
+      window.removeEventListener("reproboard:auth-check", check);
+    };
   }, [client, cache, router]);
 
   async function signOut() {

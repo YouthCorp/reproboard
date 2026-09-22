@@ -12,6 +12,7 @@ import { displayedStatus, issueCommandKey, type PendingCommand } from "./command
 import { useIssueCommands } from "./issue-commands";
 import { canTransition, needsReason, needsVerification, stateFieldErrors } from "./state-rules";
 import { TransitionDialog } from "./transition-menu";
+import { useConnection } from "./issue-realtime";
 
 function Card({ issue, pending, message, canWrite, select, retry }: { issue: Issue; pending?: PendingCommand; message?: string; canWrite: boolean; select: (id: string) => void; retry: (command: BoardCommand) => void }) {
   const { setNodeRef, setActivatorNodeRef, isDragging, attributes, listeners } = useDraggable({ id: issue.id, disabled: !canWrite || !!pending });
@@ -27,7 +28,7 @@ function Card({ issue, pending, message, canWrite, select, retry }: { issue: Iss
     </button>
     {pending && <div className={`card-command ${pending.phase}`}>
       <p role="status">{pending.phase === "pending" ? "저장 중…" : "결과 확인 중 · 저장됐을 수 있습니다."}</p>
-      {pending.phase === "uncertain" && <button type="button" className="button button-secondary" onClick={() => retry(pending.command)}>같은 요청으로 결과 확인</button>}
+      {pending.phase === "uncertain" && <button type="button" className="button button-secondary" disabled={!canWrite} onClick={() => retry(pending.command)}>같은 요청으로 결과 확인</button>}
     </div>}
     {!pending && message && <p className="card-command-message" role="status">{message}</p>}
   </li>;
@@ -43,6 +44,8 @@ function Column({ column, children, count }: { column: (typeof boardColumns)[num
 
 export function IssueBoard({ client, workspaceId, issues, canWrite, select }: { client: AppSupabase; workspaceId: string; issues: Issue[]; canWrite: boolean; select: (id: string) => void }) {
   const { store, run } = useIssueCommands();
+  const connection = useConnection();
+  const allowMove = canWrite && connection?.online !== false;
   const requests = useStore(store, (state) => state.requests);
   const messages = useStore(store, (state) => state.messages);
   const members = useMembers(client, workspaceId);
@@ -51,11 +54,13 @@ export function IssueBoard({ client, workspaceId, issues, canWrite, select }: { 
   const [message, setMessage] = useState("");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const mutation = useMutation({ mutationFn: run, retry: false, networkMode: "always" });
-  function send(command: BoardCommand) { mutation.mutate(command); }
+  function send(command: BoardCommand) { mutation.mutate(command, { onError: (error) => {
+    if (error.message === "OFFLINE") setMessage("오프라인이라 이동 요청을 보내지 않았습니다.");
+  } }); }
   function drop({ active, over }: DragEndEvent) {
     setDragged(null);
     const issue = issues.find((row) => row.id === active.id);
-    if (!canWrite || !issue || !over || over.id === issue.status || requests[issueCommandKey(issue.workspace_id, issue.id)]) return;
+    if (!allowMove || !issue || !over || over.id === issue.status || requests[issueCommandKey(issue.workspace_id, issue.id)]) return;
     if (dragged?.version !== issue.version) { setMessage("드래그 중 내용이 바뀌었습니다. 최신 내용을 확인하고 다시 이동하세요."); return; }
     const target = String(over.id);
     if (!canTransition(issue.status, target)) { setMessage("허용되지 않은 상태 이동입니다. 상세의 상태 이동 메뉴에서 가능한 경로를 확인하세요."); return; }
@@ -81,11 +86,11 @@ export function IssueBoard({ client, workspaceId, issues, canWrite, select }: { 
       onDragStart={({ active }) => { const row = issues.find((issue) => issue.id === active.id); setMessage(""); if (row) setDragged({ id: row.id, version: row.version }); }}
       onDragCancel={() => setDragged(null)} onDragEnd={drop}>
       <div className="board-grid live-board-grid">{boardColumns.map((column) => {
-        const rows = issues.filter((issue) => displayedStatus(issue, requests[issueCommandKey(issue.workspace_id, issue.id)]) === column.id);
+        const rows = issues.filter((issue) => displayedStatus(issue, canWrite ? requests[issueCommandKey(issue.workspace_id, issue.id)] : undefined) === column.id);
         return <Column key={column.id} column={column} count={rows.length}>
           {rows.length === 0 ? <p className="column-empty">이 상태의 이슈가 없습니다.</p> : <ul className="issue-list">{rows.map((issue) => {
             const key = issueCommandKey(issue.workspace_id, issue.id);
-            return <Card key={issue.id} issue={issue} canWrite={canWrite} pending={requests[key]} message={messages[key]} select={select} retry={send} />;
+            return <Card key={issue.id} issue={issue} canWrite={allowMove} pending={requests[key]} message={messages[key]} select={select} retry={send} />;
           })}</ul>}
         </Column>;
       })}</div>

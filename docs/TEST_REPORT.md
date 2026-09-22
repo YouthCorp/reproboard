@@ -1,6 +1,35 @@
 # 테스트 실행 보고서
 
-현재 상태: **D7 / P07 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03~V07는 NOT_RUN이다. 기존 단계 기록은 아래에 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+현재 상태: **D8 / P08 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03~V08는 NOT_RUN이다. 기존 단계 기록은 아래에 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+
+## D8 실제 결과 — 2026-09-22
+
+Windows 25H2 / PowerShell 7.6.5 / Node 24.19.0 / pnpm 11.19.0 / Docker 29.7.2 / PostgreSQL 17.6 / Supabase CLI 2.117.0 / Playwright 1.63.0 Chromium. 시작 커밋 `73b1c87`, working tree clean. 기존 문서/사용자 데이터 보존. schema/type/env/패키지/lockfile 변경·reset/seed·외부 공개 없음. 보호된 로컬 스택의 실제 합성 사용자 세션을 사용했다.
+
+| 명령/검증 | 결과 | 실제 근거와 한계 |
+|---|---|---|
+| `pnpm lint`, `pnpm typecheck`, `pnpm build` | PASS | 최종 소스 lint 경고 0·타입·production build 성공. 시연 스크롤 조정 뒤 lint도 PASS. 개발 서버 `/board` HTTP 200 |
+| `pnpm test`, `pnpm test:local-tools` | PASS 47/47, 2/2 | 기존 44건 유지 + WS 없는 polling/재구독 도중 trailing read 2건 + 실제 Query MutationCache가 offline에서도 pause하지 않고 전송 전 실패하며 online 복귀/명시적 resumePausedMutations에도 RPC를 재실행하지 않는 검사 1건. 이 단위 검사는 실제 DB 증거와 구분 |
+| `pnpm test:db-ui` | PASS 25/25 | 기존 20건 유지 + `recovery.spec.mjs` 5건. 전체 회귀 3.1분 PASS. 영상 구도 조정 후 시연 2건, 최종 HTTP 복구 표시 보완 후 D8 5건도 재실행 PASS. 마지막은 `--output .local/d8-final-checks --reporter=list`로 전체 HTML 보고서 보존 |
+| A 단절→B 변경→A 복귀 중 B 추가 변경 | PASS | 서로 다른 browser context의 Owner/Member가 실제 로그인. A `context.setOffline(true)` 동안 입력 편집 유지·저장 비활성·B 저장. 복귀 시 실제 GET 응답 보류→WS 연결됨/동기화 중 확인→B 추가 저장과 실제 이벤트→응답 해제 후 trailing GET. A의 최신 version 3·초안 보존·명시적 저장 전 create POST 0, 직접 저장 후 1 |
+| WS만 실패 / HTTP만 실패 | PASS | 실제 WS 프록시를 close하고 재연결도 차단. HTTP 생성 성공, B 변경은 15초 임시 조회로 A에 반영, WS 복구 후 최신 조회 완료. 이어 실제 update commit 뒤 응답만 abort하고 GET도 실패시켜 `navigator.onLine=true`/WS connected/HTTP 실패를 함께 확인. 조회 복구만으로 재전송 안 함. 명시적 재확인 두 payload/requestId 동일·version +1·activity/receipt 각 1 |
+| 권한 강등·멤버십 소실 | PASS | Member POST를 전송 전 보류→Owner UI에서 Viewer 강등→해제한 실제 RPC FORBIDDEN·version 불변. 재검사 후 저장/전환 비활성·초안 값/readonly 유지. 테스트 소유 팀의 membership만 SQL fixture로 제거→실제 RLS 재조회 후 상세/카드 제거. 멤버 제거 제품 기능을 구현한 것은 아님 |
+| 구독·타이머·캐시 수명 | PASS | 실제 WS join/leave 프레임으로 반복 팀 전환 후 활성 topic 1. 이전 팀 조회가 16초간 0, 해당 팀 복귀의 새 GET을 보류하는 동안 과거 카드 0. 로그아웃 후 topic 0·이전 팀 조회 16초간 0·뒤로가기도 비공개 카드 미표시. 제한된 관찰이며 모든 브라우저 수명 조합의 증명은 아님 |
+| 열려 있는 보드의 세션 만료 | PASS | 해당 테스트 브라우저의 실제 auth.sessions만 revoke. 브라우저 시계로 갱신 시점을 앞당기고 실제 Auth refresh 거부→`reason=session-expired` 안내·비공개 UI 제거. 가짜 Auth 응답/서비스 키로 로그인 사용자를 대신하지 않음. 실제 JWT를 서버에서 즉시 전역 무효화한 시험은 아님 |
+| `pnpm test:db` | PASS 39/39 | 기존 직접 DML 거부·RLS·타팀/Viewer·역할 재검사·version 경합·멱등성·본문/검증/activity/receipt 원자성·실제 Realtime publication/RLS 회귀. 새 SQL은 없어 `db:migrate`/`db:types` 재실행은 NOT_RUN(불필요) |
+| `pnpm test:e2e` | PASS 6/6 | 최종 production 3100 smoke 4.3초, 정상 자동 종료. 전체 고유 테스트 47+2+25+39+6 = **119건 PASS**. production OAuth/실제 사용자 DB 흐름은 이 smoke에 포함하지 않음 |
+| 장애 영상 | PASS | [전체 단절](evidence/d8-offline-recovery.webm) 8.40초/915,073바이트, [WS/HTTP 부분 장애](evidence/d8-partial-failures.webm) 25.92초/2,425,732바이트, 각 1440×1100·무음 Playwright 원본. 별도 실제 B 세션의 조작은 테스트가 수행하고 영상은 A 화면을 기록. 읽기 쉬운 상태별 대기와 스크롤을 넣었고 속도 편집/가짜 UI 없음. ffprobe·추출 프레임 확인, 사용성/성능 측정 아님 |
+| 비밀 값·데이터 | PASS | 실제 로컬 비밀번호/JWT/secret/service 값을 메모리에서만 소스 후보 120개·production 198개와 대조, 각각 일치 0. 기존 합성 사용자/프로필 4·팀 3·이슈 1·activity 11·검증 1·receipt 15·초대 1, 테스트 오류 주입 함수 0. 일반 동작은 실제 세션, SQL은 테스트 fixture/정리/관찰에만 사용 |
+| 후속/외부 | NOT_RUN | 독립 V03~V08, GitHub OAuth(provider=false), 원격 CI, 새 clone/reset 재현, 전체 AC 릴리스 판정, 100개 이슈/20회 전파 시간, 실제 OS IME/스크린리더/터치, 실제 사용자 피드백 |
+
+중간 FAIL/환경 문제와 수정:
+
+- 새 연결 안내 뒤 기존 DnD 테스트가 초기 조회/viewport 가장자리에서 좌표를 잡아 이동 폼을 열지 못했다. 구독/조회 완료와 중앙 스크롤 뒤 측정하도록 수정했다. 첫 조정 후에는 상세 닫기 직후 모달 종료 전에 다음 좌표 조작이 시작되는 경합이 나타났다. `dialog[open]` 제거와 스크롤 안정화를 확인한 뒤 조작해 D6 4건·전체 25건 PASS. 실패 영상의 추출 프레임도 확인했으며 assertion 삭제/skip/재시도로 숨기지 않았다.
+- 첫 production smoke는 6개 assertion이 통과한 뒤 제한 실행 환경에서 서버 종료가 지연됐다. 해당 실행의 Next 3100 서버 PID/명령을 확인하고 종료해 runner를 마쳤다. 최종 실행은 서버 종료가 가능한 환경에서 build→smoke를 다시 수행해 6/6·종료 코드 0. DB UI와 smoke 출력 경로도 `test-results/db`/`test-results/smoke`로 분리해 보고서/녹화 충돌을 막았다.
+- 첫 녹화는 연결 안내 아래 카드가 화면 밖에 있어 시연에서 상태 영역으로 스크롤하고 실제 복구 중 대기를 추가했다. 같은 장애 assertion을 유지한 최종 2건도 PASS. 역사 자료인 D4~D7 캡처/영상은 덮지 않았다.
+- 최종 코드 검토에서 HTTP 조회 실패 후 다른 명령의 성공만으로 정상 안내를 복원하지 않도록 했다. 오류 시 동기화 상태도 무효화하고 성공 응답 후에는 복구 조회를 거친다. D8 5건·lint/typecheck/build·production smoke 재실행 PASS, 최종 영상도 이 실행에서 가져왔다.
+
+AC10~11의 D8 지정 시나리오를 구현 검증했고, 관련 권한/충돌 회귀도 유지했다. 현재 발견된 D8 차단 결함은 없다. offline 중 같은 화면의 초안/미확정 요청은 유지하지만 reload·팀 이탈·로그아웃 후 복원하지 않는다. WS heartbeat/멤버십 주기 검사 전까지 UI 상태 감지 지연이 있을 수 있고 DB는 실제 명령마다 권한을 재검사한다. [ADR 03](DECISIONS.md)에 선택과 한계를 기록했다. 다음은 V08 독립 검증 후 P09다.
 
 ## D7 실제 결과 — 2026-09-21, 최종 점검 09-22
 
