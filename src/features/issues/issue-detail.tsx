@@ -6,6 +6,7 @@ import { useMembers } from "@/features/workspaces/use-members";
 import type { Issue } from "./commands";
 import { PermissionIssueForm } from "./issue-form";
 import { IssueHistory } from "./issue-history";
+import { Comments } from "@/features/comments/comments";
 import { useIssueRequest } from "./issue-commands";
 import { displayedStatus } from "./command-store";
 import { ConnectionHint } from "./issue-realtime";
@@ -53,6 +54,7 @@ export function IssueDetail({ client, workspaceId, issue, canWrite, loading, err
         </dl>
       </details>}
       <IssueHistory client={client} workspaceId={workspaceId} issueId={issue.id} />
+      <Comments client={client} workspaceId={workspaceId} issueId={issue.id} canWrite={canWrite} />
     </>}
   </dialog>;
 }

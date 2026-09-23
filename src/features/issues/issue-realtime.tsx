@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { AppSupabase } from "@/lib/supabase/browser";
 import { createRealtimeRefresh, type RealtimeState } from "./realtime-refresh";
 
-const scopedKeys = ["issues", "verification-runs", "transitions", "membership", "members"];
+const scopedKeys = ["issues", "verification-runs", "transitions", "membership", "members", "comments", "activity", "notifications"];
 type HttpState = "unknown" | "checking" | "ok" | "error";
 type Connection = { online: boolean; ws: "connecting" | "connected" | "error"; http: HttpState;
   sync: RealtimeState; refresh: () => void; reportHttp: (ok: boolean) => void };
@@ -60,6 +60,10 @@ export function WorkspaceConnection({ client, workspaceId, children }: { client:
       const filter = { schema: "public", table: "issues", filter: `workspace_id=eq.${workspaceId}` };
       current.on("postgres_changes", { ...filter, event: "INSERT" }, () => refresh.changed())
         .on("postgres_changes", { ...filter, event: "UPDATE" }, () => refresh.changed())
+        .on("postgres_changes", { ...filter, table: "comments", event: "INSERT" }, () => refresh.changed())
+        .on("postgres_changes", { ...filter, table: "activity_events", event: "INSERT" }, () => refresh.changed())
+        .on("postgres_changes", { ...filter, table: "notifications", event: "INSERT" }, () => refresh.changed())
+        .on("postgres_changes", { ...filter, table: "notifications", event: "UPDATE" }, () => refresh.changed())
         .subscribe((status) => {
           if (!alive || channel !== current) return;
           if (status === "SUBSCRIBED") { connected = true; setWs("connected"); refresh.subscribed(); }

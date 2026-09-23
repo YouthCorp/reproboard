@@ -1,10 +1,10 @@
 # 진행 기록
 
-현재 상태: D8 / P08 HTTP·Realtime 분리, 전체/부분 장애 복구·초안 보존·자동 큐 차단·권한/세션 재검사 로컬 구현 및 관련 검증 완료. D2~D7의 DB 권한·원자성·낙관적 이동·충돌/응답 유실 재확인을 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
+현재 상태: D9 / P09 일반 텍스트 댓글·팀 멤버 선택 멘션·인앱 알림/읽음 로컬 구현과 관련 검증 완료. 원자적 댓글/activity/알림/receipt, 본문 version 불변, 수신자 권한·실시간 재조회·불확실 요청 재확인을 검증했다. D2~D8의 회귀를 유지하며 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
 
-현재 단계: D8 / P08 로컬 PASS, V08 독립 검증 대기 (2026-09-22, Asia/Seoul). 사용자의 D8 지시에 따라 진행했으며 독립 V03~V07는 여전히 NOT_RUN이다.
+현재 단계: D9 / P09 로컬 PASS, V09 독립 검증 대기 (2026-09-23, Asia/Seoul). 사용자 지시에 따라 D9 범위를 유지했으며 독립 V03~V08도 여전히 NOT_RUN이다.
 
-선행 조건: D7 publication을 사용하며 D8의 새 migration/type/env/의존성은 없다. Node/패키지/lockfile을 유지하고 Docker/Supabase·실제 합성 세션으로 검증했다. 다음 실행 때 엔진 상태를 재확인하고 V08→P09 순서로 진행한다. 실제 GitHub smoke는 README의 외부 앱 설정이 필요하다.
+선행 조건: D9 migration/type 생성 완료, Node/패키지/lockfile/env 유지. 꺼진 Docker를 시작했고 reset/seed 없이 기존 데이터를 보존했다. 다음은 V09→P10. 초기 스택에서 한 번 발생한 Realtime 대기 실패는 이후 DB/브라우저 회귀에서 재현되지 않았지만 원인은 미확정이며 새 DB/콜드스타트 검증에 남긴다. 실제 GitHub smoke는 README의 외부 앱 설정이 필요하다.
 
 ## 범위와 근거
 
@@ -27,10 +27,10 @@
 | D6 낙관적 UI | DONE: P06 로컬 구현 | 로컬 PASS / V06 NOT_RUN | DnD·이슈별 잠금·overlay·최신 version 병합, A 실패/B 성공·commit 후 응답 유실·타임아웃 확인. WebM 2개 |
 | D7 실시간·충돌 | DONE: P07 로컬 구현 | 로컬 PASS / V07 NOT_RUN | 실제 Postgres Changes·구독 공백/중복 프레임·독립 2사용자 경합/입력 복구·pending/늦은 응답, 영상 2개 |
 | D8 연결 복구 | DONE: P08 로컬 구현 | 로컬 PASS / V08 NOT_RUN | 전체/WS/HTTP 단절·복구 중 변경·무자동 큐·초안·강등/멤버십 소실·갱신 만료·구독/타이머/캐시 정리, 장애 영상 2개·ADR 03 |
-| D9 댓글·알림 | TODO | NOT_RUN | 댓글·알림 코드 없음 |
+| D9 댓글·알림 | DONE: P09 로컬 구현 | 로컬 PASS / V09 NOT_RUN | 원자적 댓글/멘션 알림·수신자 읽음·본문 version 불변·실시간/응답 유실. DB 46·DB UI 28·캡처 2장, 초기 기동 1회 이벤트 대기 실패 원인 미확정 |
 | D10 URL | TODO | 전체 NOT_RUN | D4 팀/상세 `?workspace=&issue=` 복원·뒤로가기만 구현. 검색·필터·정렬 없음 |
 | D11 접근성·UX | TODO | 핵심 흐름 NOT_RUN | D1 skip link·오류 재시도·좁은 화면 smoke만 PASS |
-| D12 회귀·CI | TODO | 전체 제품 회귀·원격 CI NOT_RUN | D8까지 Vitest 47·보호 2·DB 39·production smoke 6·DB UI 25건. CI는 정적/보호/production smoke 구성 |
+| D12 회귀·CI | TODO | 전체 제품 회귀·원격 CI NOT_RUN | D9까지 Vitest 48·보호 2·DB 46·production smoke 6·DB UI 28건. CI는 정적/보호/production smoke 구성 |
 | D13 재현·시연 | TODO | NOT_RUN | D1~D5 캡처·D6 장애 영상 2개·D7 두 사용자 영상 2개·D8 연결 장애 영상 2개. 전체 제품 시연·새 clone 검증 없음 |
 | D14 문서·릴리스 | TODO | NOT_RUN | 문서 키트 존재는 구현·릴리스 완료 근거가 아님 |
 
@@ -197,6 +197,17 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V07을 수�
 - 증거/결정: `docs/evidence/d8-offline-recovery.webm`, `d8-partial-failures.webm`와 ADR 03/TEST_REPORT. README에 실행·직접 확인 3개/개념 1개 기록. 소스 120/production 198개 실제 비밀 값 일치 0, 기존 사용자 4·팀 3·이슈 1·activity 11·검증 1·receipt 15 유지. 기존 문서/영상·버전/lockfile/env 보존; reset/seed/운영 변경/외부 공개 없음.
 - NOT_RUN/한계: 독립 V03~V08·실제 OAuth·원격 CI·새 clone/reset·100개/20회 성능·OS IME/스크린리더/실제 사용자 피드백. reload/팀 이탈/로그아웃 후 초안/미확정 요청 복원은 미지원. D8 차단 결함은 현재 발견하지 못했다.
 - 다음: V08→P09. 다음 프롬프트는 `docs/planning/PROMPTS.md`의 V08(재연결·큐·구독 누수 검증). 로컬 커밋 식별자는 종료 보고 참조.
+
+### D9 / P09 / 2026-09-23
+
+- 범위: D8 기록·실제 코드에 D9 축소가 필요한 필수 대형 결함은 없어 댓글·단순 멘션·인앱 알림을 유지. 기존 문서/데이터·의존성/lockfile/env 보존, reset/seed·운영 변경·공개 없음.
+- 구현: `20260923000100_d9_comments_notifications.sql`, 생성 DB 타입, `src/features/comments`, 보드/상세·기존 workspace Realtime 경계 연결. Owner/Member 작성, Viewer 조회/본인 읽음, 타팀/직접 쓰기 차단.
+- 명령: trim 1~4,000 코드 포인트·중복 제거 후 멘션 8명·같은 팀 검사·자기 알림 제외. 댓글/activity/알림/receipt 원자성, 동일 requestId 재전송 단일 효과, Done 댓글과 본문 version/updated_at 불변.
+- 실제 PASS: `db:migrate`, `db:types`, lint/typecheck/build, Vitest 48·보호 2·DB 46·DB UI 28·production smoke 6 = 고유 130건. 전체 브라우저 최종 3.4분. Member 역할 2명·Viewer/타팀은 실제 비밀번호 세션, 브라우저 협업은 Owner/Member 별도 context.
+- UI 검증: 일반 텍스트/XSS 미삽입·중복 WS 프레임·댓글/활동/본인 알림 재조회·읽음/상세 링크·조회 오류/재시도/빈 목록·390px·초안/본문 version·오프라인 무자동 큐·commit 후 응답 유실 같은 요청 확인.
+- 수정/한계: 초기 Viewer 입력란 노출을 제거하고 기존 작성자의 강등 시 입력 보존 경계를 유지. SDK GET 재시도 지연과 테스트 브라우저 종료 timeout을 조정. 최초 Realtime 대기 실패 1회는 이후 통과했지만 원인 미확정. 상세 닫기/reload/팀 이탈 후 댓글 초안·미확정 요청 복원 미지원.
+- 증거/보존: `docs/evidence/d9-comments.png`, `d9-notifications.png` 각 1440×1100 직접 확인, TEST_REPORT와 ADR 02/03 확장. 소스 130/production 198개 실제 비밀 값 일치 0. 사용자/프로필 4·팀 3·이슈 1·activity 11·검증 1·receipt 15·초대 1 유지, 테스트 댓글/알림/오류 함수 0.
+- NOT_RUN/다음: 독립 V03~V09·실제 OAuth·새 clone/reset/cold-start 반복·원격 CI·성능·실제 사용자 피드백. 다음 프롬프트 `docs/planning/PROMPTS.md` V09(댓글·알림 데이터 검증), 이후 P10. 로컬 커밋 식별자는 종료 보고 참조.
 
 ## 하루 기록 양식
 

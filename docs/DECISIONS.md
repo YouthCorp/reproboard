@@ -26,6 +26,7 @@ ADR 01은 낙관적 이동, ADR 02는 실제 두 사용자 충돌, ADR 03은 D8�
 - 실제 반례/검증: `tests/db-ui/realtime.spec.mjs`의 독립 Owner/Member 세션이 같은 version에서 제목과 환경을 수정했다. 두 요청을 DB 전송 직전 함께 해제하자 성공 1·CONFLICT 1, version +1, 해당 두 requestId의 activity/receipt 각각 합계 1이었다. 패자는 초안 비교·클립보드 복사 후 명시적으로 최신 값을 불러와 새 requestId/최신 expectedVersion으로 편집했고 상대 필드를 유지했다. 자동 재전송은 없었다. [Owner 영상](evidence/d7-owner.webm) · [Member 영상](evidence/d7-member.webm).
 - 실시간 결합 검증: 구독 전의 변경은 SUBSCRIBED 후 조회로, 조회 중 변경은 dirty 후 추가 조회로 반영했다. 실제 서버 프레임을 테스트 프록시에서 두 번 전달해도 카드가 중복되지 않았다. A의 지연 요청 동안 B 저장과 상대의 A 변경을 반영하고, 늦은 CONFLICT/성공 N+1 뒤에도 더 높은 서버 version을 유지했다. Viewer/타팀의 실제 SDK 스트림과 REST 조회는 기존 RLS를 따랐다.
 - 결과와 남은 한계: DB의 이슈 단위 직렬화와 UI의 선택권을 함께 유지한다. 본문·검증·activity·receipt 원자성과 D6 응답 유실 재확인 회귀도 유지했다. 충돌이 드문 3~8명 팀 MVP를 위한 단순 정책이며 자동 필드 병합/CRDT는 없다. Realtime 전파 시간은 미측정이고 운영 규모 보장이 아니다. 상세 닫기/팀 이탈/로그아웃/reload 뒤 초안 복원은 미지원이고 현재 화면의 연결 복구는 D8의 ADR 03에 기록했다.
+- D9 확장: 댓글은 append 명령으로 분리해 본문 version/updated_at을 올리지 않는다. 실제 두 브라우저에서 댓글 도착 중 본문 초안을 유지하고, 뒤이은 본문 저장이 불필요한 CONFLICT 없이 성공했다. Done 댓글도 version 불변이었다. 댓글·activity·멘션 알림·receipt는 한 트랜잭션이며 최종 receipt 실패 주입 시 모두 롤백됐다.
 
 ## ADR 03 — 변경 알림과 재조회로 복구
 
@@ -42,3 +43,4 @@ ADR 01은 낙관적 이동, ADR 02는 실제 두 사용자 충돌, ADR 03은 D8�
 - 수명/보안: 팀 전환·실제 unmount에서 구독/타이머/해당 캐시를 취소·제거하고 늦은 명령 응답의 캐시 재삽입을 막는다. 재마운트/전환 후 활성 구독 1개, 이전 팀으로 복귀할 때 새 GET 전 과거 카드 미표시, 이탈/로그아웃 후 각 16초간 이전 팀 조회 0을 검사했다. 로그인 만료는 실제 테스트 세션을 revoke한 뒤 브라우저 시계로 갱신 시점을 앞당겨 실제 Auth 거부와 로그인 안내를 확인했다. 가짜 Auth 성공/실패 응답은 만들지 않았다.
 - 결과와 한계: 연결 복구는 누락된 이벤트 재생 대신 서버 재조회로 수렴한다. [전체 단절 복구](evidence/d8-offline-recovery.webm)와 [WS/HTTP 부분 장애](evidence/d8-partial-failures.webm)는 테스트 원본 녹화다. 권한은 DB가 즉시 강제하지만 UI 감지는 조회/heartbeat 주기에 영향을 받는다. 초안/미확정 요청은 현재 화면·팀·세션 메모리에만 남고 reload/이탈/로그아웃 후 복원하지 않는다. 운영 부하·전파 시간·완전한 오프라인 앱을 보장하지 않는다.
 - 근거 문서(2026-09-22 확인): [Query network mode](https://tanstack.com/query/latest/docs/framework/react/guides/network-mode), [Supabase subscribe](https://supabase.com/docs/reference/javascript/subscribe), [removeChannel](https://supabase.com/docs/reference/javascript/removechannel), [getUser](https://supabase.com/docs/reference/javascript/auth-getuser), [Playwright WebSocketRoute](https://playwright.dev/docs/api/class-websocketroute). 의존성 추가/버전 변경은 없다.
+- D9 확장: comments/activity_events/notifications publication과 Query를 같은 수명/복구 범위에 포함했다. 실제 중복 WS 프레임에도 댓글 배열을 append하지 않아 한 건만 보이며, 댓글 응답 유실도 원래 requestId를 사용해 확인했다. D9 조회는 SDK 내부 GET 재시도까지 끄고 오류/명시적 재조회·D8 복구 조정자가 맡는다. 알림 UPDATE는 수신자 본인의 RLS를 통과한 경우만 받는다.

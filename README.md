@@ -2,11 +2,21 @@
 
 소규모 개발팀이 버그 재현 정보를 모으고, 수정 후 재검증까지 관리하는 협업 보드.
 
-**현재 상태: D8 연결 장애·복구 구현.** HTTP와 Realtime 상태를 구분하고 전체 단절/부분 장애에서 초안을 유지한다. 재구독 후 최신 조회와 조회 중 변경 재확인을 마쳐야 정상으로 표시한다. D3~D7의 권한·상태 규칙·검증·낙관적 이동·충돌 복구를 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN이다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)가 기준이다.
+**현재 상태: D9 댓글·멘션·인앱 알림 구현.** 일반 텍스트 댓글과 팀 멤버 선택 멘션, 본인 알림 조회·읽음을 실제 DB에 연결했다. D8 연결 복구와 D3~D7의 권한·상태 규칙·검증·낙관적 이동·충돌 복구를 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN이다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)가 기준이다.
 
 ## 왜 만드는가
 
 버그가 등록되어도 재현 단계나 실행 환경이 부족하면 개발자는 다시 정보를 요청해야 한다. 수정했다는 표시만 있고 재검증 결과가 없으면 해결 여부도 불명확해진다. ReproBoard는 필요한 정보와 완료 조건이 보이는 기본 흐름을 제공하는 것을 목표로 한다.
+
+## D9 직접 확인
+
+1. Owner/Member로 상세 하단에 댓글을 쓰고 **멘션할 팀 멤버**에서 Member와 자신을 선택한다. `<img ...>` 같은 입력도 일반 텍스트로 보이고, 자신에게는 알림이 생기지 않는다.
+2. 별도 브라우저 세션에서 Member로 로그인해 **내 알림**을 펼친다. 댓글 링크로 상세를 열고 **읽음으로 표시**로 안 읽음 수를 줄인다. 상대 댓글이 와도 작성 중인 댓글/본문 입력은 유지된다.
+3. Viewer로 댓글과 본인 알림을 읽고, 댓글 작성은 할 수 없는지 확인한다. 네트워크를 끊으면 자동 저장하지 않고, 보낸 요청의 응답이 유실됐다면 **같은 댓글 요청 확인**으로 직접 결과를 확인한다.
+
+이해할 개념: 댓글은 본문 version과 독립된 추가 명령이다. 댓글·activity·멘션 알림·receipt를 한 트랜잭션으로 저장하고 같은 requestId에는 같은 결과만 반환한다. Realtime 이벤트는 서버 재조회 신호다. [댓글 캡처](docs/evidence/d9-comments.png) · [알림 캡처](docs/evidence/d9-notifications.png)는 실제 합성 계정 흐름이다.
+
+댓글은 trim 후 1~4,000 코드 포인트, 멘션은 중복 제거 후 최대 8명이다. 알림은 현재 선택한 팀의 본인 멘션만 보여 주며 Viewer도 읽음 처리할 수 있다. 댓글 수정/삭제·풍부한 텍스트·이메일/푸시는 없다. 최근 활동 UI는 최대 50건, 댓글·알림은 모든 페이지를 조회한다. 댓글 초안/미확정 요청은 상세를 닫거나 팀 이동/reload하면 복원하지 않는다.
 
 ## 화면과 시연
 
@@ -120,7 +130,7 @@ Studio는 [127.0.0.1:54323](http://127.0.0.1:54323), API는 `http://127.0.0.1:54
 
 `db:migrate`는 `supabase migration up --local`, `db:types`는 `supabase gen types typescript --local --schema public`을 실행하는 보호된 wrapper다. 생성된 `src/lib/supabase/database.types.ts`는 커밋하며 SQL 변경 후 다시 생성한다. 타입의 Insert/Update 정의는 DB 쓰기 권한을 뜻하지 않는다.
 
-D3~D6 환경에서 올릴 때는 Docker 시작 후 `pnpm install --frozen-lockfile` → `pnpm db:start` → `pnpm db:migrate` → `pnpm db:types` → `pnpm dev` 순서로 실행한다. D7 migration은 `public.issues`를 `supabase_realtime` publication에 추가한다. D8은 schema/type/env/의존성을 변경하지 않아 D7 적용 환경에서는 migration·타입 재생성·reset·계정 재생성이 필요 없다. 외부 OAuth 설정도 로컬 개발의 선행 조건이 아니다.
+기존 환경에서 D9로 올릴 때는 Docker 시작 후 `pnpm install --frozen-lockfile` → `pnpm db:start` → `pnpm db:migrate` → `pnpm db:types` → `pnpm dev` 순서로 실행한다. D7은 issues, D9는 comments/activity_events/notifications를 publication에 추가한다. D9 migration `20260923000100_d9_comments_notifications.sql`을 적용하고 DB 타입을 재생성했다. 기존 DB reset/계정 재생성/env 변경은 필요 없다. 엔진이 꺼져 있으면 Windows에서 `docker desktop start` 후 진행한다. 외부 OAuth 설정도 로컬 개발의 선행 조건이 아니다.
 
 `db:seed`는 합성 계정 4개와 팀 2개를 생성한다. 무작위 비밀번호는 gitignore된 `.local/dev-accounts.json`에만 저장하며 터미널·채팅에 출력하지 않는다. 재실행 시 합성 계정의 비밀번호·역할을 준비하고 기존 이슈는 보존한다. 같은 예약 이메일/팀 UUID가 다른 데이터에 사용 중이면 중단한다. 테스트 DB에서만 고정된 합성 식별자를 사용한다. Supabase 기본 SQL seed는 꺼져 있어 명시적으로 이 명령을 실행해야 한다.
 
@@ -177,7 +187,7 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 ## 코드 길잡이
 
-현재 파일과 책임이다. 전체 연결 복구와 검색·댓글 등은 이후 범위다.
+현재 파일과 책임이다. 검색·필터·정렬은 D10 범위다.
 
 | 영역 | 책임 |
 |---|---|
@@ -189,6 +199,7 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 | [issue-realtime.tsx](src/features/issues/issue-realtime.tsx), [realtime-refresh.ts](src/features/issues/realtime-refresh.ts), [conflict-recovery.tsx](src/features/issues/conflict-recovery.tsx) | 변경 알림·구독 후/dirty 추가 조회·초안 비교와 복구 |
 | [src/features/auth](src/features/auth), [src/proxy.ts](src/proxy.ts) | GitHub/개발 로그인·쿠키 갱신·만료 안내·로그아웃과 Query 캐시 정리 |
 | [src/features/workspaces](src/features/workspaces) | 팀 생성·초대 링크·초대 수락·Member/Viewer 변경 |
+| [src/features/comments](src/features/comments) | 일반 텍스트 댓글·팀 멘션·본인 알림/읽음·Query·불확실 요청 재확인 |
 | [scripts](scripts) | 로컬 대상 보호·migration/type/env·합성 계정 준비 |
 | [src/lib/query/query-provider.tsx](src/lib/query/query-provider.tsx) | 보드·초대의 QueryClient 생명주기, 하위 Suspense 경계 |
 | [src/components](src/components) | 공통 로딩·오류 복구 UI |
@@ -204,4 +215,4 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 [기여 안내](CONTRIBUTING.md), [보안 제보 안내](SECURITY.md), [MIT 라이선스](LICENSE).
 
-개인 프로젝트이며 D1~D8 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 단계 기록과 ADR의 증거로 확인한다. CASE_STUDY의 작성자 역할/성과는 아직 작성 양식이며 실제 팀 사용·성능 개선 성과는 측정하지 않았다.
+개인 프로젝트이며 D1~D9 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 단계 기록과 ADR의 증거로 확인한다. CASE_STUDY의 작성자 역할/성과는 아직 작성 양식이며 실제 팀 사용·성능 개선 성과는 측정하지 않았다.

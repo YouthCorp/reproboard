@@ -1,6 +1,34 @@
 # 테스트 실행 보고서
 
-현재 상태: **D8 / P08 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03~V08는 NOT_RUN이다. 기존 단계 기록은 아래에 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+현재 상태: **D9 / P09 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03~V09는 NOT_RUN이다. 기존 단계 기록은 아래에 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+
+## D9 실제 결과 — 2026-09-23
+
+Windows/PowerShell, Node 24.19.0 / pnpm 11.19.0 / Docker 29.7.2 / 로컬 Supabase CLI 2.117.0·PostgreSQL 17.6 / Playwright 1.63.0 Chromium. 시작 커밋 `60cfa2b`, working tree clean. 패키지/lockfile/env 변경·reset/seed·외부 공개 없음. 꺼진 Docker 엔진은 `docker desktop start`로 시작했고 기존 DB를 재사용했다.
+
+| 명령/검증 | 결과 | 실제 근거와 한계 |
+|---|---|---|
+| `pnpm db:migrate`, `pnpm db:types` | PASS | 로컬 대상 보호 확인 후 `20260923000100_d9_comments_notifications.sql` 적용, 실제 public schema 타입 생성. 새 comments/notifications·RLS/grant·RPC 2개·publication 3개 테이블 추가 |
+| `pnpm lint`, `pnpm typecheck`, `pnpm build` | PASS | 최종 소스 경고 0, 타입 검사·production build 성공. 환경 고정 버전 유지 |
+| `pnpm test`, `pnpm test:local-tools` | PASS 48/48, 2/2 | 기존 47 단위·2 보호 검사 유지, trim/Unicode 코드 포인트·멘션 중복/한도 계약 1건 추가 |
+| `pnpm test:db` | PASS 46/46 | 기존 39 + D9 7. 실제 Member 역할 2명, Owner/Viewer/타팀 비밀번호 로그인. 추가 Member는 로컬 admin으로 테스트 fixture만 생성했고 모든 사용자 명령은 비밀번호 세션 사용, 종료 후 profile/auth 사용자까지 제거 |
+| 명령·원자성·권한 | PASS | 동시 같은 requestId는 댓글/activity/receipt 각 1·유효 알림 2, 동일 id/다른 payload·다른 명령은 거부. 타팀 멘션·actor 주입·빈/초과/잘못된 형식·직접 DML·Viewer/타팀 쓰기 거부. 수신자 본인만 조회/읽음, Viewer 읽음 허용, 멤버십 철회/역할 강등 후 예전 receipt 재생도 거부. receipt insert 실패 시 댓글/activity/알림 0, 같은 요청 재실행 1건 |
+| 본문 경합과 분리 | PASS | 댓글 후 version/updated_at 불변. 실제 규칙을 거쳐 Done에 도달한 이슈에도 댓글 허용·version 불변. 브라우저에서 상대 댓글 도착 중 본문 초안 보존, 이후 본문 저장 성공 |
+| 실제 Postgres Changes | PASS | Member/Viewer 댓글·activity INSERT 수신, 수신자에게만 알림 INSERT/UPDATE, 타팀 스트림에는 해당 데이터 0. 권한 거부 관찰은 허용 이벤트 확인 뒤 1.5초의 제한된 관찰. D7 publication 기대 테이블을 새 4개로 갱신하고 기존 RLS 검사는 유지 |
+| `pnpm test:db-ui` | PASS 28/28 | 기존 25 + D9 3. 최종 전체 3.4분. Owner/Member 독립 context 댓글/답글, 실제 WS 프레임 중복, HTML 형태 문자열이 텍스트이며 img DOM 없음. 본인 알림 도착·읽음·상세 링크, Viewer 읽기/쓰기 UI 없음, 타팀 화면 거부. 댓글/활동/알림 503·재조회, 빈 목록, 390px 상세 수평 overflow 없음, validation 라벨/포커스 확인 |
+| 응답 유실·오프라인 | PASS | 실제 RPC commit 후 응답만 abort. 댓글 초안 유지·같은 요청 확인 2회 payload/requestId 일치, 댓글/알림 각 1·이슈 version 1. offline 동안 작성 가능/저장 비활성, online 복귀 직후 자동 POST 0. 테스트용 장애는 Playwright route/일회성 테스트 trigger에만 있음 |
+| `pnpm test:e2e` | PASS 6/6 | 최종 build의 production 3100 smoke 4.7초·서버 정상 종료. 전체 고유 테스트 **48+2+46+28+6=130건 PASS**. 실제 OAuth/사용자 DB 흐름을 production smoke 결과로 주장하지 않음 |
+| 캡처 | PASS | [댓글](evidence/d9-comments.png) 84,916바이트, [알림](evidence/d9-notifications.png) 54,264바이트. 각 1440×1100, 최종 실제 합성 DB 흐름에서 생성·직접 이미지 확인. 기존 D4~D8 증거 보존, 사용자 피드백/영상/성능 측정 아님 |
+| 비밀 값·데이터 | PASS | 소스 후보 130개/production 198개에서 실제 로컬 계정 비밀번호/JWT/secret/service 값 일치 0. 기존 사용자/프로필 4·팀 3·이슈 1·activity 11·검증 1·receipt 15·초대 1, 테스트 댓글/알림 0·오류 함수 0 |
+| 후속 | NOT_RUN | 독립 V03~V09·실제 GitHub OAuth(provider=false)·새 clone/reset/콜드스타트 반복·원격 CI·전체 릴리스 판정·성능·OS IME/스크린리더·실제 사용자 피드백. 상세 닫기/팀 이동/reload 후 댓글 초안과 미확정 요청 복원은 미지원 |
+
+중간 FAIL과 처리:
+
+- 첫 실제 스트림 시험은 허용 이벤트 대기에서 한 번 실패했다. 이벤트 종류별 진단을 추가했고 이후 개별 DB 시험 및 전체 DB/브라우저 회귀에서 통과했다. 최초 실패의 원인은 확정하지 못했으며 새 DB/콜드스타트 반복에서 확인할 항목으로 남긴다. assertion 제거/skip/테스트 자동 retry는 하지 않았다.
+- 그 실패 뒤 임시 Member 삭제도 profiles FK로 실패했다. 테스트 소유 profile을 먼저 제거하도록 cleanup을 수정하고, 최초 실패가 남긴 정확히 1개의 D9 합성 계정만 보호된 로컬 DB에서 정리했다. 최종 기본 계정 수 4를 확인했다.
+- 댓글 조회 503 시험의 첫 오류 안내는 SDK GET 재시도(설치 소스의 1/2/4초 backoff) 때문에 5초 assertion 안에 나오지 않았다. D9 reads/commands에 `.retry(false)`를 명시해 Query/연결 복구 조정자가 재조회를 맡도록 했다.
+- 전체 회귀는 처음 Viewer에게 읽기 전용 댓글 textarea가 보여 기존 “입력란 없음” 검사가 실패했다. 초기 Viewer에는 댓글 입력 UI를 숨기고 기존 작성자만 강등 후 초안을 보존하는 방식으로 수정했다. 기존 검사를 유지한 최종 전체 28건이 통과했다.
+- 첫 전체 회귀에서 D9 Viewer 시험의 browserContext.close가 timeout을 냈다. 빈 목록 검증을 첫 두 사용자 시험으로 옮겨 불필요한 세 번째 context를 없애고 context를 함께 정리했다. 실제 검증 항목은 유지했으며 최종 전체 실행은 정상 종료했다.
 
 ## D8 실제 결과 — 2026-09-22
 

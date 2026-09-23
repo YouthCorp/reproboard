@@ -50,6 +50,47 @@ export type Database = {
           },
         ]
       }
+      comments: {
+        Row: {
+          actor_id: string
+          body: string
+          created_at: string
+          id: string
+          issue_id: string
+          mention_ids: string[]
+          request_id: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          body: string
+          created_at?: string
+          id?: string
+          issue_id: string
+          mention_ids?: string[]
+          request_id: string
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          issue_id?: string
+          mention_ids?: string[]
+          request_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_workspace_id_issue_id_fkey"
+            columns: ["workspace_id", "issue_id"]
+            isOneToOne: false
+            referencedRelation: "issues"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       issues: {
         Row: {
           actual: string
@@ -134,6 +175,41 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          recipient_id: string
+          workspace_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_id: string
+          workspace_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_workspace_id_comment_id_fkey"
+            columns: ["workspace_id", "comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["workspace_id", "id"]
           },
         ]
       }
@@ -261,6 +337,15 @@ export type Database = {
         Args: { p_request_id: string; p_token: string }
         Returns: Json
       }
+      add_comment: {
+        Args: {
+          p_issue_id: string
+          p_payload: Json
+          p_request_id: string
+          p_workspace_id: string
+        }
+        Returns: Json
+      }
       change_member_role: {
         Args: { p_payload: Json; p_request_id: string; p_workspace_id: string }
         Returns: Json
@@ -284,6 +369,14 @@ export type Database = {
           role: string
           user_id: string
         }[]
+      }
+      mark_notification_read: {
+        Args: {
+          p_notification_id: string
+          p_request_id: string
+          p_workspace_id: string
+        }
+        Returns: Json
       }
       transition_issue: {
         Args: {

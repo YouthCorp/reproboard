@@ -9,6 +9,7 @@ import { IssueBoard } from "./issue-board";
 import { IssueDetail } from "./issue-detail";
 import { WorkspaceCreate } from "@/features/workspaces/workspace-create";
 import { TeamManagement } from "@/features/workspaces/team-management";
+import { Notifications } from "@/features/comments/notifications";
 import { IssueCommands } from "./issue-commands";
 import { mergeIssueSnapshot } from "./issue-cache";
 import type { Issue } from "./commands";
@@ -76,6 +77,7 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
           <p role="alert">팀 권한을 확인할 수 없습니다. <button onClick={() => { membership.refetch(); workspaces.refetch(); }}>다시 조회</button></p> :
           <WorkspaceConnection key={`${user.id}/${workspaceId}`} client={client} workspaceId={workspaceId}><IssueCommands client={client} canWrite={canWrite}><section className="live-inbox" aria-labelledby="inbox-title">
             <IssueRealtime />
+            <Notifications client={client} workspaceId={workspaceId} userId={user.id} selectIssue={selectIssue} />
             <div className="board-caption"><h2 id="inbox-title">팀 이슈 · {issues.data?.length ?? "…"}개</h2>
               <button className="button button-secondary" onClick={() => { issues.refetch(); membership.refetch(); workspaces.refetch(); }}>최신 목록 조회</button></div>
             <TeamManagement client={client} workspaceId={workspaceId} isOwner={!membership.isError && membership.data.role === "owner"} />

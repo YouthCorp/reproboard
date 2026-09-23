@@ -1,6 +1,18 @@
 # 기술 계약과 아키텍처
 
-상태: D7 실제 실시간 구독·충돌 복구와 D3~D6 인증·팀·보드·상태 규칙·낙관적 이동 구현. 아래 전체 계약 중 실제 경로는 다음 절과 PROGRESS에 표시하며 이후 단계의 기능을 구현 완료로 간주하지 않는다.
+상태: D9 댓글·멘션·인앱 알림과 D8 연결 복구까지 로컬 구현. 아래 단계별 절은 당시 범위를 보존하며 현재 검증 상태는 PROGRESS/TEST_REPORT를 따른다.
+
+## D9 실제 구현과 경계
+
+- `20260923000100_d9_comments_notifications.sql`은 `public.comments`/`public.notifications`와 `add_comment`/`mark_notification_read`를 추가한다. 현재 사용자의 membership을 잠그고 역할을 검사한 뒤 기존 actor/workspace/requestId 잠금·payload 해시·receipt 계약을 적용한다. 재전송에도 현재 권한을 먼저 검사한다. 빈 search_path의 SECURITY DEFINER이며 authenticated에 필요한 EXECUTE만 준다.
+- 댓글은 trim 후 Unicode 코드 포인트 1~4,000자, 중복 제거 후 멘션 최대 8명이다. user id별 현재 같은 팀 membership을 검사·잠근다. 자기 멘션은 기록하되 알림은 만들지 않는다. `(recipient_id, comment_id)` UNIQUE와 명령 receipt로 중복 효과를 막는다. body/mention_ids 외 입력과 actor 주입은 거부한다.
+- 댓글·comment_added activity·수신자별 알림·성공 receipt는 한 트랜잭션이다. 이슈 본문/version/updated_at은 변경하지 않는다. Done에도 댓글을 쓸 수 있고, 댓글 때문에 기존 본문 초안의 version이 오래된 값이 되지 않는다. 댓글 수정·삭제는 없다.
+- 댓글/activity는 같은 팀만 SELECT, 알림은 같은 팀에 남아 있는 수신자 본인만 SELECT/읽음 RPC가 가능하다. Viewer는 댓글 작성 불가·조회/본인 읽음 가능. 직접 DML은 모두 닫는다. 표시 이름은 기존 `list_workspace_members`의 필요한 팀 프로필만 사용한다.
+- Query 키는 `['comments', workspaceId, issueId]`, `['activity', workspaceId, issueId]`, `['notifications', workspaceId, userId]`다. 댓글/알림은 200개씩 모든 페이지를 조회하고, 활동 UI는 최근 50건임을 명시한다. 텍스트는 React text child로 렌더링하며 HTML 삽입/링크 자동 변환/편집기는 없다.
+- publication에 comments/activity_events/notifications를 추가하고 댓글·활동 INSERT, 알림 INSERT/UPDATE를 기존 workspace 구독에 묶었다. 이벤트 payload를 배열에 넣지 않는다. D8의 구독→조회→dirty 추가 조회, HTTP fallback, workspace/logout 캐시·구독 정리에 새 Query를 포함한다. 필터는 최적화이고 RLS가 권한 경계다.
+- 댓글/읽음 명령은 retry=false/networkMode=always이며 전송 전 offline을 차단한다. 미확정 요청은 원래 payload/requestId를 보존해 명시적으로 확인한다. 확정 성공 뒤 재조회 실패는 명령 실패로 바꾸지 않는다. 댓글 초안·미확정 요청은 현재 상세 수명에만 있으며 상세 닫기/팀 이탈/reload 후 복원은 미지원이다.
+
+공식 근거(2026-09-23 확인): [Postgres Changes의 publication·여러 테이블·RLS](https://supabase.com/docs/guides/realtime/postgres-changes), [Database Functions의 SECURITY DEFINER/search_path·EXECUTE 제한](https://supabase.com/docs/guides/database/functions). 설치된 Supabase JS 2.116.0 타입/소스와 대조했으며 의존성 추가·버전 변경은 없다.
 
 ## D7 실제 구현과 경계
 

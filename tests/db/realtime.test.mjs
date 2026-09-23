@@ -19,7 +19,8 @@ test('D7 publication retains RLS: actual Viewer stream reads own team, outsider 
     assert.equal(result.error, null); assert.equal(result.data.ok, true); issueIds.push(result.data.data.id); return result.data.data;
   }
   try {
-    assert.deepEqual((await db.query("select schemaname,tablename from pg_catalog.pg_publication_tables where pubname='supabase_realtime' order by schemaname,tablename")).rows, [{ schemaname: 'public', tablename: 'issues' }]);
+    assert.deepEqual((await db.query("select schemaname,tablename from pg_catalog.pg_publication_tables where pubname='supabase_realtime' order by schemaname,tablename")).rows,
+      ['activity_events', 'comments', 'issues', 'notifications'].map((tablename) => ({ schemaname: 'public', tablename })));
     assert.equal((await db.query("select relrowsecurity from pg_catalog.pg_class where oid='public.issues'::regclass")).rows[0].relrowsecurity, true);
     for (const role of ['owner', 'viewer', 'outsider']) {
       const account = accounts.find((a) => a.role === role);
