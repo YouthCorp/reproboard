@@ -21,6 +21,8 @@ test.afterAll(async () => {
   if (!db) return;
   await db.query('begin');
   try {
+    const owned = await db.query('select id, name from public.workspaces where id=any($1::uuid[])', [[...teams]]);
+    expect(owned.rows.every((row) => row.name.startsWith('합성 브라우저 팀 ') || row.name.startsWith('합성 D3 UI '))).toBe(true);
     for (const table of ['public.activity_events', 'private.workspace_invites', 'private.command_receipts', 'public.issues', 'public.workspace_members']) {
       await db.query(`delete from ${table} where workspace_id=any($1::uuid[])`, [[...teams]]);
     }
@@ -69,8 +71,11 @@ test('create workspace, share a fragment invitation, join and switch Member/View
   await page.getByLabel('새 워크스페이스 이름', { exact: true }).fill(name);
   await page.getByRole('button', { name: '워크스페이스 생성', exact: true }).click();
   await expect(page.getByRole('combobox', { name: '워크스페이스', exact: true })).toContainText(name);
-  await expect(page).toHaveURL(/workspace=/);
-  const workspace = new URL(page.url()).searchParams.get('workspace'); teams.add(workspace);
+  const created = await db.query('select id from public.workspaces where name=$1', [name]);
+  expect(created.rows).toHaveLength(1);
+  const workspace = created.rows[0].id; teams.add(workspace);
+  await expect(page).toHaveURL(new RegExp(`workspace=${workspace}`));
+  await expect(page.locator('#workspace-select option:checked')).toHaveText(name);
   await expect(page.getByText('역할: owner', { exact: true })).toBeVisible();
   expect((await db.query('select owner_id from public.workspaces where id=$1', [workspace])).rows[0].owner_id).toBe(accounts.find((item) => item.role === 'owner').id);
   await page.getByText('팀 멤버와 권한', { exact: true }).click();

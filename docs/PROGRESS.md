@@ -1,17 +1,17 @@
 # 진행 기록
 
-현재 상태: D9 / P09 일반 텍스트 댓글·팀 멤버 선택 멘션·인앱 알림/읽음 로컬 구현과 관련 검증 완료. 원자적 댓글/activity/알림/receipt, 본문 version 불변, 수신자 권한·실시간 재조회·불확실 요청 재확인을 검증했다. D2~D8의 회귀를 유지하며 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
+현재 상태: D10 / P10 제목·이슈키 검색, 분류/담당자 필터, 정렬·상세 선택의 URL 통합 로컬 구현과 관련 검증 완료. 공유 주소의 다른 계정 로그인·새로고침·history 복원과 잘못된 값·0건·IME 이벤트를 확인했다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
 
-현재 단계: D9 / P09 로컬 PASS, V09 독립 검증 대기 (2026-09-23, Asia/Seoul). 사용자 지시에 따라 D9 범위를 유지했으며 독립 V03~V08도 여전히 NOT_RUN이다.
+현재 단계: D10 / P10 로컬 PASS, V10 독립 검증 대기 (2026-09-24, Asia/Seoul). 독립 V03~V09는 여전히 NOT_RUN이다. 신규 기능을 동결하고 이후는 기존 기능의 결함·접근성·검증·문서에 집중한다.
 
-선행 조건: D9 migration/type 생성 완료, Node/패키지/lockfile/env 유지. 꺼진 Docker를 시작했고 reset/seed 없이 기존 데이터를 보존했다. 다음은 V09→P10. 초기 스택에서 한 번 발생한 Realtime 대기 실패는 이후 DB/브라우저 회귀에서 재현되지 않았지만 원인은 미확정이며 새 DB/콜드스타트 검증에 남긴다. 실제 GitHub smoke는 README의 외부 앱 설정이 필요하다.
+선행 조건: 기존 로컬 Supabase·합성 계정 재사용, 패키지/lockfile/env/SQL 보존. 다음은 V10→P11. D9 초기 기동 Realtime 대기 실패의 콜드스타트 원인 검증은 여전히 남는다. 실제 GitHub smoke는 README의 외부 앱 설정이 필요하다.
 
 ## 범위와 근거
 
 - 14일·70시간은 계획 예산이며 실제 투입 시간·성과로 계산하지 않는다. 시작 기준일은 2026-09-13, 연속 진행 시 D14는 2026-09-26이다.
 - 3~8명 팀, 워크스페이스당 500개 이슈 이하, 합성 100개 기준을 유지한다. 상태 전환·권한·version·멱등성은 DB에서 강제하고 실제 두 사용자·실패·복구 검증을 핵심으로 둔다.
 - 서버 데이터는 Query, 공유 임시 UI는 Zustand, 검색·필터·정렬·상세 선택은 URL이 소유한다. Realtime는 재조회 신호다.
-- 범위 축소는 아직 없음. 지연 시 ROADMAP의 멘션/알림·초대 UI·장식·공개 배포 축소 규칙을 적용하고 PRD/ACCEPTANCE/README를 함께 맞춘다. ADR은 낙관적 UI·충돌·재연결 3건에 집중한다.
+- D10 기능 동결: 미구현 /demo 신규 화면은 후속으로 옮기고 D13은 기존 합성 계정의 실제 앱으로 시연한다. 초대·댓글·멘션·알림은 유지한다. 지연 시 ROADMAP의 멘션/알림·초대 UI·장식·공개 배포 축소 규칙을 적용하고 PRD/ACCEPTANCE/README를 함께 맞춘다. ADR은 낙관적 UI·충돌·재연결 3건에 집중한다.
 - P00 당시 필수 문서 5종과 AGENTS.md, PROMPTS.md가 모두 있었고 기존 18개 파일은 문서·LICENSE·GitHub 템플릿뿐이었다. 누락된 키트 문서는 없었다. D1의 현재 코드는 아래 실제 경로로 매핑한다.
 - P00 당시 `.git`이 없었다. P01에서 `main` 저장소를 초기화했다. 원격 연결·push·공개는 수행하지 않았다.
 
@@ -28,9 +28,9 @@
 | D7 실시간·충돌 | DONE: P07 로컬 구현 | 로컬 PASS / V07 NOT_RUN | 실제 Postgres Changes·구독 공백/중복 프레임·독립 2사용자 경합/입력 복구·pending/늦은 응답, 영상 2개 |
 | D8 연결 복구 | DONE: P08 로컬 구현 | 로컬 PASS / V08 NOT_RUN | 전체/WS/HTTP 단절·복구 중 변경·무자동 큐·초안·강등/멤버십 소실·갱신 만료·구독/타이머/캐시 정리, 장애 영상 2개·ADR 03 |
 | D9 댓글·알림 | DONE: P09 로컬 구현 | 로컬 PASS / V09 NOT_RUN | 원자적 댓글/멘션 알림·수신자 읽음·본문 version 불변·실시간/응답 유실. DB 46·DB UI 28·캡처 2장, 초기 기동 1회 이벤트 대기 실패 원인 미확정 |
-| D10 URL | TODO | 전체 NOT_RUN | D4 팀/상세 `?workspace=&issue=` 복원·뒤로가기만 구현. 검색·필터·정렬 없음 |
+| D10 URL | DONE: P10 로컬 구현 | 로컬 PASS / V10 NOT_RUN | 파서/정규화·검색/필터/안정 정렬·공유 로그인·history·IME 이벤트. 단위 57·DB UI 32·production smoke 6, 캡처 1장. 신규 기능 동결 |
 | D11 접근성·UX | TODO | 핵심 흐름 NOT_RUN | D1 skip link·오류 재시도·좁은 화면 smoke만 PASS |
-| D12 회귀·CI | TODO | 전체 제품 회귀·원격 CI NOT_RUN | D9까지 Vitest 48·보호 2·DB 46·production smoke 6·DB UI 28건. CI는 정적/보호/production smoke 구성 |
+| D12 회귀·CI | TODO | 전체 제품 회귀·원격 CI NOT_RUN | D10 단위 57·production smoke 6·DB UI 32건, 보호 2·DB 46건은 D9 결과. CI는 정적/보호/production smoke 구성 |
 | D13 재현·시연 | TODO | NOT_RUN | D1~D5 캡처·D6 장애 영상 2개·D7 두 사용자 영상 2개·D8 연결 장애 영상 2개. 전체 제품 시연·새 clone 검증 없음 |
 | D14 문서·릴리스 | TODO | NOT_RUN | 문서 키트 존재는 구현·릴리스 완료 근거가 아님 |
 
@@ -63,10 +63,10 @@
 
 ## 다음 실행 프롬프트
 
-[PROMPTS.md의 V07 — 경쟁 상태·실시간의 실제성 검증](planning/PROMPTS.md#v07--경쟁-상태실시간의-실제성-검증)을 수행한 뒤 P08로 진행한다. 독립 V03~V06 미실행 사실은 유지한다.
+독립 검증 V10을 수행한 뒤 P11로 진행한다. 독립 V03~V09 미실행 사실은 유지한다.
 
 ```text
-AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V07을 수행해라. 서로 다른 로그인 사용자 2명이 같은 version에서 수정해 성공 1·CONFLICT 1·version +1·activity/receipt 각 1건인지 실제 DB와 UI로 확인해라. 초안 보존·최신 값 비교·입력 복사·명시적 재편집, 구독 완료 전/조회 중 변경, 실제 중복 프레임, pending A와 B 성공 및 늦은 응답의 최신 값 보존을 검증해라. 타팀 구독/조회 RLS도 확인하고 mock과 실제 backend 결과를 구분해라. 기존 데이터와 독립 V03~V06 NOT_RUN을 보존하며 통과하면 P08을 다음 프롬프트로 지정해라.
+AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V10을 수행해라. 검색·필터·정렬·상세를 조합해 다른 로그인 context로 주소를 공유하고 로그인/새로고침/뒤로·앞으로/직접 상세 닫기를 검증해라. 잘못된 enum·UUID·비회원 팀·타팀/없는 이슈·0건·500개 범위, 한글 조합 중 불필요한 URL 갱신과 입력 소실을 확인해라. composition 이벤트와 실제 OS IME 검증을 구분하고 미실행 항목은 NOT_RUN으로 남겨라. 기존 데이터와 기능 동결을 보존하며 통과하면 P11 접근성·UX를 다음으로 지정해라.
 ```
 
 ### D1 / P00 / 2026-09-13
@@ -208,6 +208,17 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V07을 수�
 - 수정/한계: 초기 Viewer 입력란 노출을 제거하고 기존 작성자의 강등 시 입력 보존 경계를 유지. SDK GET 재시도 지연과 테스트 브라우저 종료 timeout을 조정. 최초 Realtime 대기 실패 1회는 이후 통과했지만 원인 미확정. 상세 닫기/reload/팀 이탈 후 댓글 초안·미확정 요청 복원 미지원.
 - 증거/보존: `docs/evidence/d9-comments.png`, `d9-notifications.png` 각 1440×1100 직접 확인, TEST_REPORT와 ADR 02/03 확장. 소스 130/production 198개 실제 비밀 값 일치 0. 사용자/프로필 4·팀 3·이슈 1·activity 11·검증 1·receipt 15·초대 1 유지, 테스트 댓글/알림/오류 함수 0.
 - NOT_RUN/다음: 독립 V03~V09·실제 OAuth·새 clone/reset/cold-start 반복·원격 CI·성능·실제 사용자 피드백. 다음 프롬프트 `docs/planning/PROMPTS.md` V09(댓글·알림 데이터 검증), 이후 P10. 로컬 커밋 식별자는 종료 보고 참조.
+
+### D10 / P10 / 2026-09-24
+
+- 구현: board-url 순수 파서/정규화/직렬화·비파괴 필터/안정 정렬, use-board-url history, BoardFilters IME/300ms 검색·분류/담당자 UI. 전체 서버 목록/상세는 같은 Query, 적용 조건은 URL, 미적용 입력만 로컬 state.
+- 동작: 검색/필터/정렬/팀 선택 replace, 상세 열기/닫기 push. 공유→다른 계정 로그인·reload·Back/Forward·직접 상세 닫기, 필터 밖 상세·검색 0건·잘못된 enum/UUID·비회원 팀/타팀 id 안내를 검증했다.
+- PASS: lint/typecheck/production build, Vitest 57·실제 DB 브라우저 32·production smoke 6 = 고유 95건. D10 전용 4건, 댓글 경합 수정 뒤 3건×2 반복도 PASS. 서비스 키로 사용자 동작을 대신하지 않았다.
+- 실제 수정: 로그인 safeNext의 필터 소실, select 라벨, 테스트 시계 경계, 기존 팀 생성 테스트의 느슨한 URL 대기와 알림 재시도 전 장애 해제 경합. assertion/skip/강제 클릭 없이 수정하고 전체 회귀 PASS.
+- 보존: 기존 문서·패키지/lockfile/env/SQL·합성 데이터 유지, 새 migration/types/reset/seed 없음. 실패한 팀 시험의 정리는 FK 오류로 롤백됐으며 정확히 확인한 테스트 팀만 제거했다. D9 캡처는 보존하고 새 회귀 이미지는 리포트에 첨부한다.
+- 증거: docs/evidence/d10-url-filters.png, board-url.test.ts·tests/db-ui/board-url.spec.mjs, TEST_REPORT. 실제 비밀 값 일치 0, 기존 사용자/프로필 4·팀 3·이슈 1·activity 11·검증 1·receipt 15·초대 1·댓글/알림/오류 함수 0 확인.
+- 동결: D10 이후 신규 기능 없음. 미구현 /demo는 후속, D13은 기존 실제 앱의 합성 시연. ADR은 3건 유지하고 URL 탐색 결정은 ARCHITECTURE에 기록했다.
+- NOT_RUN/다음: 독립 V03~V10·실제 OS IME·OAuth·원격 CI·새 clone/콜드스타트·성능·사용자 피드백. DB 단독/보호 테스트는 D9 이후 관련 변경 없어 이번 단계 재실행 안 함. V10→P11, 로컬 커밋 식별자는 종료 보고 참조.
 
 ## 하루 기록 양식
 

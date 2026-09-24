@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRouter, useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import type { AppSupabase } from "@/lib/supabase/browser";
 import { PermissionIssueForm } from "./issue-form";
@@ -14,16 +13,18 @@ import { IssueCommands } from "./issue-commands";
 import { mergeIssueSnapshot } from "./issue-cache";
 import type { Issue } from "./commands";
 import { IssueRealtime, WorkspaceConnection } from "./issue-realtime";
+import { useBoardUrl } from "./use-board-url";
+import { visibleIssues } from "./board-url";
+import { BoardFilters } from "./board-filters";
 
 export function LiveBoard({ client, user, signOut, signOutError }: { client: AppSupabase; user: User; signOut: () => Promise<void>; signOutError: string }) {
-  const router = useRouter();
-  const params = useSearchParams();
   const workspaces = useQuery({ queryKey: ["workspaces", user.id], queryFn: async ({ signal }) => {
     const result = await client.from("workspaces").select("*").order("created_at").abortSignal(signal);
     if (result.error) throw new Error("팀을 불러오지 못했습니다.");
     return result.data;
   } });
-  const workspaceId = params.get("workspace") ?? workspaces.data?.[0]?.id ?? "";
+  const { state: boardState, change } = useBoardUrl(workspaces.data?.[0]?.id ?? "");
+  const workspaceId = boardState.workspace;
   const workspace = workspaces.data?.find((item) => item.id === workspaceId);
   const membership = useQuery({ queryKey: ["membership", workspaceId, user.id], enabled: !!workspace, refetchOnWindowFocus: "always",
     queryFn: async ({ signal }) => {
@@ -41,13 +42,11 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
       return result.data;
     } });
   const canWrite = !membership.isError && (membership.data?.role === "owner" || membership.data?.role === "member");
-  const selectedId = params.get("issue");
+  const selectedId = boardState.issue;
   const selectedIssue = issues.data?.find((issue) => issue.id === selectedId);
+  const visible = visibleIssues(issues.data ?? [], boardState);
   function selectIssue(id: string | null) {
-    const next = new URLSearchParams(params.toString());
-    next.set("workspace", workspaceId);
-    if (id) next.set("issue", id); else next.delete("issue");
-    router.push(`/board?${next.toString()}`, { scroll: false });
+    change({ workspace: workspaceId, issue: id ?? "" }, "push");
   }
   return <>
     <div className="session-bar">
@@ -63,10 +62,7 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
       <p role="alert">팀을 불러오지 못했습니다. <button onClick={() => workspaces.refetch()}>다시 조회</button></p> : <>
       <div className="workspace-toolbar">
         <label htmlFor="workspace-select">워크스페이스</label>
-        <select id="workspace-select" value={workspace ? workspaceId : ""} onChange={(event) => {
-          const next = new URLSearchParams(params.toString()); next.set("workspace", event.target.value); next.delete("issue");
-          router.replace(`/board?${next.toString()}`);
-        }}>
+        <select id="workspace-select" value={workspace ? workspaceId : ""} onChange={(event) => change({ workspace: event.target.value, issue: "", assignee: "" })}>
           <option disabled value="">팀 선택</option>
           {workspaces.data.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}
         </select>
@@ -84,11 +80,14 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
             {membership.isError && <p role="alert">최신 권한 확인에 실패했습니다. <button onClick={() => membership.refetch()}>권한 다시 조회</button></p>}
             {membership.data.role === "viewer" && <p className="read-only-note">Viewer는 조회만 할 수 있습니다.</p>}
             <PermissionIssueForm client={client} workspaceId={workspaceId} canWrite={canWrite} />
+            <BoardFilters key={workspaceId} client={client} workspaceId={workspaceId} state={boardState} change={change} />
             {issues.isPending && <p role="status">이슈를 불러오는 중…</p>}
             {issues.isError && <p role="alert">{issues.error.message} {issues.data && "마지막 조회 값을 표시합니다."} <button onClick={() => issues.refetch()}>다시 조회</button></p>}
             {issues.isFetching && !issues.isPending && <p role="status">최신 목록 확인 중…</p>}
             {issues.data && <>{issues.data.length === 0 && <p className="empty-inbox">아직 등록된 이슈가 없습니다.</p>}
-              <IssueBoard client={client} workspaceId={workspaceId} issues={issues.data} canWrite={canWrite} select={selectIssue} /></>}
+              <p role="status" className="board-result-count">조회 결과 {visible.length} / {issues.data.length}개</p>
+              {issues.data.length > 0 && visible.length === 0 && <p className="empty-inbox">검색·필터에 맞는 이슈가 없습니다. 조건을 변경하거나 초기화하세요.</p>}
+              <IssueBoard client={client} workspaceId={workspaceId} issues={visible} canWrite={canWrite} select={selectIssue} /></>}
             {selectedId && <IssueDetail key={selectedId} client={client} workspaceId={workspaceId} issue={selectedIssue} canWrite={canWrite}
               loading={issues.isPending} error={issues.isError} refreshing={issues.isFetching}
               retry={() => { issues.refetch(); membership.refetch(); }} close={() => selectIssue(null)} />}

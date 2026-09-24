@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { BoardShell } from "@/features/issues/board-shell";
 import { QueryProvider } from "@/lib/query/query-provider";
-import { BoardSession } from "@/features/auth/board-session";
+import { BoardLoginLink, BoardSession } from "@/features/auth/board-session";
 
 export const metadata: Metadata = { title: "버그 보드" };
 export const dynamic = "force-dynamic";
@@ -24,7 +23,7 @@ export default function BoardPage() {
           <h2 id="connection-title">로그인하면 팀의 이슈를 확인할 수 있습니다</h2>
           <p id="connection-note">로그인 전 보드 미리보기입니다. 로컬 개발 계정으로 제목 생성·수정을 확인할 수 있으며, 아래는 실제 조회 결과가 아닙니다.</p>
         </div>
-        <Link href="/login">로그인 안내 <span aria-hidden="true">↗</span></Link>
+        <BoardLoginLink />
       </aside>
       <div className="board-caption"><h2>이슈 진행 현황</h2><span>5단계 작업 흐름</span></div>
       <BoardShell />

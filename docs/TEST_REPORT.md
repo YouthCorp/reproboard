@@ -1,6 +1,36 @@
 # 테스트 실행 보고서
 
-현재 상태: **D9 / P09 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03~V09는 NOT_RUN이다. 기존 단계 기록은 아래에 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+현재 상태: **D10 / P10 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03~V10는 NOT_RUN이다. 이전 단계 기록과 중간 실패는 아래에 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+
+## D10 실제 결과 — 2026-09-24
+
+Windows 25H2/PowerShell 7.6.5, Node 24.19.0/pnpm 11.19.0/Next 16.3.5/Playwright 1.63.0 Chromium, 기존 로컬 Supabase 스택. 시작 커밋 b18b3c3의 clean 상태를 확인했다. 새 의존성·lockfile/env/SQL 변경, reset/seed, 외부 공개 없음.
+
+| 명령/검증 | 결과 | 실제 범위와 한계 |
+|---|---|---|
+| pnpm lint / pnpm typecheck / pnpm build | PASS | 최종 앱 소스의 정적 검사와 production 생성. 마지막 앱 변경은 빈 기본 보드 로그인 주소를 /login으로 유지하는 수정 |
+| pnpm test | PASS 57/57 | 기존 48 + URL 순수 계약 8 + 인증 복귀 조건 1. 파싱/정규화/직렬화 독립·정규화 멱등성·Unicode/이스케이프·AND 필터·안정 정렬·원본 불변 |
+| pnpm test:db-ui | PASS 32/32 | 기존 28 + D10 4. 일반 사용자 비밀번호 세션과 실제 DB의 생성/읽기/편집·협업/충돌/권한/복구/댓글 회귀. retry=0, 단일 worker |
+| 공유·탐색 | PASS | Owner 주소→별도 미로그인 context→보드 로그인 링크→Member 로그인 뒤 조건/상세 복원. reload·Back/Forward·직접 상세 닫기·필터 밖 상세 유지. 검색/필터는 history 길이 불변 |
+| URL/권한/0건 | PASS | 잘못된 UUID/enum·중복 키·기본값·미지의 키 정규화. 비회원/없는 팀은 이슈 GET 자체를 보내지 않음. 타팀/없는 이슈 동일 안내, 타팀 담당자는 이름 노출 없이 0건. 팀 0건과 검색 0건 구분 |
+| IME·디바운스 | PASS (composition 이벤트) | Chromium 제어 시계와 compositionstart/end. 조합 중 URL 변경 0, 종료 후 299ms 변경 0/300ms 1회. 검색으로 issues GET 0, 최근 필터 보존, Back/초기화가 대기 타이머 취소. 실제 OS IME는 NOT_RUN |
+| 댓글 반복 회귀 | PASS 6/6 | 재시도 버튼 클릭 전 모의 장애를 해제하는 테스트 경합 수정 후 댓글 3개를 2회 실행. 공식 page.unrouteAll(wait)로 처리 중 route를 정리하고 context 종료 |
+| pnpm test:e2e | PASS 6/6 | 3100 production 서버 자동 기동·종료, 익명/로그인/404/키보드/390px·private no-store·개발 계정 미노출. 실제 OAuth 로그인 검증은 아님 |
+| 캡처 | PASS | [D10 URL 필터 보드](evidence/d10-url-filters.png), 실제 합성 팀의 1440×1100 화면 직접 확인. 이전 D9 PNG는 원본 보존, 새 회귀 이미지들은 로컬 HTML 리포트 첨부 |
+| 데이터·비밀 값 | PASS | 기존 사용자/프로필 4·팀 3·이슈 1·activity 11·검증 1·receipt 15·초대 1 유지, 댓글/알림/테스트 오류 함수 0. 소스 후보 136개/production 200개의 실제 로컬 비밀 값 일치 0, 원문 미출력 |
+| pnpm test:db / pnpm test:local-tools / db:migrate / db:types | NOT_RUN (D10 재실행) | SQL/RPC/grant/보호 도구 변경 없음. D9 DB 46·보호 2 PASS는 이전 결과이며 이번 95건에 합산하지 않음 |
+| 후속/외부 | NOT_RUN | 독립 V03~V10·새 clone/새 DB/콜드스타트·500개 경계 신규 실측·100개/전파 성능·실제 OS IME/스크린리더/사용자 피드백·GitHub OAuth·원격 CI/배포 |
+
+최종 고유 검증은 57+32+6 = **95건 PASS**. 대상 반복 실행 수는 고유 건수에 추가하지 않는다. 모든 AC의 릴리스 PASS를 의미하지 않는다. D9 초기 기동 Realtime 대기 실패 원인은 이 단계로 해결했다고 주장하지 않는다.
+
+중간 FAIL과 수정:
+
+- 새 필터의 래핑 label에 option 텍스트까지 이름으로 포함되어 정확한 레이블 조회가 실패했다. select에 명시적 htmlFor/id를 연결했다. IME 시계도 실행 중 실제 시간이 흘러 299ms 경계가 흔들렸으므로 pauseAt 뒤 시간만 전진하도록 시험을 수정했다.
+- 실제 공유 주소의 로그인 왕복에서 기존 safeNext가 workspace/issue만 보존해 필터가 사라졌다. 로그인 진입 링크와 복귀 파서를 동일한 URL 계약으로 연결해 새 세션 시험을 통과했다.
+- 전체 회귀 1차는 31 PASS/팀 시험 1 FAIL. 기본 workspace도 주소에 기록되면서 기존 /workspace=/ 대기가 이전 팀 ID를 취했다. DB의 유일한 생성 이름으로 얻은 실제 ID/선택 option/URL을 함께 검증하도록 강화했다. 정리 transaction은 기존 이슈의 FK로 롤백됐고, 실패 시험이 만든 팀 하나를 정확한 UUID·이름·이슈 0건 확인 후 제거했다. 기존 데이터는 최종 수량까지 보존했다. 테스트 정리 대상의 합성 팀 이름 검사도 추가했다.
+- 전체 회귀 2차는 31 PASS/댓글 Viewer 시험 1 FAIL. 처음에는 finally의 context.close timeout으로 보였고 unrouteAll 정리만 바꾼 2회 반복도 5 PASS/1 FAIL이었다. 제한된 action timeout으로 추적한 결과 알림 재시도 클릭 직전에 모의 장애를 해제해 자동 재조회가 버튼을 제거하는 경합을 실제로 재현했다(표적 3회 중 2 FAIL). 이제 실제 클릭의 capture 이벤트에서 각 endpoint 장애를 해제한다. DOM 강제 클릭·assertion 제거·skip 없이 수정 후 관련 6회와 전체 32건이 통과했다. 진단용 로그는 제거했다.
+
+공식 참고: [Next native History API](https://nextjs.org/docs/app/getting-started/linking-and-navigating#native-history-api), [Playwright route 정리](https://playwright.dev/docs/api/class-page#page-unroute-all). URL 결정/기능 동결은 ARCHITECTURE·ROADMAP, 다음 독립 검증은 V10이다.
 
 ## D9 실제 결과 — 2026-09-23
 

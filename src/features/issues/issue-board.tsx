@@ -74,7 +74,7 @@ export function IssueBoard({ client, workspaceId, issues, canWrite, select }: { 
   const dialogIssue = issues.find((row) => row.id === dialog?.issueId);
   const activeIssue = issues.find((row) => row.id === dragged?.id);
   return <>
-    <p id="board-drag-help" className="form-hint">{canWrite ? "카드의 이동 손잡이를 다른 열로 드래그하세요. 키보드는 상세의 상태 이동 메뉴를 이용하세요. 열 내부 순서는 최근 수정 순입니다." : "Viewer는 이슈를 조회할 수 있습니다."}</p>
+    <p id="board-drag-help" className="form-hint">{canWrite ? "카드의 이동 손잡이를 다른 열로 드래그하세요. 키보드는 상세의 상태 이동 메뉴를 이용하세요. 열 내부 순서는 선택한 정렬을 따릅니다." : "Viewer는 이슈를 조회할 수 있습니다."}</p>
     <p className="board-move-message" role="status">{message}</p>
     <DndContext id="issue-board-dnd" sensors={sensors} collisionDetection={pointerWithin}
       accessibility={{ screenReaderInstructions: { draggable: "상태 이동은 카드 상세의 상태 이동 메뉴에서 키보드로 할 수 있습니다." }, announcements: {

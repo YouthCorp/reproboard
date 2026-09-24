@@ -1,4 +1,4 @@
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { boardHref, normalizeBoardParams, parseBoardParams } from "@/features/issues/board-url";
 
 // Authentication redirects only return to known app pages. Never reflect a host.
 export function safeNext(value: unknown): string {
@@ -6,12 +6,7 @@ export function safeNext(value: unknown): string {
   const url = new URL(value, "https://reproboard.invalid");
   if (url.pathname === "/invite") return "/invite";
   if (url.pathname !== "/board") return "/board";
-  const next = new URLSearchParams();
-  for (const key of ["workspace", "issue"]) {
-    const value = url.searchParams.get(key);
-    if (value && uuid.test(value)) next.set(key, value);
-  }
-  return next.size ? `/board?${next.toString()}` : "/board";
+  return boardHref(normalizeBoardParams(parseBoardParams(url.searchParams)));
 }
 
 export function siteOrigin(): string | null {

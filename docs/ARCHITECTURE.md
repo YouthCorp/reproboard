@@ -1,6 +1,19 @@
 # 기술 계약과 아키텍처
 
-상태: D9 댓글·멘션·인앱 알림과 D8 연결 복구까지 로컬 구현. 아래 단계별 절은 당시 범위를 보존하며 현재 검증 상태는 PROGRESS/TEST_REPORT를 따른다.
+상태: D10 URL 상태까지 로컬 구현, 신규 기능 동결. 아래 단계별 절은 당시 범위를 보존하며 현재 검증 상태는 PROGRESS/TEST_REPORT를 따른다.
+
+## D10 URL 상태와 탐색
+
+- `board-url.ts`의 파싱·정규화·직렬화는 순수 함수다. 허용한 7개 키만 읽고 중복은 첫 값을 사용한다. UUID는 소문자로 정규화하고 잘못된 enum/UUID는 빈 값, sort는 updated로 복구한다. q는 trim/NFC/최대 120 코드 포인트이며 URLSearchParams가 이스케이프한다. 빈 값과 sort=updated는 생략한다.
+- `use-board-url.ts`는 useSearchParams에서 적용 상태를 읽는다. 기본 팀을 선택한 뒤 workspace를 주소에 기록해 공유 대상 사용자의 기본 팀에 의존하지 않는다. 형식이 맞는 비회원 팀 ID는 다른 팀으로 자동 대체하지 않는다. normalization effect는 현재 주소가 해당 렌더의 원본과 같은 경우에만 replace해 새 탐색을 덮지 않는다.
+- 검색·필터·정렬·팀 선택은 replace, 상세 열기와 닫기는 각각 push다. 예: 목록→상세→닫힌 목록에서 Back은 상세, 다시 Back은 원래 목록이다. 직접 상세로 진입해도 닫기는 안전한 `/board` 주소를 push하며 외부 history로 back하지 않는다. 팀 변경은 issue/assignee를 비우고 나머지 조건을 유지한다.
+- Next의 native History API 연동으로 URL을 바꾸면 useSearchParams가 갱신된다. RSC나 issues Query를 검색마다 재요청하지 않는다. 변경 직전의 실제 URL에 patch를 합쳐 지연된 검색이 새 필터/상세 선택을 덮지 않는다. Zustand에는 조회 조건이나 이슈 배열을 복제하지 않는다.
+- `board-filters.tsx`의 로컬 값은 적용 전 검색 초안뿐이다. composition 중 타이머를 취소하고 종료 뒤 300ms 후 replace한다. popstate·초기화·unmount 시 예약 입력을 취소한다. URL q가 변경되면 입력을 복원하며 두 상태를 계속 상호 전송하는 effect는 없다.
+- 전체 서버 목록은 기존 `['issues', workspaceId]` 한 곳이 소유한다. 최대 500개, 초과 시 오류 정책을 유지한다. visibleIssues는 원본 배열을 수정하지 않고 제목/키 부분 검색과 AND 필터를 적용한다. updated 내림차순→id 오름차순, priority는 P0/P1/P2/P3/unset→updated→id다. pending overlay는 필터된 서버 행 위에서 기존 규칙대로 표시한다.
+- 상세는 필터 밖이어도 전체 같은 팀 Query에서 찾는다. 없는/타팀 이슈에는 같은 접근 불가 안내를 표시한다. 확인되지 않는 담당자는 이름을 추측하거나 타팀 프로필을 읽지 않고 일반 안내/0건을 표시한다. 필터는 권한 경계가 아니며 기존 RLS·membership 검사를 유지한다.
+- `safeNext`와 익명 보드 로그인 링크도 같은 파서를 사용해 로그인 왕복에 조건을 보존한다. 외부 redirect/미지의 키/초대 토큰은 복귀 주소에서 제외한다. 기본 `/board`의 로그인 링크는 간결하게 `/login`을 사용한다.
+
+공식 근거(2026-09-24 확인): [Next native History API](https://nextjs.org/docs/app/getting-started/linking-and-navigating#native-history-api), [useSearchParams](https://nextjs.org/docs/app/api-reference/functions/use-search-params). 설치된 Next 16.3.5 app-router의 pushState/replaceState 연동 소스와 대조했다. 패키지·lockfile·DB 계약 변경은 없다. history 인수에 내부 Next state를 직접 복사하지 않는다.
 
 ## D9 실제 구현과 경계
 
@@ -65,7 +78,7 @@ API 근거: [TanStack Query의 query key와 캐시](https://tanstack.com/query/l
 ## D3 실제 구현과 경계
 
 - `@supabase/ssr@0.12.7`의 browser/server client, `src/proxy.ts`의 `getClaims()` 검증·쿠키 갱신, `/auth/callback`의 PKCE 교환. 세션 결과·쿠키를 공유 응답 캐시에 넣지 않으며 auth 관련 페이지는 dynamic이다. 실제 외부 GitHub 승인/취소는 앱 등록 전 NOT_RUN.
-- GitHub 설정 여부는 서버의 Auth settings 조회로 판단한다. callback의 사용자 제공 오류·code는 표시하지 않는다. 복귀 경로는 `/board`(검증한 workspace/issue UUID만)·`/invite`로 한정한다. 원점은 설정된 SITE_URL이며 전달된 Host/next URL을 신뢰하지 않는다.
+- GitHub 설정 여부는 서버의 Auth settings 조회로 판단한다. callback의 사용자 제공 오류·code는 표시하지 않는다. 복귀 경로는 `/board`(D10 공통 파서가 정규화한 조회 조건/UUID만)·`/invite`로 한정한다. 원점은 설정된 SITE_URL이며 전달된 Host/next URL을 신뢰하지 않는다.
 - 실제 로그인 사용자의 쿠키는 browser/server가 공유한다. 로그아웃·계정 변경은 Query 캐시·폼을 비우고 갱신 불가 세션은 재로그인을 안내한다. 네트워크 오류와 만료를 구분한다. JWT 전역 즉시 폐기·전체 재연결 복구는 보장하지 않는다.
 - migration `20260915000100_d3_auth_workspaces.sql`: `public.profiles(user_id, display_name)`와 `private.workspace_invites` 추가. Auth insert trigger는 이름만 제한 길이로 저장하며 기존 계정은 backfill한다. 메타데이터의 role/workspace_id는 권한에 쓰지 않는다.
 - 프로필 읽기는 본인 또는 같은 팀으로 제한한다. `list_workspace_members`는 RLS를 따르는 SECURITY INVOKER이며 표시 이름·user id·역할만 반환한다. membership/profile helper는 auth.uid 기준 SECURITY DEFINER로 재귀를 피하고 내부 변경 함수는 직접 호출 불가다.

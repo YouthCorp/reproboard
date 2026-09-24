@@ -265,3 +265,10 @@ input, select { min-width: 0; max-width: 100%; padding: 10px 12px; border: 1px s
 .comment-activity summary, .notifications summary { cursor: pointer; }
 .notification-link { color: #214cb1; background: none; border: 0; text-align: left; font: inherit; cursor: pointer; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
 .notifications .button { margin-left: .5rem; }
+
+.board-filters { display: flex; flex-wrap: wrap; align-items: end; gap: .8rem; margin-block: 1rem; padding: 1rem; background: #fff; border: 1px solid #d9dee7; border-radius: .6rem; }
+.board-filters .board-filter-control, .board-filters .board-search { display: grid; gap: .35rem; flex: 1 1 10rem; min-width: 0; }
+.board-filters .board-search { flex: 2 1 16rem; }
+.board-filters input, .board-filters select { width: 100%; min-width: 0; padding: .65rem; border: 1px solid #b9c3cf; border-radius: .4rem; font: inherit; background: #fff; }
+.board-filters p { flex-basis: 100%; margin: 0; }
+.board-result-count { color: #435c60; }

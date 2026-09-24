@@ -2,13 +2,27 @@
 
 소규모 개발팀이 버그 재현 정보를 모으고, 수정 후 재검증까지 관리하는 협업 보드.
 
-**현재 상태: D9 댓글·멘션·인앱 알림 구현.** 일반 텍스트 댓글과 팀 멤버 선택 멘션, 본인 알림 조회·읽음을 실제 DB에 연결했다. D8 연결 복구와 D3~D7의 권한·상태 규칙·검증·낙관적 이동·충돌 복구를 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN이다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)가 기준이다.
+**현재 상태: D10 검색·필터·정렬·상세 URL 구현, 신규 기능 동결.** 주소로 조건을 공유하고 로그인·새로고침·뒤로/앞으로 탐색에서 복원한다. D3~D9의 실제 DB 협업 흐름을 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN이다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)가 기준이다.
 
 ## 왜 만드는가
 
 버그가 등록되어도 재현 단계나 실행 환경이 부족하면 개발자는 다시 정보를 요청해야 한다. 수정했다는 표시만 있고 재검증 결과가 없으면 해결 여부도 불명확해진다. ReproBoard는 필요한 정보와 완료 조건이 보이는 기본 흐름을 제공하는 것을 목표로 한다.
 
-## D9 직접 확인
+## D10 직접 확인
+
+1. 개발 계정으로 로그인해 제목/이슈키 검색·심각도·담당자·우선순위 정렬을 조합한 다음 상세를 연다. 주소를 같은 팀의 다른 로그인 세션에 붙여 넣고 새로고침해 복원을 확인한다.
+2. 상세를 닫고 뒤로/앞으로 이동한다. 열기와 닫기는 각각 history에 추가되므로 뒤로가면 직전 상세가 다시 열린다. 주소로 바로 들어온 상세도 닫기는 보드 안에서 끝난다.
+3. 한글을 조합해 검색하고 일치하지 않는 제목을 입력해 검색 0건 안내를 확인한다. **검색·필터 초기화**로 전체 목록에 돌아간다. 검색·필터 변경마다 뒤로가기 항목이 추가되지는 않는다.
+
+이해할 개념: URL은 적용된 조회 조건, Query는 서버 목록, 입력창 state는 아직 적용하지 않은 검색어만 소유한다. 상세는 필터 결과와 무관하게 같은 팀의 전체 Query에서 찾는다. [실제 필터 보드 캡처](docs/evidence/d10-url-filters.png).
+
+공유 형식은 `/board?workspace=<팀 UUID>&q=login&severity=S2&assignee=<멤버 UUID>&sort=priority&issue=<이슈 UUID>`다. 빈 값과 기본 `sort=updated`는 생략하며 선택한 팀은 다른 사용자의 기본 팀에 의존하지 않도록 기록한다. 검색은 앞뒤 공백 제거·NFC 정규화 후 최대 120 코드 포인트의 대소문자 구분 없는 부분 일치다. 한글 조합이 끝난 후 300ms 디바운스를 적용한다. 우선순위 정렬은 P0→P3→미설정, 동률은 수정 시각 내림차순→id 오름차순이다. 필터의 `unset`은 분류 미설정, `assignee=none`은 담당자 미지정이다.
+
+형식이 잘못된 UUID/enum은 기본값으로 복구한다. 형식이 맞는 비회원 팀·다른 팀/없는 이슈에는 접근 불가 안내를, 해당 팀에서 확인되지 않는 담당자에는 일반 안내와 0건을 표시한다. 타팀 프로필을 조회해 확인하지 않는다. 검색/필터/정렬은 지원 범위인 팀 이슈 500개 이하의 같은 Query에서 계산하고 별도 이슈 요청을 보내지 않는다. 실제 OS 한글 IME 조작은 미검증이며 자동 검증은 브라우저 composition 이벤트를 사용했다.
+
+D10 이후에는 기존 기능의 결함·접근성·회귀·실행 재현·문서에 집중한다. 아직 없는 `/demo` 신규 화면은 후속으로 옮기고 D13 시연은 기존 합성 계정의 실제 앱으로 진행한다.
+
+## 댓글·알림 직접 확인
 
 1. Owner/Member로 상세 하단에 댓글을 쓰고 **멘션할 팀 멤버**에서 Member와 자신을 선택한다. `<img ...>` 같은 입력도 일반 텍스트로 보이고, 자신에게는 알림이 생기지 않는다.
 2. 별도 브라우저 세션에서 Member로 로그인해 **내 알림**을 펼친다. 댓글 링크로 상세를 열고 **읽음으로 표시**로 안 읽음 수를 줄인다. 상대 댓글이 와도 작성 중인 댓글/본문 입력은 유지된다.
@@ -20,7 +34,7 @@
 
 ## 화면과 시연
 
-로그인 전 `/board`는 데이터 없는 5단계 미리보기다. 로컬 설정 후 `/login`에서 합성 Owner/Member/Viewer/다른 팀 Owner를 선택하면 실제 Supabase 세션으로 전환한다. 로그인 후 새 팀을 만들면 Owner가 되고, 팀 멤버 패널에서 초대 링크를 생성하거나 Member↔Viewer를 변경한다. `/invite`에서 로그인 후 명시적으로 수락한다. Viewer는 읽기 전용이고 다른 팀 데이터는 표시되지 않는다. GitHub 버튼은 실제 provider 설정 상태에 따라 활성화된다. `/demo`와 전체 제품 시연은 D13 범위이며 아직 없다.
+로그인 전 `/board`는 데이터 없는 5단계 미리보기다. 로컬 설정 후 `/login`에서 합성 Owner/Member/Viewer/다른 팀 Owner를 선택하면 실제 Supabase 세션으로 전환한다. 로그인 후 새 팀을 만들면 Owner가 되고, 팀 멤버 패널에서 초대 링크를 생성하거나 Member↔Viewer를 변경한다. `/invite`에서 로그인 후 명시적으로 수락한다. Viewer는 읽기 전용이고 다른 팀 데이터는 표시되지 않는다. GitHub 버튼은 실제 provider 설정 상태에 따라 활성화된다. 전체 제품 시연은 D13 범위이며 아직 없다. 신규 `/demo` 화면은 D10 기능 동결에 따라 후속으로 옮겼다.
 
 로그인한 보드의 5개 열은 같은 Query 목록에서 렌더링된다. 카드를 누르면 `?workspace=…&issue=…`의 상세가 열리고 새로고침·주소 공유·뒤로가기로 복원된다. 제목은 1~120자, 재현 본문·발생 조건·수정 메모는 각각 4,000자, 대상 빌드는 120자까지이며 trim 후 코드 포인트로 센다. 재현 정보 0~4 충족 수와 누락 항목은 입력 상태를 나타낸다.
 
@@ -34,7 +48,7 @@ D6의 상태 이동은 카드 손잡이를 다른 열에 놓거나 상세 상단
 
 입력 다이얼로그의 취소는 상태를 바꾸지 않는다. 현재 상태의 필수 정보는 일반 편집으로 지울 수 없다. 검증 중 이슈 version이 달라지면 입력을 보존하고 최신 내용을 확인한 뒤 다시 검증하도록 안내한다. [검증 다이얼로그](docs/evidence/d5-verification-dialog.png) · [Done과 과거 기록](docs/evidence/d5-done-history.png)은 D5의 실제 DB 흐름 캡처다.
 
-같은 열의 드롭은 아무 작업도 하지 않으며 열 내부는 최근 수정 순서를 유지한다. 이동 중인 이슈의 추가 편집/이동은 잠기고 다른 카드는 계속 조작할 수 있다. 사유·검증 입력이 필요한 이동은 양식을 제출한 뒤 시작한다. 키보드 사용자는 카드 상세의 이동 메뉴를 이용한다.
+같은 열의 드롭은 아무 작업도 하지 않으며 열 내부는 선택한 최근 수정/우선순위 정렬을 따른다. 이동 중인 이슈의 추가 편집/이동은 잠기고 다른 카드는 계속 조작할 수 있다. 사유·검증 입력이 필요한 이동은 양식을 제출한 뒤 시작한다. 키보드 사용자는 카드 상세의 이동 메뉴를 이용한다.
 
 10초 타임아웃이나 응답 유실은 **결과 확인 중**으로 표시한다. 실제 저장됐을 수 있으므로 카드의 **같은 요청으로 결과 확인**을 누른다. 미확정 입력 창은 **보드에서 계속 작업**으로 닫아도 요청이 남는다. 자동 재전송·오프라인 큐는 없으며 새로고침·팀 이탈·로그아웃 시 메모리의 요청 정보는 사라진다. 이 경우 서버를 다시 읽어 상태를 확인해야 한다.
 
@@ -187,13 +201,14 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 ## 코드 길잡이
 
-현재 파일과 책임이다. 검색·필터·정렬은 D10 범위다.
+현재 파일과 책임이다. D10 검색·필터·정렬은 서버 목록을 복제하지 않고 URL 조건에서 파생한다.
 
 | 영역 | 책임 |
 |---|---|
 | [src/app](src/app) | Root layout, `/board`, `/login`, `/invite`, `/auth/callback`, 오류·로딩·404 경계 |
 | [src/features/issues/board-shell.tsx](src/features/issues/board-shell.tsx) | 5단계의 데이터 없는 보드 |
 | [src/features/issues/live-board.tsx](src/features/issues/live-board.tsx), [issue-form.tsx](src/features/issues/issue-form.tsx) | Query 보드·구조화 생성/편집·상태별 필수 정보·초안 보존 |
+| [board-url.ts](src/features/issues/board-url.ts), [use-board-url.ts](src/features/issues/use-board-url.ts), [board-filters.tsx](src/features/issues/board-filters.tsx) | 파서/정규화/직렬화·검색/정렬·history·IME 디바운스 |
 | [state-rules.ts](src/features/issues/state-rules.ts), [transition-menu.tsx](src/features/issues/transition-menu.tsx), [issue-history.tsx](src/features/issues/issue-history.tsx) | 순수 전환 규칙·입력 다이얼로그·통과/실패/이동 기록 |
 | [command-store.ts](src/features/issues/command-store.ts), [issue-commands.tsx](src/features/issues/issue-commands.tsx), [issue-cache.ts](src/features/issues/issue-cache.ts) | 공유 임시 요청·이슈별 잠금·결과 확정과 version 병합 |
 | [issue-realtime.tsx](src/features/issues/issue-realtime.tsx), [realtime-refresh.ts](src/features/issues/realtime-refresh.ts), [conflict-recovery.tsx](src/features/issues/conflict-recovery.tsx) | 변경 알림·구독 후/dirty 추가 조회·초안 비교와 복구 |
@@ -215,4 +230,4 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 [기여 안내](CONTRIBUTING.md), [보안 제보 안내](SECURITY.md), [MIT 라이선스](LICENSE).
 
-개인 프로젝트이며 D1~D9 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 단계 기록과 ADR의 증거로 확인한다. CASE_STUDY의 작성자 역할/성과는 아직 작성 양식이며 실제 팀 사용·성능 개선 성과는 측정하지 않았다.
+개인 프로젝트이며 D1~D10 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 단계 기록과 ADR의 증거로 확인한다. CASE_STUDY의 작성자 역할/성과는 아직 작성 양식이며 실제 팀 사용·성능 개선 성과는 측정하지 않았다.

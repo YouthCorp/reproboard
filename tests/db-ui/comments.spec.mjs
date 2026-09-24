@@ -1,10 +1,11 @@
+/* global document */
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { localDb, localStack, readAccounts } from '../../scripts/local-stack.mjs';
 
 const accounts = readAccounts(), teams = new Set();
+test.use({ actionTimeout: 10_000 });
 let db, owner;
 test.beforeAll(async () => {
   const stack = localStack(); db = await localDb(stack);
@@ -46,7 +47,7 @@ async function submit(page, body, mentions = []) {
   await expect(comments(page).getByText('댓글을 저장했습니다.', { exact: true })).toBeVisible();
 }
 
-test('D9 two browser users: literal text, realtime comment/activity, dedup frames, recipient notification/read and drafts', async ({ browser }) => {
+test('D9 two browser users: literal text, realtime comment/activity, dedup frames, recipient notification/read and drafts', async ({ browser }, info) => {
   test.setTimeout(90_000);
   const { workspaceId, row } = await fixture(), a = await actor(browser), b = await actor(browser);
   let events = 0;
@@ -76,8 +77,8 @@ test('D9 two browser users: literal text, realtime comment/activity, dedup frame
     await expect(comments(b.page).locator('.comment-activity li').filter({ hasText: '댓글 등록' })).toHaveCount(1);
     await submit(b.page, '합성 Member: 같은 환경에서 확인했습니다.', ['합성 Owner']);
     await expect(comments(a.page).locator('.comment-body')).toHaveCount(2);
-    mkdirSync('docs/evidence', { recursive: true });
-    await comments(a.page).scrollIntoViewIfNeeded(); await a.page.screenshot({ path: 'docs/evidence/d9-comments.png' });
+    // Keep D9's committed evidence historical; attach this regression's actual images.
+    await comments(a.page).scrollIntoViewIfNeeded(); await info.attach('d9-comments', { body: await a.page.screenshot(), contentType: 'image/png' });
     await b.page.getByRole('button', { name: '상세 닫기', exact: true }).click();
     await b.page.locator('.notifications summary').click();
     await expect(b.page.locator('.notifications li')).toHaveCount(1);
@@ -85,7 +86,7 @@ test('D9 two browser users: literal text, realtime comment/activity, dedup frame
     await b.page.locator('.notifications').getByRole('button', { name: '읽음으로 표시', exact: true }).click();
     await expect(b.page.locator('.notifications summary')).toContainText('0건 안 읽음');
     await expect(b.page.locator('.notifications li')).toContainText('읽음');
-    await b.page.locator('.notifications').scrollIntoViewIfNeeded(); await b.page.screenshot({ path: 'docs/evidence/d9-notifications.png' });
+    await b.page.locator('.notifications').scrollIntoViewIfNeeded(); await info.attach('d9-notifications', { body: await b.page.screenshot(), contentType: 'image/png' });
     await b.page.locator('.notification-link').click(); await expect(b.page.getByLabel('댓글 내용', { exact: true })).toBeVisible();
     expect((await db.query('select version from public.issues where id=$1', [row.id])).rows[0].version).toBe(1);
     await b.page.getByLabel('이슈 제목', { exact: true }).fill('댓글 이후 본문 수정도 충돌 없이 저장');
@@ -101,21 +102,31 @@ test('D9 Viewer reads and marks own mention, outsider cannot access, read failur
   try {
     const result = await owner.rpc('add_comment', { p_workspace_id: workspaceId, p_issue_id: row.id, p_request_id: randomUUID(), p_payload: { body: 'Viewer도 이 댓글을 읽고 본인 알림을 읽음 처리합니다.', mention_ids: [accounts.find((u) => u.role === 'viewer').id] } });
     expect(result.data.ok).toBe(true);
-    let fail = true, failNotifications = true;
-    await viewer.page.route('**/rest/v1/comments?**', (route) => fail ? route.fulfill({ status: 503, body: '{}' }) : route.continue());
-    await viewer.page.route('**/rest/v1/activity_events?**', (route) => fail ? route.fulfill({ status: 503, body: '{}' }) : route.continue());
-    await viewer.page.route('**/rest/v1/notifications?**', (route) => failNotifications ? route.fulfill({ status: 503, body: '{}' }) : route.continue());
+    // Recovery starts at the real click, so background refetch cannot remove the button before it.
+    await viewer.page.addInitScript(() => {
+      const paths = { '댓글 다시 조회': 'comments', '활동 다시 조회': 'activity_events', '알림 다시 조회': 'notifications' };
+      document.addEventListener('click', (event) => {
+        const path = paths[event.target?.closest?.('button')?.textContent];
+        if (path) document.documentElement.setAttribute(`data-recovered-${path}`, 'true');
+      }, true);
+    });
+    for (const path of ['comments', 'activity_events', 'notifications']) {
+      await viewer.page.route(`**/rest/v1/${path}?**`, async (route) => {
+        const recovered = await viewer.page.evaluate((key) => document.documentElement.getAttribute(`data-recovered-${key}`) === 'true', path);
+        await (recovered ? route.continue() : route.fulfill({ status: 503, body: '{}' }));
+      });
+    }
     await login(viewer.page, workspaceId, 'viewer');
     await viewer.page.locator('.notifications summary').click();
     await expect(viewer.page.getByRole('button', { name: '알림 다시 조회' })).toBeVisible();
-    failNotifications = false; await viewer.page.getByRole('button', { name: '알림 다시 조회' }).click();
+    await viewer.page.getByRole('button', { name: '알림 다시 조회' }).click();
     await expect(viewer.page.locator('.notifications li')).toHaveCount(1);
     await open(viewer.page, row);
     await expect(comments(viewer.page).getByRole('button', { name: '댓글 다시 조회' })).toBeVisible();
     await comments(viewer.page).locator('.comment-activity summary').click();
     await expect(comments(viewer.page).getByRole('button', { name: '활동 다시 조회' })).toBeVisible();
     await expect(comments(viewer.page).getByRole('button', { name: '댓글 등록', exact: true })).toHaveCount(0);
-    fail = false; await comments(viewer.page).getByRole('button', { name: '댓글 다시 조회' }).click();
+    await comments(viewer.page).getByRole('button', { name: '댓글 다시 조회' }).click();
     await comments(viewer.page).getByRole('button', { name: '활동 다시 조회' }).click();
     await expect(comments(viewer.page).locator('.comment-body')).toHaveCount(1);
     await expect(comments(viewer.page).locator('.comment-activity li')).toHaveCount(2);
@@ -125,7 +136,12 @@ test('D9 Viewer reads and marks own mention, outsider cannot access, read failur
     await viewer.page.getByRole('button', { name: '읽음으로 표시', exact: true }).click();
     await expect(viewer.page.locator('.notifications summary')).toContainText('0건 안 읽음');
     await login(outsider.page, workspaceId, 'outsider'); await expect(outsider.page.locator('.notifications')).toHaveCount(0);
-  } finally { await Promise.all([viewer.context.close(), outsider.context.close()]); }
+  } finally {
+    // Finish in-flight fault handlers before tearing down their browser contexts.
+    await viewer.page.unrouteAll({ behavior: 'wait' });
+    await viewer.context.close();
+    await outsider.context.close();
+  }
 });
 
 test('D9 commit then response loss: preserve draft, explicit same request replay; offline never queues; validation focuses textarea', async ({ browser }) => {

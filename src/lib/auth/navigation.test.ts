@@ -15,4 +15,11 @@ describe("authentication return paths", () => {
     expect(safeNext(`/board?workspace=${id}&issue=${id}&token=secret`)).toBe(`/board?workspace=${id}&issue=${id}`);
     expect(safeNext("/board?issue=bad")).toBe("/board");
   });
+  it("preserves canonical board filters across login while stripping redirects and tokens", () => {
+    const id = "a1000000-0000-4000-8000-000000000001";
+    expect(safeNext(`/board?sort=priority&workspace=${id}&q=login&severity=S2&priority=P1&assignee=${id}&issue=${id}&token=secret&next=https://evil.invalid`))
+      .toBe(`/board?workspace=${id}&q=login&severity=S2&priority=P1&assignee=${id}&sort=priority&issue=${id}`);
+    expect(safeNext("/board?q=%26next%3Dhttps%3A%2F%2Fevil.invalid&severity=bad&sort=bad"))
+      .toBe("/board?q=%26next%3Dhttps%3A%2F%2Fevil.invalid");
+  });
 });
