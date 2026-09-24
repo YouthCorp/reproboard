@@ -74,7 +74,7 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
           <WorkspaceConnection key={`${user.id}/${workspaceId}`} client={client} workspaceId={workspaceId}><IssueCommands client={client} canWrite={canWrite}><section className="live-inbox" aria-labelledby="inbox-title">
             <IssueRealtime />
             <Notifications client={client} workspaceId={workspaceId} userId={user.id} selectIssue={selectIssue} />
-            <div className="board-caption"><h2 id="inbox-title">팀 이슈 · {issues.data?.length ?? "…"}개</h2>
+            <div className="board-caption"><h2 id="inbox-title" tabIndex={-1}>팀 이슈 · {issues.data?.length ?? "…"}개</h2>
               <button className="button button-secondary" onClick={() => { issues.refetch(); membership.refetch(); workspaces.refetch(); }}>최신 목록 조회</button></div>
             <TeamManagement client={client} workspaceId={workspaceId} isOwner={!membership.isError && membership.data.role === "owner"} />
             {membership.isError && <p role="alert">최신 권한 확인에 실패했습니다. <button onClick={() => membership.refetch()}>권한 다시 조회</button></p>}

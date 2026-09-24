@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { containDialogTab, restoreDialogFocus } from "@/lib/dialog-focus";
 import type { AppSupabase } from "@/lib/supabase/browser";
 import { useMembers } from "@/features/workspaces/use-members";
 import type { Issue } from "./commands";
@@ -22,16 +23,21 @@ export function IssueDetail({ client, workspaceId, issue, canWrite, loading, err
   useEffect(() => {
     const element = dialog.current!;
     const previous = document.activeElement as HTMLElement | null;
+    const originId = previous?.closest<HTMLElement>("[data-issue-id]")?.dataset.issueId;
     element.showModal();
+    element.querySelector<HTMLButtonElement>("[data-detail-close]")?.focus();
     const oldOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { element.close(); document.body.style.overflow = oldOverflow; if (previous?.isConnected) previous.focus(); };
+    return () => {
+      element.close(); document.body.style.overflow = oldOverflow;
+      restoreDialogFocus(previous, () => (originId ? document.querySelector<HTMLElement>(`[data-issue-id="${CSS.escape(originId)}"] .issue-card-link`) : null) ?? document.getElementById("inbox-title"));
+    };
   }, []);
   const fulfilled = issue ? completeness(issue) : null;
   const assignee = members.data?.find((member) => member.user_id === issue?.assignee_id);
-  return <dialog ref={dialog} className="issue-detail" aria-labelledby="detail-title" onCancel={(event) => { event.preventDefault(); close(); }}>
+  return <dialog ref={dialog} className="issue-detail" aria-labelledby="detail-title" onKeyDown={containDialogTab} onCancel={(event) => { event.preventDefault(); close(); }}>
     <div className="detail-toolbar"><span className="issue-key">{issue?.issue_key ?? "이슈 상세"} · {boardColumns.find((c) => c.id === (issue ? displayedStatus(issue, canWrite ? pending : undefined) : ""))?.name ?? "조회 중"}</span>
-      <button type="button" className="button button-secondary" onClick={close} autoFocus>상세 닫기</button></div>
+      <button type="button" className="button button-secondary" onClick={close} data-detail-close>상세 닫기</button></div>
     <h2 id="detail-title">{issue?.title ?? "이슈 상세"}</h2>
     <ConnectionHint />
     {pending && <p role="status">{pending.phase === "pending" ? "저장 중…" : "결과 확인 중 · 보드 카드에서 같은 요청으로 확인할 수 있습니다."} 이 이슈의 추가 변경은 결과 확인 후 가능합니다.</p>}

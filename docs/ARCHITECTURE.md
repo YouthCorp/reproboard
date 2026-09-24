@@ -259,3 +259,6 @@ DB reset/seed는 loopback의 개발 DB임을 확인하는 보호 조건을 갖�
 ## 10. 참고
 
 [TanStack 낙관적 UI](https://tanstack.com/query/latest/docs/framework/react/guides/optimistic-updates), [Supabase 변경 구독](https://supabase.com/docs/guides/realtime/postgres-changes), [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [PostgreSQL 격리](https://www.postgresql.org/docs/current/transaction-iso.html), [Playwright 사용자 격리](https://playwright.dev/docs/browser-contexts). 이 문서의 overlay·명령 계약·재연결 전략은 본 프로젝트의 설계 선택이며 그대로 제공되는 단일 SDK 기능이 아니다.
+## D11 모달 포커스
+
+native dialog의 showModal/Escape를 사용하며 첫 포커스와 Tab 양 끝 순환을 명시한다. 취소는 호출 버튼, 성공으로 호출 버튼이 사라졌으면 현재 상태 제목, 상세 닫기는 같은 이슈의 재배치된 카드로 복귀한다. 직접 진입은 보드 제목을 사용한다. React 제거/재배치 후 복귀하고 새 모달이 열렸으면 바깥으로 포커스를 빼앗지 않는다. 모바일 sticky toolbar와 scroll-padding은 닫기/현재 입력 위치를 유지한다. 근거: [WAI-ARIA modal dialog pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/). 스크린리더 전체 호환성을 자동 테스트 통과로 대신하지 않는다.

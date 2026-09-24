@@ -1,10 +1,10 @@
 # 진행 기록
 
-현재 상태: D10 / P10 제목·이슈키 검색, 분류/담당자 필터, 정렬·상세 선택의 URL 통합 로컬 구현과 관련 검증 완료. 공유 주소의 다른 계정 로그인·새로고침·history 복원과 잘못된 값·0건·IME 이벤트를 확인했다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
+현재 상태: D11 / P11 접근성·반응형·조작 관찰 로컬 구현과 검증 완료. 키보드 생성부터 Done, 포커스 복귀, 합성 100개 production 조작을 확인했다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
 
-현재 단계: D10 / P10 로컬 PASS, V10 독립 검증 대기 (2026-09-24, Asia/Seoul). 독립 V03~V09는 여전히 NOT_RUN이다. 신규 기능을 동결하고 이후는 기존 기능의 결함·접근성·검증·문서에 집중한다.
+현재 단계: D11 / P11 로컬 PASS (2026-09-25, Asia/Seoul). 독립 V03~V11는 NOT_RUN이다. 신규 기능을 동결하고 이후는 기존 기능의 결함·검증·문서에 집중한다.
 
-선행 조건: 기존 로컬 Supabase·합성 계정 재사용, 패키지/lockfile/env/SQL 보존. 다음은 V10→P11. D9 초기 기동 Realtime 대기 실패의 콜드스타트 원인 검증은 여전히 남는다. 실제 GitHub smoke는 README의 외부 앱 설정이 필요하다.
+선행 조건: 기존 로컬 Supabase·합성 계정 재사용, 패키지/lockfile/env/SQL 보존. 사용자 지시에 따라 다음은 P12 회귀·격리·CI다. D9 초기 기동 Realtime 대기 실패의 콜드스타트 원인 검증은 여전히 남는다. 실제 GitHub smoke는 README의 외부 앱 설정이 필요하다.
 
 ## 범위와 근거
 
@@ -29,10 +29,20 @@
 | D8 연결 복구 | DONE: P08 로컬 구현 | 로컬 PASS / V08 NOT_RUN | 전체/WS/HTTP 단절·복구 중 변경·무자동 큐·초안·강등/멤버십 소실·갱신 만료·구독/타이머/캐시 정리, 장애 영상 2개·ADR 03 |
 | D9 댓글·알림 | DONE: P09 로컬 구현 | 로컬 PASS / V09 NOT_RUN | 원자적 댓글/멘션 알림·수신자 읽음·본문 version 불변·실시간/응답 유실. DB 46·DB UI 28·캡처 2장, 초기 기동 1회 이벤트 대기 실패 원인 미확정 |
 | D10 URL | DONE: P10 로컬 구현 | 로컬 PASS / V10 NOT_RUN | 파서/정규화·검색/필터/안정 정렬·공유 로그인·history·IME 이벤트. 단위 57·DB UI 32·production smoke 6, 캡처 1장. 신규 기능 동결 |
-| D11 접근성·UX | TODO | 핵심 흐름 NOT_RUN | D1 skip link·오류 재시도·좁은 화면 smoke만 PASS |
+| D11 접근성·UX | DONE: P11 로컬 구현 | 로컬 핵심 PASS / V11 NOT_RUN | 키보드 생성→Done·포커스·100개 긴 한글 카드·390/768/1440px, production 조작 30회. TEST_REPORT 참조 |
 | D12 회귀·CI | TODO | 전체 제품 회귀·원격 CI NOT_RUN | D10 단위 57·production smoke 6·DB UI 32건, 보호 2·DB 46건은 D9 결과. CI는 정적/보호/production smoke 구성 |
 | D13 재현·시연 | TODO | NOT_RUN | D1~D5 캡처·D6 장애 영상 2개·D7 두 사용자 영상 2개·D8 연결 장애 영상 2개. 전체 제품 시연·새 clone 검증 없음 |
 | D14 문서·릴리스 | TODO | NOT_RUN | 문서 키트 존재는 구현·릴리스 완료 근거가 아님 |
+
+## D11 / P11 — 2026-09-24~25
+
+- 직접 조작으로 상태 전환 뒤 body로 포커스 소실, 작동하지 않는 드래그 Tab 정지점, 모바일 상세 하단에서 닫기 버튼 소실을 확인했다.
+- 모달 첫 포커스/Tab 순환·Escape·제거된 호출자 대체 복귀, 포인터 손잡이 Tab 제외, sticky 닫기와 scroll-padding을 수정했다. 새 제품 기능/의존성/SQL은 없다.
+- 실제 Owner 세션으로 키보드 생성→Ready→In Progress→Verify→Done과 DB pass 기록, 오류 연결·취소·직접 진입 복귀를 확인했다. D11 관련 브라우저 3건 PASS.
+- 실제 합성 100개·120자 한글 제목·빈 Done 열에서 390/768/1440px 가로 넘침 없음, 모바일 전체 상세/닫기 유지 PASS. before/after 포함 PNG 5장 직접 검토.
+- production 동일 환경 10회씩: 상세 중앙값 31ms/최대 31ms, 필터 22.5/30ms, 검색(300ms debounce 포함) 326/334ms. 전후 개선·INP 주장은 하지 않는다.
+- lint/typecheck·단위 57·build PASS. 장시간 렌더링 문제 미관찰로 Profiler/최적화 NOT_RUN. 외부 사용자/스크린리더/실제 OS IME NOT_RUN, 자기 검증이다.
+- 증빙과 최종 회귀 결과는 TEST_REPORT. 신규 기능 동결 유지; 사용자 지시로 D12의 실제 수용 기준·격리·CI 검증으로 이어간다.
 
 ## 환경 확인 — P00 당시 기록 (현재 결과는 아래 D1 및 TEST_REPORT)
 

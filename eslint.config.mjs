@@ -7,7 +7,7 @@ import tseslint from "typescript-eslint";
 export default defineConfig([
   globalIgnores([
     ".next/**", "out/**", "coverage/**", "next-env.d.ts",
-    "playwright-report/**", "playwright-db-report/**", "test-results/**", "supabase/.temp/**", ".local/**",
+    "playwright-report/**", "playwright-db-report/**", "playwright-ux-report/**", "test-results/**", "supabase/.temp/**", ".local/**",
   ]),
   js.configs.recommended,
   ...tseslint.configs.recommended,

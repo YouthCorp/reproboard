@@ -18,7 +18,7 @@ function Card({ issue, pending, message, canWrite, select, retry }: { issue: Iss
   const { setNodeRef, setActivatorNodeRef, isDragging, attributes, listeners } = useDraggable({ id: issue.id, disabled: !canWrite || !!pending });
   const fulfilled = completeness(issue);
   return <li ref={setNodeRef} className={`issue-card${isDragging ? " is-dragging" : ""}`} data-issue-id={issue.id}>
-    {canWrite && <button ref={setActivatorNodeRef} type="button" className="drag-handle" {...attributes} {...listeners}
+    {canWrite && <button ref={setActivatorNodeRef} type="button" className="drag-handle" {...attributes} {...listeners} tabIndex={-1}
       aria-label={`${issue.issue_key} 드래그로 상태 이동`} aria-describedby="board-drag-help" disabled={!!pending}>⠿ 상태 이동</button>}
     <button type="button" className="issue-card-link" onClick={() => select(issue.id)} aria-label={`${issue.issue_key} ${issue.title} 상세 열기`}>
       <span className="issue-key">{issue.issue_key}</span><h4>{issue.title}</h4>

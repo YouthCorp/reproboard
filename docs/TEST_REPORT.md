@@ -1,6 +1,22 @@
 # 테스트 실행 보고서
 
-현재 상태: **D10 / P10 로컬 구현 검증 PASS.** 실제 GitHub OAuth·독립 V03~V10는 NOT_RUN이다. 이전 단계 기록과 중간 실패는 아래에 보존했다. D1 이전 파일 보존 독립 증명은 여전히 NOT_RUN이다.
+## D11 실제 결과 — 2026-09-24~25
+
+기존 D10 커밋 df63cb8에서 시작했다. Windows/Node 24.19.0/pnpm 11.19.0, 실제 로컬 Supabase·일반 사용자 Auth 세션이다. 신규 기능·의존성·migration은 추가하지 않았다.
+
+| 발견 결함 | 재현 증거 | 수정과 재검증 |
+|---|---|---|
+| 상태 전환 뒤 호출 버튼이 제거되어 body로 포커스 소실; 중첩 모달 초기/양 끝 포커스 불안정 | 직접 브라우저 조작에서 BODY 확인, 수정 전 keyboard test 실패 | 초기 포커스 명시·양 끝 Tab 순환·현재 상태 제목/동일 이슈 카드/보드 제목 복귀. Tab/Enter만으로 생성→Ready→In Progress→Verify→Done, DB pass 기록·Escape 복귀 PASS |
+| PointerSensor 전용 손잡이가 Tab 순서에 있지만 Enter로 아무 작업도 하지 않음 | 직접 Enter 무반응과 Shift+Tab 시 drag-handle 포커스 FAIL | 손잡이 tabIndex=-1, 기존 카드→상태 이동 메뉴 유지. 키보드 회귀 PASS; 포인터 DnD는 유지 |
+| 모바일 긴 상세 하단에서 닫기 버튼이 화면 밖으로 사라짐 | [수정 전](evidence/d11-detail-before-390.png), viewport 교차 비율 0 FAIL | sticky toolbar·scroll-padding. [수정 후](evidence/d11-detail-390.png) 하단 댓글 체크박스 포커스와 닫기 버튼 동시 표시 PASS |
+
+- PASS: D11 브라우저 3/3; lint/typecheck/build, 단위 57/57. 오류 aria-describedby/aria-invalid·첫 오류 포커스, modal Escape와 취소 불변, 직접 상세 진입 닫기, 100개 이슈·120자 한글·빈 Done 열·390/768/1440px 넘침을 확인했다. [390px](evidence/d11-board-390.png) / [768px](evidence/d11-board-768.png) / [1440px](evidence/d11-board-1440.png).
+- PASS: `pnpm test:ux` production 1/1. Ryzen 5 5600/16GiB/Chromium 153.0.8010.12/1440×1000/로컬 무제한 네트워크, 합성 100개. warm 조작 각각 10회 event→DOM→2 rAF 중앙값/최대: 상세 31/31ms, 필터 22.5/30ms, 검색 326/334ms(300ms debounce 포함). 관찰 구간 Long Task 0. [원자료](evidence/d11-interaction.json).
+- NOT_RUN: 전후 최적화 비교·INP·두 사용자 전파 성능·Profiler(관찰된 렌더링 병목 없음)·실제 OS IME·스크린리더·외부 사용자 관찰. 본 결과는 자기 검증이며 접근성 전체 인증이 아니다.
+- 중간 실패는 삭제하지 않았다. 첫 테스트의 중복 라벨 선택은 상세 scope로 수정했고 이후 실제 포커스 실패를 해결했다. 실행 중 자동 승인 검토 서비스의 사용량 제한으로 정적 검사가 한 번 미실행됐으며 재개 후 실제 성공했다.
+
+
+현재 상태: **D11 / P11 로컬 구현 검증 PASS.** D11 전체 DB UI 회귀 35/35 PASS(3.8분, retry=0). 로딩/0건/오류 재시도·권한·저장/충돌·연결 복구도 포함한다. 실제 GitHub OAuth·독립 V03~V11는 NOT_RUN이다. 이전 단계 기록과 중간 실패는 아래에 보존했다.
 
 ## D10 실제 결과 — 2026-09-24
 

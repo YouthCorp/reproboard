@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { containDialogTab, restoreDialogFocus } from "@/lib/dialog-focus";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AppSupabase } from "@/lib/supabase/browser";
 import { useMembers } from "@/features/workspaces/use-members";
@@ -29,8 +30,13 @@ export function TransitionDialog({ client, issue, target, close, saved }: { clie
   const mutation = useMutation({ retry: false, networkMode: "always", mutationFn: (command: TransitionCommand) => commands.run(command) });
   useEffect(() => {
     const element = dialog.current!; const previous = document.activeElement as HTMLElement | null;
+    const menu = element.closest(".transition-menu");
     element.showModal();
-    return () => { element.close(); if (previous?.isConnected) previous.focus(); };
+    element.querySelector<HTMLButtonElement>("[data-transition-cancel]")?.focus();
+    return () => {
+      element.close();
+      restoreDialogFocus(previous, () => menu?.querySelector<HTMLElement>(".transition-heading") ?? document.getElementById("inbox-title"));
+    };
   }, []);
   const assigneeValid = !!issue.assignee_id && !!members.data?.some((m) => m.user_id === issue.assignee_id && (m.role === "owner" || m.role === "member"));
   const missing = Object.values(stateFieldErrors(target, issueValues(issue), assigneeValid));
@@ -73,7 +79,7 @@ export function TransitionDialog({ client, issue, target, close, saved }: { clie
       {key === "tested_build" ? <input {...props} /> : <textarea {...props} rows={3} />}
       <p id={`${id}-${key}-hint`} className={errors[key] ? "field-error" : "form-hint"}>{errors[key] || hint}</p></div>;
   }
-  return <dialog ref={dialog} className="transition-dialog" aria-labelledby={`${id}-heading`} onCancel={(event) => { event.preventDefault(); event.stopPropagation(); if (!busy) close(); }}>
+  return <dialog ref={dialog} className="transition-dialog" aria-labelledby={`${id}-heading`} onKeyDown={containDialogTab} onCancel={(event) => { event.preventDefault(); event.stopPropagation(); if (!busy) close(); }}>
     <h2 id={`${id}-heading`}>{nameOf(base.status)} → {nameOf(target)}</h2>
     <ConnectionHint />
     <p className="form-hint">{issue.issue_key} · 저장된 내용으로 이동합니다. 취소하면 이동하지 않습니다.</p>
@@ -94,7 +100,7 @@ export function TransitionDialog({ client, issue, target, close, saved }: { clie
         </>}
       </fieldset>
       <p className="transition-message" role="status" tabIndex={-1}>{message}</p>
-      <div className="form-actions"><button type="button" className="button button-secondary" disabled={busy} onClick={close} autoFocus>이동 취소</button>
+      <div className="form-actions"><button type="button" className="button button-secondary" disabled={busy} onClick={close} data-transition-cancel>이동 취소</button>
         {busy && <button type="button" className="button button-secondary" onClick={close}>보드에서 계속 작업</button>}
         <button className="button button-primary" type="submit" disabled={!commands.canWrite || connection?.online === false || mutation.isPending || (!unconfirmed && (stale || !allowed || missing.length > 0))}>{mutation.isPending ? "이동 중…" : unconfirmed ? "같은 이동 요청으로 다시 확인" : verification ? target === "done" ? "통과 기록 후 Done" : "실패 기록 후 In Progress" : "이동 확인"}</button></div>
     </form>
@@ -105,7 +111,7 @@ export function TransitionMenu({ client, issue, blocked = false, saved }: { clie
   const [target, setTarget] = useState<string | null>(null);
   const options = isStatus(issue.status) ? transitions[issue.status] : [];
   return <section className="transition-menu" aria-label="상태 이동">
-    <strong>상태 이동</strong><p className="form-hint">{blocked ? "작성 중인 변경을 먼저 저장하거나 최신 값으로 다시 편집하세요." : "저장된 정보를 확인한 뒤 이동을 확정합니다."}</p>
+    <h3 className="transition-heading" tabIndex={-1}>상태 이동 · 현재 {nameOf(issue.status)}</h3><p className="form-hint">{blocked ? "작성 중인 변경을 먼저 저장하거나 최신 값으로 다시 편집하세요." : "저장된 정보를 확인한 뒤 이동을 확정합니다."}</p>
     <div className="transition-options">{options.map((status) => <button type="button" className="button button-secondary" key={status} disabled={blocked} onClick={() => setTarget(status)}>{status === "done" ? "검증 통과 → Done" : issue.status === "verify" ? "검증 실패 → In Progress" : issue.status === "done" ? "재오픈 → Inbox" : `${nameOf(status)}로 이동`}</button>)}</div>
     {target && <TransitionDialog client={client} issue={issue} target={target} close={() => setTarget(null)} saved={saved} />}
   </section>;
