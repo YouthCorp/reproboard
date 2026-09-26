@@ -1,5 +1,25 @@
 # 테스트 실행 보고서
 
+## D13 실제 재현·시연 — 2026-09-26
+
+**로컬 범위 PASS. 공개 배포/실제 OAuth/원격 CI NOT_RUN.** 기존 데이터는 보존하고 `1f0b86c`의 git archive를 `.local/cleanroom-20260926/reproboard`에 풀었다. Node 24.19.0/pnpm 11.19.0/Windows 25H2/Chromium, 같은 OS의 pnpm store·Docker 이미지·브라우저 캐시는 재사용했다. 새 OS나 외부 기여자의 독립 재현 결과가 아니다. [환경·명령·DB 검증 증빙](evidence/d13-reproduction.json).
+
+| 실제 실행 | 결과와 범위 |
+|---|---|
+| README 순서 재현 | env/계정/node_modules/.next 없는 archive→frozen install→새 project_id/새 볼륨→start/migrate/seed/env/types→dev PASS. 첫 DB는 사용자/팀/이슈 0·migration 6, seed 후 합성 계정 4·팀 2 |
+| 의존성·타입 | 직접 의존성 28개 정확한 버전과 복사본 내 해석 경로 확인. 생성 타입 SHA-256 일치. lock 최초 byte 비교는 Windows CRLF/archive LF 차이로 불일치; 줄바꿈 정규화 후 내용 동일, 설치 변경 없음 |
+| 직접 앱 조작 | 합성 Owner 로그인→제목만 Inbox 생성→수정 저장→reload 시 동일 상세/제목 복원. 실제 DB version 2. 기존 동일 origin의 과거 쿠키는 새 DB에서 만료됐고 개발 로그인으로 정상 진입; README는 별도 프로필/시크릿 사용 안내 |
+| 정적/production | 복사본 `pnpm lint`, `pnpm typecheck`, `pnpm build` PASS; 보호 검사 6/6·production smoke 6/6 PASS. production 개발 로그인/자격 정보 미노출 포함 |
+| 새 DB 권한/규칙 | `test:integration:db` 이름 선택으로 역할 조회, 직접 table DML 거부, 실제 Viewer/타팀 publication RLS, 25 상태 쌍 4건 PASS. 사례별 새 계정/팀 정리. 전체 46 재실행으로 보고하지 않음 |
+| 실제 시연 | `pnpm test:demo` 4/4 PASS, retry=0. 정상 전환/검증 실패·통과·재오픈, 별도 두 context의 같은 version 경합, A 거부/B 성공, 단절·복구 중 변경·초안 보존. 관리자 API는 fixture/결과 확인에만 사용 |
+| 증빙 검토 | PNG 8·WebM 5. 첫 보드 캡처에 카드가 안 보여 전체 페이지/viewport를 고치고 4건 재녹화 PASS. 최종 8개 PNG와 영상 샘플 프레임 직접 검토·ffprobe 길이 확인. 정상 6.28초, 충돌 Owner 3.88/Member 3.80초, 실패 4.28초, 복구 3.96초 |
+| 보존·비밀 값 | 복사본은 수동 이슈 1·activity/receipt 각 2만 남음, 임시 사용자 0. public 테이블 8개 RLS 활성·publication 4개 테이블. 실제 비밀 값 소스 159/production 200개 일치 0. 원본 복귀 후 제품 테이블 10개·사용자 id·config/env/계정 파일의 전후 해시 일치 |
+| 미실행 | GitHub 승인/취소 실연동·GitHub Actions·hosted 배포/smoke·새 OS·외부 사용자·OS IME/스크린리더·장기 단절/콜드스타트 반복. D9의 이전 1회 대기 실패 원인은 이번 fresh DB 성공만으로 해결됐다고 주장하지 않음 |
+
+녹화 harness/추출 도구의 후속 소스는 `e929668`, 앱·DB 소스는 archive와 동일하다. 후속 변경은 캡처 구도/첨부 추출이며 원본 env/계정/빌드를 가져오지 않았다. [DEMO](DEMO.md)에 실제 미디어 링크, 재녹화 명령, 직접 녹화할 정확한 클릭/장애 순서가 있다. 원본 WebM은 짧은 무음 자동 실행이며 3~4분 내레이션 편집본은 만들지 않았다. 외부 영상 링크/사용자 피드백/성능 개선 주장은 없다.
+
+AC01은 위 로컬 새 소스/빈 DB 재현 PASS로 갱신한다. AC16은 시연·README·MIT 파일 존재/원본 보존 부분을 확인했으며 **실제 OAuth와 D14의 최종 라이선스/문서 대조는 미완료**다. 전체 릴리스 승인으로 표시하지 않는다. 배포 대상 미설정으로 README에 환경별 OAuth callback·앱 URL·공개 환경 변수·RLS 확인·production smoke 작업을 한 번에 정리했다.
+
 ## D12 수용 기준 감사 — 2026-09-25~26
 
 09-26 재개: 첫 격리 UI 실행 19 PASS/1 FAIL/15 NOT_RUN. `D6 same-column and forbidden drops`에서 드래그 직후 native Enter click이 dnd-kit의 50ms document click 억제에 걸렸다. 설치된 core 6.3.1의 detach 코드로 확인했다. `waitForTimeout` 대신 제어 시계로 그 정리 타이머를 진행하고, DOM/RPC/SQL assertion을 모두 유지했다. 실패 사례 재검증과 최종 전체 35/35 PASS (retry=0). 중간 실패는 이 기록에 보존한다.
@@ -10,7 +30,7 @@ D11 종료 커밋은 `5f747e2`. 본 단계는 자기 검증이며 독립 검수/
 
 | AC | 로컬 충족 상태/실행 근거 | 남은 경계 |
 |---|---|---|
-| AC01 | NOT_RUN: 새 clone·빈 DB 전체 재현 | 기존 스택 migration/type 일치와 새 테스트 사용자/팀 생성은 새 DB 설치와 다르다. D13/V12에서 별도 확인 |
+| AC01 | D13 PASS: 새 archive·별도 빈 DB·README 설치/seed/로그인/저장 | 새 OS·독립 외부 사용자 재현과 구분. 위 D13 결과 참조 |
 | AC02 | DB PASS: transitions의 25개 상태 쌍, 상태 필수조건, Done 편집 거부, 오래된 검증·원자성/과거 기록; UI D5·D11 전체 경로 | D12 격리 UI 전체 35 PASS |
 | AC03 | DB PASS: commands의 실제 Owner/Member/Viewer/타팀/anon, 직접 DML, auth.uid 없는 호출, forged FK; workspaces 프로필 최소 공개·Owner 주입 거부 | 서비스 키로 사용자 동작을 대체하지 않음 |
 | AC04 | DB PASS: workspaces의 두 세션 초대 경쟁, 24시간 만료/재사용·hash/Member 고정·역할 변경 | UI 초대 생성/가입/강등과 만료 안내는 workspaces.spec |
@@ -25,9 +45,9 @@ D11 종료 커밋은 `5f747e2`. 본 단계는 자기 검증이며 독립 검수/
 | AC13 | D12 격리 회귀 PASS: board-url의 복사→다른 계정 로그인·reload/history·0건·잘못된 값; 단위 파서/정규화·composition 이벤트 | 실제 OS 한글 IME NOT_RUN |
 | AC14 | D11 PASS: accessibility의 Tab/Shift+Tab/Enter만으로 생성→Done, modal 첫/복귀 포커스·Escape·오류 연결; 직접 앱 조작도 확인 | 실제 스크린리더/터치/외부 사용자 NOT_RUN |
 | AC15 | D11 PASS: fields의 로딩/팀 0건/오류 재시도/초안 보존/없는 상세, board-url 검색 0건/타팀, accessibility의 390/768/1440px·100개 긴 한글 | Chromium 1종, 확대·다른 브라우저 NOT_RUN |
-| AC16 | NOT_RUN: 실제 OAuth·새 clone·최종 시연/라이선스 대조 | 외부 앱 미설정. 개발 세션은 대체 개발 경로이며 OAuth 성공으로 쓰지 않음. /demo 신규 화면만 범위 제외 |
+| AC16 | D13 소스 재현/실제 시연 PASS; 실제 OAuth·D14 최종 대조 NOT_RUN | 외부 앱 미설정. 개발 세션은 OAuth 성공 근거가 아님. /demo 신규 화면만 후속 |
 
-단위/UI mock 테스트와 위 실제 DB/브라우저 근거는 합산해서 같은 위험을 두 번 통과했다고 설명하지 않는다. 전체 릴리스 승인은 AC01/16 및 남은 검증 전까지 유보한다.
+단위/UI mock 테스트와 위 실제 DB/브라우저 근거는 합산해서 같은 위험을 두 번 통과했다고 설명하지 않는다. 전체 릴리스 승인은 AC16 및 남은 검증/범위 확정 전까지 유보한다.
 
 
 ## D11 실제 결과 — 2026-09-24~25

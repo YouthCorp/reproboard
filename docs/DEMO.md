@@ -1,6 +1,16 @@
 # 실제 앱 시연과 녹화
 
-신규 `/demo` 화면은 D10 기능 동결에 따라 후속이다. 기존 앱·실제 로컬 Supabase·합성 개발 계정으로 시연한다. D13 녹화 결과는 아래 실행 후 확정한다. 실제 사용자 데이터/사용성 관찰이나 성능 측정 영상으로 소개하지 않는다.
+신규 `/demo` 화면은 D10 기능 동결에 따라 후속이다. 기존 앱·실제 로컬 Supabase·합성 개발 계정으로 시연한다. 2026-09-26 별도 소스 복사본·새 로컬 DB에서 4/4 시연 PASS, PNG 8개·WebM 5개를 기록했다. 실제 사용자 데이터/사용성 관찰이나 성능 측정 영상으로 소개하지 않는다.
+
+## 실제 증빙
+
+[정상 흐름 6.28초](evidence/d13-normal-flow.webm) · [충돌 Owner 3.88초](evidence/d13-owner.webm) · [충돌 Member 3.80초](evidence/d13-member.webm) · [A 실패/B 성공 4.28초](evidence/d13-request-isolation.webm) · [단절 복구 3.96초](evidence/d13-offline-recovery.webm).
+
+무음 자동 조작 원본이다. 전체 영상을 해설한 3~4분 편집본은 NOT_RUN이며 아래는 직접 제작할 클릭 순서다. 충돌 Owner/Member는 같은 실행의 별도 context이며 시작 시각이 달라 파일 길이가 다르다. 8개 PNG와 영상 샘플 프레임을 직접 검토하고 ffprobe로 실제 길이를 확인했다.
+
+[전체 보드](evidence/d13-board.png) · [Ready 누락](evidence/d13-ready-missing.png) · [검증 입력](evidence/d13-verification-dialog.png) · [Done·기록](evidence/d13-done-history.png) · [충돌 비교](evidence/d13-conflict.png) · [실패 격리](evidence/d13-isolated-failure.png) · [오프라인 초안](evidence/d13-offline-draft.png) · [복구 후 초안](evidence/d13-recovered-draft.png).
+
+[시연 결과·파일 해시](evidence/d13-demo-results.json) · [환경·소스 커밋·새 DB 재현 결과](evidence/d13-reproduction.json). 새 DB 소스는 1f0b86c, 녹화 구도·추출 도구는 e929668이다. 첫 보드 PNG에서 카드가 화면 밖으로 잘려 fullPage와 명시적 viewport로 재녹화했다. 앱 동작/assertion은 바꾸지 않았다.
 
 ## 재현·녹화 명령
 
@@ -12,7 +22,7 @@ pnpm test:demo
 node scripts/export-demo.mjs
 ```
 
-3000 포트에서 자동 dev 서버를 시작하거나 같은 복사본의 기존 서버를 사용한다. 다른 폴더의 서버/스택을 동시에 켜지 않는다. 단일 worker·retry=0, 서로 다른 context의 실제 계정 세션이다. `.local/demo/report.json`은 실행 결과, `test-results/demo`는 원본 PNG/WebM이다. trace/storageState는 저장하지 않는다. HTML/JSON 원시 리포트를 공개하기보다 확인된 PNG/WebM과 비밀 값 없는 테스트 결과만 선정한다. 영상은 context 종료 후 완성된다.
+3000 포트에서 자동 dev 서버를 시작하거나 같은 복사본의 기존 서버를 사용한다. 다른 폴더의 서버/스택을 동시에 켜지 않는다. 단일 worker·retry=0, 서로 다른 context의 실제 계정 세션이다. `.local/demo/report.json`은 실행 결과, `test-results/demo`는 원본 PNG/WebM이다. trace/storageState는 저장하지 않는다. HTML/JSON 원시 리포트를 공개하기보다 확인된 PNG/WebM과 비밀 값 없는 테스트 결과만 선정한다. 영상은 context 종료 후 완성된다. `export-demo`가 네 장면 모두 단일 PASS인지 확인하고 `.local/demo/export`에 13개 미디어와 결과 manifest를 추출한다. 실패/부분 실행의 증빙은 완성본으로 추출하지 않는다.
 
 4개 선택 사례:
 

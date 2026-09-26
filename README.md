@@ -2,7 +2,7 @@
 
 소규모 개발팀이 버그 재현 정보를 모으고, 수정 후 재검증까지 관리하는 협업 보드.
 
-**현재 상태: D12 로컬 회귀 완료(DB 46·격리 브라우저 35), CI 구성 완료/원격 실행 NOT_RUN. 신규 기능 동결.** 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN이다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)가 기준이다.
+**현재 상태: D13 깨끗한 소스·새 로컬 DB 재현 및 합성 앱 녹화 완료. D12 DB 46·격리 브라우저 35 PASS, 원격 CI NOT_RUN. 신규 기능 동결.** 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN이다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)가 기준이다.
 
 ## 왜 만드는가
 
@@ -34,7 +34,7 @@ D10 이후에는 기존 기능의 결함·접근성·회귀·실행 재현·문�
 
 ## 화면과 시연
 
-로그인 전 `/board`는 데이터 없는 5단계 미리보기다. 로컬 설정 후 `/login`에서 합성 Owner/Member/Viewer/다른 팀 Owner를 선택하면 실제 Supabase 세션으로 전환한다. 로그인 후 새 팀을 만들면 Owner가 되고, 팀 멤버 패널에서 초대 링크를 생성하거나 Member↔Viewer를 변경한다. `/invite`에서 로그인 후 명시적으로 수락한다. Viewer는 읽기 전용이고 다른 팀 데이터는 표시되지 않는다. GitHub 버튼은 실제 provider 설정 상태에 따라 활성화된다. 전체 제품 시연은 D13 범위이며 아직 없다. 신규 `/demo` 화면은 D10 기능 동결에 따라 후속으로 옮겼다.
+로그인 전 `/board`는 데이터 없는 5단계 미리보기다. 로컬 설정 후 `/login`에서 합성 Owner/Member/Viewer/다른 팀 Owner를 선택하면 실제 Supabase 세션으로 전환한다. 로그인 후 새 팀을 만들면 Owner가 되고, 팀 멤버 패널에서 초대 링크를 생성하거나 Member↔Viewer를 변경한다. `/invite`에서 로그인 후 명시적으로 수락한다. Viewer는 읽기 전용이고 다른 팀 데이터는 표시되지 않는다. GitHub 버튼은 실제 provider 설정 상태에 따라 활성화된다. [D13 실제 시연](docs/DEMO.md)에 정상 흐름·두 사용자 충돌·실패·재연결 영상 5개와 캡처 8개가 있다. 신규 `/demo` 화면은 D10 기능 동결에 따라 후속으로 옮겼다.
 
 로그인한 보드의 5개 열은 같은 Query 목록에서 렌더링된다. 카드를 누르면 `?workspace=…&issue=…`의 상세가 열리고 새로고침·주소 공유·뒤로가기로 복원된다. 제목은 1~120자, 재현 본문·발생 조건·수정 메모는 각각 4,000자, 대상 빌드는 120자까지이며 trim 후 코드 포인트로 센다. 재현 정보 0~4 충족 수와 누락 항목은 입력 상태를 나타낸다.
 
@@ -230,7 +230,7 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 [기여 안내](CONTRIBUTING.md), [보안 제보 안내](SECURITY.md), [MIT 라이선스](LICENSE).
 
-개인 프로젝트이며 D1~D10 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 단계 기록과 ADR의 증거로 확인한다. CASE_STUDY의 작성자 역할/성과는 아직 작성 양식이며 실제 팀 사용·성능 개선 성과는 측정하지 않았다.
+개인 프로젝트이며 D1~D13 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 단계 기록과 ADR의 증거로 확인한다. CASE_STUDY의 작성자 역할/성과는 아직 작성 양식이며 실제 팀 사용·성능 개선 성과는 측정하지 않았다.
 ## D11 접근성·조작 관찰
 
 상세는 닫기 버튼에서 시작하고 Tab/Shift+Tab이 열린 모달 안에서 순환한다. Escape로 닫으면 원래 카드로 돌아간다. 상태 변경으로 버튼/카드가 교체되면 현재 상태 제목/같은 이슈 카드로, 직접 상세 주소로 들어왔다면 보드 제목으로 복귀한다. 포인터 드래그 손잡이는 Tab 순서에서 제외하며 상세의 상태 이동 메뉴로 모든 전환을 할 수 있다. 모바일 상세의 닫기 버튼은 스크롤해도 유지된다.
@@ -316,9 +316,11 @@ pnpm build
 pnpm test:e2e
 ```
 
+`export-demo`는 네 장면이 각각 한 번 PASS인 보고서만 받아 `.local/demo/export`에 PNG/WebM과 비밀 값 없는 결과 JSON을 추출한다. 이미지/영상 검토 후 필요한 파일만 공개 증빙으로 옮긴다.
+
 `test:demo`는 기존 핵심 검증 4건(전체 상태 흐름·두 사용자 충돌·A 실패/B 성공·단절 복구)을 실제 DB로 실행하고 `.local/demo/report.json` 및 `test-results/demo`에 PNG/WebM을 남긴다. 관리자 API는 합성 fixture 준비/정리만 담당하며 화면과 명령은 사용자 세션이다. trace/토큰은 기록하지 않는다. 녹화 중에는 수동 조작하지 않는다. 실행 후 이슈 fixture는 정리되며 계정 4명과 seed 팀 2개는 남는다. [시연 클릭 순서와 증빙](docs/DEMO.md).
 
-원본 복귀: 복사본 앱을 Ctrl+C로 종료 → **복사본 루트**에서 `node scripts/ci-stack.mjs stop` → `Set-Location $sourceRoot` → `node scripts/ci-stack.mjs start` → `pnpm dev`. 두 프로젝트의 볼륨은 보존한다. 복사본 `.env.local`/계정 파일을 원본에 덮어쓰지 않는다. 재현 결과는 TEST_REPORT에 실제 실행 후 기록한다.
+원본 복귀: 복사본 앱을 Ctrl+C로 종료 → **복사본 루트**에서 `node scripts/ci-stack.mjs stop` → `Set-Location $sourceRoot` → `node scripts/ci-stack.mjs start` → `pnpm dev`. 두 프로젝트의 볼륨은 보존한다. 복사본 `.env.local`/계정 파일을 원본에 덮어쓰지 않는다. 2026-09-26 실제 재현 PASS. 같은 OS의 pnpm store/Docker 이미지/Chromium 캐시는 재사용했으며 새 OS 설치 검증은 아니다. 복사본의 직접 의존성 28개 경로·고정 버전, 새 DB 생성 타입·lock 내용 일치를 확인했다. 원본 10개 제품 테이블·사용자 id·config/env/계정 파일의 전후 해시가 일치했다. [실행 증빙](docs/evidence/d13-reproduction.json) · [TEST_REPORT](docs/TEST_REPORT.md).
 
 ### 공개 배포 전에 사용자가 정할 외부 설정
 

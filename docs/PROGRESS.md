@@ -1,10 +1,10 @@
 # 진행 기록
 
-현재 상태: D11 / P11 접근성·반응형·조작 관찰 로컬 구현과 검증 완료. 키보드 생성부터 Done, 포커스 복귀, 합성 100개 production 조작을 확인했다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
+현재 상태: D13 / P13 깨끗한 소스·새 DB README 재현과 실제 합성 앱 시연 완료. D12 필수 로컬 회귀 PASS, 원격 CI·실제 GitHub OAuth·공개 배포는 NOT_RUN.
 
-현재 단계: D12 / P12 로컬 완료, D13 / P13 재현·시연 진행 (2026-09-26, Asia/Seoul). 원격 CI와 독립 V03~V12는 NOT_RUN. 신규 기능 동결을 유지한다.
+현재 단계: D13 / P13 로컬 완료 (2026-09-26, Asia/Seoul). 다음은 V13 독립 검증, 이후 D14 문서·릴리스 후보 정리다. 신규 기능 동결을 유지한다.
 
-선행 조건: 기존 데이터/사용자 작업을 보존한 별도 소스와 새 로컬 Docker 프로젝트로 D13을 재현한다. 실제 GitHub OAuth와 공개 배포 대상은 미설정이며 로컬 시연의 선행 조건은 아니다. D9 콜드스타트 원인 미확정은 유지한다.
+선행 조건: 기존 로컬 DB·환경 복귀 및 데이터 해시 일치 확인. 공개 대상·실제 OAuth 설정이 없어 외부 작업은 README의 단일 목록으로 남겼다. 과거 D9 콜드스타트 실패 원인은 미확정이다.
 
 ## 범위와 근거
 
@@ -31,7 +31,7 @@
 | D10 URL | DONE: P10 로컬 구현 | 로컬 PASS / V10 NOT_RUN | 파서/정규화·검색/필터/안정 정렬·공유 로그인·history·IME 이벤트. 단위 57·DB UI 32·production smoke 6, 캡처 1장. 신규 기능 동결 |
 | D11 접근성·UX | DONE: P11 로컬 구현 | 로컬 핵심 PASS / V11 NOT_RUN | 키보드 생성→Done·포커스·100개 긴 한글 카드·390/768/1440px, production 조작 30회. TEST_REPORT 참조 |
 | D12 회귀·CI | DONE: P12 로컬 구현 | DB 46·격리 UI 35·단위 57·보호 4·smoke 6 PASS / CI NOT_RUN | 사례별 사용자/팀·서버 격리, 필수 회귀와 CI 구성. TEST_REPORT |
-| D13 재현·시연 | TODO | NOT_RUN | D1~D5 캡처·D6 장애 영상 2개·D7 두 사용자 영상 2개·D8 연결 장애 영상 2개. 전체 제품 시연·새 clone 검증 없음 |
+| D13 재현·시연 | DONE: P13 로컬 | README 새 소스/빈 DB·실제 시연 4·smoke 6 PASS | 별도 project/volume·28개 의존성·원본 데이터 보존, 영상 5/PNG 8. OAuth/공개 배포 NOT_RUN |
 | D14 문서·릴리스 | TODO | NOT_RUN | 문서 키트 존재는 구현·릴리스 완료 근거가 아님 |
 
 ## D11 / P11 — 2026-09-24~25
@@ -53,6 +53,17 @@
 - 영상 가독성 대기는 제거하고 드래그 DOM/네트워크/SQL 조건 및 폴링 제어 시계를 사용한다. 검증 삭제/skip/자동 retry는 없다.
 - ACCEPTANCE의 AC01~16을 TEST_REPORT에 매핑했다. 실제 OAuth·새 clone/빈 DB·원격 CI·외부 사용자·OS IME/스크린리더는 별도 미검증이며 자기 검증이다.
 - 기존 사용자/프로필 4·팀 3·이슈 1·activity 11·검증 1·receipt 15·초대 1 유지, 격리 사용자/댓글/알림/오류 함수 0. 실제 비밀 값 일치 0. D13 새 복사본·빈 DB 시연으로 이어간다.
+
+## D13 / P13 — 2026-09-26
+
+- 1f0b86c git archive로 별도 깨끗한 소스 구성. env/계정/node_modules/빌드 복사 없이 README의 설치→새 Docker project/volume→migration→seed→env→앱 절차 PASS.
+- 사용자/팀/이슈 0건인 DB에 migration 6개, 합성 사용자 4·팀 2 준비. 직접 로그인→제목 생성→수정→reload PASS, DB Inbox version 2 확인. 원래 OS/패키지·이미지 캐시는 재사용했다.
+- 정확한 loopback/컨테이너/경로 보호를 유지한 cleanroom 도구와 시연 설정·검증된 첨부 추출 추가. 직접 의존성 28개·lock 내용·생성 타입 일치, lint/typecheck·보호 6·build·production smoke 6 PASS.
+- 새 DB에서 격리된 역할 조회/직접 쓰기 거부/publication RLS/25개 상태 쌍 선택 4건 PASS. 전체 DB 46·UI 35는 D12 실행이며 중복 합산하지 않는다.
+- 실제 사용자 시연 4건 PASS, WebM 5·PNG 8·실행/해시 JSON. 첫 캡처 구도 잘림을 고쳐 재녹화(e929668), 영상 프레임·이미지 확인. 무음 짧은 원본이며 3~4분 내레이션 제작은 NOT_RUN.
+- 복사본은 수동 확인 이슈 1건만 유지, 임시 테스트 사용자 0. 원본 스택 복귀 후 제품 테이블 10개·Auth user id·config/env/계정 파일 전후 해시 일치. 실제 비밀 값 소스 159/production 200개 일치 0.
+- DEMO 클릭/장애/녹화 절차·README OAuth/배포 준비·TEST_REPORT 갱신. /demo 신규 화면·공개 작업 없음. 실제 OAuth/원격 CI/새 OS/외부 사용자와 D9 콜드스타트 원인은 미검증으로 유지.
+- 다음: V13→P14. 기존 문서·데이터 보존, ADR 3건 유지. 로컬 커밋은 종료 보고 참조.
 
 ## 환경 확인 — P00 당시 기록 (현재 결과는 아래 D1 및 TEST_REPORT)
 
@@ -83,10 +94,10 @@
 
 ## 다음 실행 프롬프트
 
-독립 검증 V10을 수행한 뒤 P11로 진행한다. 독립 V03~V09 미실행 사실은 유지한다.
+D13 로컬 작업 완료. 독립 V03~V12 미실행 사실을 보존하며 다음은 V13, 통과 후 P14다.
 
 ```text
-AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V10을 수행해라. 검색·필터·정렬·상세를 조합해 다른 로그인 context로 주소를 공유하고 로그인/새로고침/뒤로·앞으로/직접 상세 닫기를 검증해라. 잘못된 enum·UUID·비회원 팀·타팀/없는 이슈·0건·500개 범위, 한글 조합 중 불필요한 URL 갱신과 입력 소실을 확인해라. composition 이벤트와 실제 OS IME 검증을 구분하고 미실행 항목은 NOT_RUN으로 남겨라. 기존 데이터와 기능 동결을 보존하며 통과하면 P11 접근성·UX를 다음으로 지정해라.
+AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V13을 수행해라. README의 깨끗한 복사본 절차, 새 DB 격리와 원본 데이터 보존, docs/DEMO.md의 실제 영상·캡처·실행 JSON을 대조해라. OAuth·원격 CI·공개 배포 NOT_RUN을 유지하고 기록과 코드가 일치하면 D14 문서·릴리스 후보 정리로 이어가라. 신규 기능을 추가하거나 외부에 공개하지 마라.
 ```
 
 ### D1 / P00 / 2026-09-13

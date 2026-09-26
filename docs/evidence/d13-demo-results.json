@@ -1,0 +1,98 @@
+{
+  "synthetic": true,
+  "startTime": "2026-09-26T13:43:40.554Z",
+  "durationMs": 30643.787000000004,
+  "passed": 4,
+  "failed": 0,
+  "retries": 0,
+  "browser": "Chromium",
+  "cases": [
+    {
+      "name": "D6 delayed A rejects against the actual DB while B succeeds; only A overlay disappears",
+      "result": "PASS",
+      "durationMs": 3900
+    },
+    {
+      "name": "D7 two browser users race different fields: one commit, one conflict, copy and explicit re-edit",
+      "result": "PASS",
+      "durationMs": 3440
+    },
+    {
+      "name": "D8 A offline, B changes, A rejoins and drains a change during recovery without sending its draft",
+      "result": "PASS",
+      "durationMs": 3398
+    },
+    {
+      "name": "D5 UI completes Inbox→Ready→In Progress→Verify→fail→Verify→Done→reopen, with actual history and captures",
+      "result": "PASS",
+      "durationMs": 5695
+    }
+  ],
+  "evidence": [
+    {
+      "file": "d13-isolated-failure.png",
+      "bytes": 64799,
+      "sha256": "98ac453c3e006d91e61238e110f051dd064944550568434bb1b4a70e761ca898"
+    },
+    {
+      "file": "d13-request-isolation.webm",
+      "bytes": 548442,
+      "sha256": "9175f091b6d1dbb8a4e761fed690ec19de6f93f56fa2ea659e496e353c3778a4"
+    },
+    {
+      "file": "d13-conflict.png",
+      "bytes": 85862,
+      "sha256": "549734f5a46f80c9ae85809f777617b145e5bb6afc2c69ba7af86bfb23b12442"
+    },
+    {
+      "file": "d13-owner.webm",
+      "bytes": 484856,
+      "sha256": "0c1318138988d1ecf990d42af4258fdf4d1519b3c12e9fe8d7e76ba78efd5275"
+    },
+    {
+      "file": "d13-member.webm",
+      "bytes": 384310,
+      "sha256": "609553de592492f023b7d601bc25b09a2816291c9ca2cd3adb39bcd5e1a8d50c"
+    },
+    {
+      "file": "d13-offline-draft.png",
+      "bytes": 66928,
+      "sha256": "02210992797d9a7b33ea7e57a3fe8e3d8e333ad86f10edbee6f79b1fe9c907d5"
+    },
+    {
+      "file": "d13-recovered-draft.png",
+      "bytes": 68588,
+      "sha256": "bafa746dec864f75f0891ff989d22fd5962ff39aeba65967d485e0eccf28d0b3"
+    },
+    {
+      "file": "d13-offline-recovery.webm",
+      "bytes": 490315,
+      "sha256": "597a6c8a46349b73179bce20bda319565e6bfbd9036bb7a02ede0ae0c5697c6a"
+    },
+    {
+      "file": "d13-board.png",
+      "bytes": 93455,
+      "sha256": "61d031f0c6972b51981a5653beb33e952bfb97c7fcf35ca768266c59a3ef612d"
+    },
+    {
+      "file": "d13-ready-missing.png",
+      "bytes": 77215,
+      "sha256": "3fcaa530aede68ddc0c16d25b1e92e7c07267f29a068e36af9b6aabfd8b2d912"
+    },
+    {
+      "file": "d13-verification-dialog.png",
+      "bytes": 70191,
+      "sha256": "03f079862cebfa9d8b6db9c31a5579f6762dda553f4dd0a70d2bf500d02bd5bc"
+    },
+    {
+      "file": "d13-done-history.png",
+      "bytes": 75992,
+      "sha256": "3d04e548b3c1c2b06569153598b0966f7234910d9a82150a984398e6f6da4a6a"
+    },
+    {
+      "file": "d13-normal-flow.webm",
+      "bytes": 927445,
+      "sha256": "7a51d6f0980c4202539bec8c2de6c7a8b6ee9906b76f05da3450c097883a46de"
+    }
+  ]
+}
