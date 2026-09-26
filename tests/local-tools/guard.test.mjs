@@ -50,3 +50,21 @@ test('isolated integration runner refuses unknown modes before touching the loca
   assert.match(result.stderr, /Usage:/);
   assert.doesNotMatch(result.stdout, /PASS/);
 });
+
+test('cleanroom remains loopback and bound to its own Docker identity and source directory', () => {
+  const id = 'reproboard-cleanroom-abcdef123456', config = `project_id = "${id}"`;
+  const copy = structuredClone(container);
+  copy.Name = `/supabase_db_${id}`;
+  copy.Config.Labels['com.supabase.cli.project'] = id;
+  assert.doesNotThrow(() => assertLocalTarget(status, copy, config));
+  assert.throws(() => assertLocalTarget(status, container, config));
+  assert.throws(() => assertLocalTarget({ ...status, API_URL: 'https://project.supabase.co' }, copy, config));
+  copy.Config.Labels['com.supabase.cli.workdir'] = '/another/source';
+  assert.throws(() => assertLocalTarget(status, copy, config));
+});
+
+test('cleanroom preparation refuses to alter an existing checkout', () => {
+  const result = spawnSync(process.execPath, [resolve(root, 'scripts/prepare-cleanroom.mjs')], { cwd: root, encoding: 'utf8', windowsHide: true });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Refusing existing checkout\/runtime/);
+});

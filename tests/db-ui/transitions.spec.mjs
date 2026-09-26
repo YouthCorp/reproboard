@@ -67,11 +67,14 @@ test('D5 UI completes Inbox→Ready→In Progress→Verify→fail→Verify→Don
   await login(page, team);
   await page.getByLabel('새 이슈 제목', { exact: true }).fill(title);
   await page.getByRole('button', { name: 'Inbox에 생성', exact: true }).click();
+  await expect(page.locator('.issue-card')).toHaveCount(1);
+  await info.attach('d13-board', { body: await page.screenshot(), contentType: 'image/png' });
   await page.locator('.issue-card').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).getByRole('button', { name: /상세 열기$/ }).click();
   const row = (await db.query('select * from public.issues where workspace_id=$1', [team])).rows[0];
   await detail(page).getByRole('button', { name: 'Ready로 이동', exact: true }).click();
   await expect(modal(page).getByText('먼저 필수 정보를 저장하세요.', { exact: true })).toBeVisible();
   await expect(modal(page).getByRole('button', { name: '이동 확인', exact: true })).toBeDisabled();
+  await info.attach('d13-ready-missing', { body: await page.screenshot(), contentType: 'image/png' });
   await page.keyboard.press('Escape'); await expect(modal(page)).toHaveCount(0); await expect(detail(page)).toBeVisible();
   expect((await stored(row.id)).status).toBe('inbox'); expect((await stored(row.id)).version).toBe(1);
   for (const [label, value] of [['재현 단계','1. 보드 열기\n2. 필터 바꾸기\n3. 목록 확인'],['기대 결과','조건에 맞는 새 목록 표시'],['실제 결과','이전 목록이 그대로 남음'],['환경','Windows · Chromium · 합성 환경']]) await detail(page).getByLabel(label, { exact: true }).fill(value);

@@ -29,7 +29,8 @@
     "test:db-ui": "playwright test --config playwright.db.config.mjs",
     "test:ux": "playwright test --config playwright.ux.config.mjs",
     "test:integration:db": "node scripts/test-integration.mjs db",
-    "test:integration:ui": "node scripts/test-integration.mjs ui"
+    "test:integration:ui": "node scripts/test-integration.mjs ui",
+    "test:demo": "playwright test --config playwright.demo.config.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",

@@ -77,6 +77,7 @@ test('D8 A offline, B changes, A rejoins and drains a change during recovery wit
     await expect(status(a.page)).toHaveAttribute('data-connection-state', 'offline');
     await a.page.getByLabel('새 이슈 제목', { exact: true }).fill('오프라인에서 계속 작성한 초안');
     await expect(a.page.getByRole('button', { name: 'Inbox에 생성', exact: true })).toBeDisabled();
+    await info.attach('d13-offline-draft', { body: await a.page.screenshot(), contentType: 'image/png' });
     await open(b.page, row); await saveTitle(b.page, 'B가 A 단절 중 저장한 제목');
     await expect(card(a.page, row)).toContainText(row.title);
     const before = snapshots; hold = true;
@@ -90,6 +91,7 @@ test('D8 A offline, B changes, A rejoins and drains a change during recovery wit
     expect(snapshots - before).toBeGreaterThanOrEqual(2);
     await expect(a.page.getByLabel('새 이슈 제목', { exact: true })).toHaveValue('오프라인에서 계속 작성한 초안');
     expect(writes).toBe(0); expect((await stored(row)).version).toBe(3);
+    await info.attach('d13-recovered-draft', { body: await a.page.screenshot(), contentType: 'image/png' });
     await a.page.getByRole('button', { name: 'Inbox에 생성', exact: true }).click();
     await expect(a.page.getByRole('heading', { name: '오프라인에서 계속 작성한 초안', exact: true })).toHaveCount(1);
     expect(writes).toBe(1);

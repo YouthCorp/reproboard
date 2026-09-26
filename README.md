@@ -270,3 +270,61 @@ pnpm test:e2e
 CI의 `app` job은 lint/typecheck/단위/보호/build/production smoke, `database-and-collaboration`은 새 Ubuntu runner의 로컬 Docker stack/migration/타입 일치/실제 DB/전체 핵심 E2E를 실행하도록 구성했다. 고정된 프로젝트 CLI를 사용하고 hosted secret/link/push/reset은 없다. GitHub에서 workflow를 실제 실행하기 전까지 **CI NOT_RUN**이다. 로컬 스택을 종료하려면 `node scripts/ci-stack.mjs stop`을 실행한다(볼륨 보존).
 
 공식 근거: [Supabase 로컬 CLI](https://supabase.com/docs/guides/local-development/cli/getting-started), [Supabase CI 환경](https://supabase.com/docs/guides/deployment/managing-environments), [Playwright CI·단일 worker](https://playwright.dev/docs/ci). 로컬 PASS를 Linux/GitHub PASS로 간주하지 않는다.
+
+## D13 깨끗한 소스·새 로컬 DB 재현
+
+아래는 Windows PowerShell 절차다. Node 24.19.0·pnpm 11.19.0·Git·Linux Docker 엔진이 필요하다. 새 OS 설치 검증과는 구분한다. `git archive`에는 커밋된 파일만 들어가므로 현재 변경은 먼저 검토·로컬 커밋으로 보존한다. node_modules/.env/.local/.next를 원본에서 복사하지 않는다. 원본 dev 서버와 테스트를 종료하고 3000/3100/3200 및 Supabase 54321~54324 포트를 비운다.
+
+```powershell
+# 원본 저장소 루트: 먼저 git status --short가 비었는지 확인
+git status --short
+$sourceRoot = (Get-Location).Path
+$copyRoot = Join-Path $sourceRoot ('.local/cleanroom-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+New-Item -ItemType Directory -Path $copyRoot | Out-Null
+git archive --format=zip --output="$copyRoot/source.zip" HEAD
+Expand-Archive -LiteralPath "$copyRoot/source.zip" -DestinationPath "$copyRoot/reproboard"
+# 기존 스택을 실행 중인 경우에만, 해당 원본 루트에서 종료. 볼륨 보존.
+node scripts/ci-stack.mjs stop
+Set-Location "$copyRoot/reproboard"
+node --version
+pnpm --version
+pnpm install --frozen-lockfile
+# 설치 직후, env/seed/스택 시작 전에 1회 실행
+node scripts/prepare-cleanroom.mjs
+node scripts/ci-stack.mjs start
+pnpm db:migrate
+pnpm db:seed
+pnpm db:env
+pnpm db:types
+pnpm exec playwright install chromium
+pnpm dev
+```
+
+`prepare-cleanroom`은 새 archive 복사본만 허용한다. `.git`/`.env`/`.env.local`/`.local`/Supabase runtime이 있으면 중단한다. 복사본 config에만 무작위 `reproboard-cleanroom-<12자리>` project_id를 기록하며 기존 컨테이너/볼륨 이름과 중복 여부를 확인한다. DB 도구는 그 프로젝트의 컨테이너 이름·label·복사본 절대경로와 기존 loopback/포트를 모두 대조한다. 원본 config나 DB reset은 사용하지 않는다. 같은 포트를 사용하므로 두 프로젝트를 동시에 켜지 않는다. [공식 project_id 계약](https://supabase.com/docs/guides/local-development/cli/config#project_id).
+
+브라우저를 새 프로필/시크릿 창으로 열어 `http://127.0.0.1:3000/login` → **합성 Owner** 선택 → **개발 계정으로 로그인** → 제목만 입력 → **Inbox에 생성** → 상세에서 제목 수정 → **변경 저장** → 새로고침으로 저장을 확인한다. 새 DB에는 사용자 4명·팀 2개만 seed되고 이슈는 비어 있다. OAuth 없이 실제 password 세션을 사용한다.
+
+별도 터미널도 복사본 루트에서 실행한다. dev 서버를 닫은 뒤에도 `pnpm test:demo`는 자동 기동한다.
+
+```text
+pnpm lint
+pnpm typecheck
+pnpm test:local-tools
+pnpm test:demo
+pnpm build
+pnpm test:e2e
+```
+
+`test:demo`는 기존 핵심 검증 4건(전체 상태 흐름·두 사용자 충돌·A 실패/B 성공·단절 복구)을 실제 DB로 실행하고 `.local/demo/report.json` 및 `test-results/demo`에 PNG/WebM을 남긴다. 관리자 API는 합성 fixture 준비/정리만 담당하며 화면과 명령은 사용자 세션이다. trace/토큰은 기록하지 않는다. 녹화 중에는 수동 조작하지 않는다. 실행 후 이슈 fixture는 정리되며 계정 4명과 seed 팀 2개는 남는다. [시연 클릭 순서와 증빙](docs/DEMO.md).
+
+원본 복귀: 복사본 앱을 Ctrl+C로 종료 → **복사본 루트**에서 `node scripts/ci-stack.mjs stop` → `Set-Location $sourceRoot` → `node scripts/ci-stack.mjs start` → `pnpm dev`. 두 프로젝트의 볼륨은 보존한다. 복사본 `.env.local`/계정 파일을 원본에 덮어쓰지 않는다. 재현 결과는 TEST_REPORT에 실제 실행 후 기록한다.
+
+### 공개 배포 전에 사용자가 정할 외부 설정
+
+현재 연결된 Git 원격·호스팅·hosted Supabase 대상은 없다. 배포/외부 게시를 실행하지 않았다. 한 번에 준비할 정보는 공개할 저장소·호스팅 대상·앱 HTTPS origin·개발/운영 Supabase 프로젝트와 GitHub OAuth App이다.
+
+1. 환경마다 GitHub OAuth App을 분리하고 GitHub callback을 해당 Supabase의 `https://<project-ref>.supabase.co/auth/v1/callback`으로 등록한다. Supabase provider에 ID/secret을 입력한다. 앱 URL Configuration은 실제 HTTPS origin 및 정확한 `/auth/callback`이다. 로컬은 위 GitHub OAuth 절차의 54321/3000 주소를 사용한다.
+2. 호스팅에는 공개 URL/publishable key와 `NEXT_PUBLIC_SITE_URL`만 앱 용도로 설정한다. `DEV_LOGIN_ENABLED`는 생략/false, `.local`/테스트 계정/CLI OAuth secret/service key는 배포하지 않는다. `NEXT_PUBLIC_*`는 빌드 시 고정되므로 환경별로 다시 빌드한다. [Next 환경 변수](https://nextjs.org/docs/app/guides/environment-variables).
+3. 승인된 대상에서만 migration 적용, RLS/grant/publication/함수 권한을 검증한다. 로컬 reset/seed/ci-stack 도구는 hosted에 사용할 수 없다. 배포 후 실제 GitHub 로그인·콜백·로그아웃, 일반 Member/Viewer/타팀 권한, 생성/저장/충돌·재연결, production 개발 계정 미노출 smoke를 별도 실행한다. 완료 전에는 배포 PASS로 표시하지 않는다.
+
+합성임을 명시하고 사용자별 계정을 사용한다. 공유 관리자 자격 증명이나 RLS 해제로 공개 데모를 제공하지 않는다. `/demo` 신규 화면은 후속이다.

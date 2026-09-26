@@ -22,8 +22,15 @@ export function runCli(args) {
   }
 }
 
+export function localProjectId(config) {
+  const id = /^project_id\s*=\s*"([^"]+)"\s*$/m.exec(config)?.[1];
+  if (id !== 'reproboard' && !/^reproboard-cleanroom-[0-9a-f]{12}$/.test(id ?? '')) throw new Error('Unexpected local project id');
+  return id;
+}
+
 export function assertLocalTarget(status, container, config, cwd = root) {
-  if (resolve(cwd) !== resolve(root) || !/^project_id\s*=\s*"reproboard"\s*$/m.test(config)) {
+  const project = localProjectId(config);
+  if (resolve(cwd) !== resolve(root)) {
     throw new Error('Run from the reproboard repository with its local project config.');
   }
   const api = new URL(status.API_URL);
@@ -35,8 +42,8 @@ export function assertLocalTarget(status, container, config, cwd = root) {
   }
   const labels = container.Config?.Labels ?? {};
   const ports = container.NetworkSettings?.Ports?.['5432/tcp'] ?? [];
-  if (container.Name !== '/supabase_db_reproboard' || container.State?.Running !== true
-    || labels['com.supabase.cli.project'] !== 'reproboard'
+  if (container.Name !== `/supabase_db_${project}` || container.State?.Running !== true
+    || labels['com.supabase.cli.project'] !== project
     || resolve(labels['com.supabase.cli.workdir'] ?? '') !== resolve(root)
     || !ports.some((port) => port.HostPort === '54322' && ['127.0.0.1', '0.0.0.0', '::'].includes(port.HostIp))) {
     throw new Error('Local Docker database identity or port does not match this repository.');
@@ -44,14 +51,16 @@ export function assertLocalTarget(status, container, config, cwd = root) {
 }
 
 export function localStack() {
+  const config = readFileSync(resolve(root, 'supabase/config.toml'), 'utf8');
+  const project = localProjectId(config);
   const status = JSON.parse(runCli(['status', '--output', 'json']));
   let container;
   try {
-    container = JSON.parse(execFileSync('docker', ['inspect', 'supabase_db_reproboard'], {
+    container = JSON.parse(execFileSync('docker', ['inspect', `supabase_db_${project}`], {
       cwd: root, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], timeout: 15_000,
     }))[0];
   } catch { throw new Error('Start the local Docker/Supabase stack first.'); }
-  assertLocalTarget(status, container, readFileSync(resolve(root, 'supabase/config.toml'), 'utf8'), process.cwd());
+  assertLocalTarget(status, container, config, process.cwd());
   return status;
 }
 
