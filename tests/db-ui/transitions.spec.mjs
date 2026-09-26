@@ -68,7 +68,7 @@ test('D5 UI completes Inbox→Ready→In Progress→Verify→fail→Verify→Don
   await page.getByLabel('새 이슈 제목', { exact: true }).fill(title);
   await page.getByRole('button', { name: 'Inbox에 생성', exact: true }).click();
   await expect(page.locator('.issue-card')).toHaveCount(1);
-  await info.attach('d13-board', { body: await page.screenshot(), contentType: 'image/png' });
+  await info.attach('d13-board', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
   await page.locator('.issue-card').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).getByRole('button', { name: /상세 열기$/ }).click();
   const row = (await db.query('select * from public.issues where workspace_id=$1', [team])).rows[0];
   await detail(page).getByRole('button', { name: 'Ready로 이동', exact: true }).click();

@@ -311,6 +311,7 @@ pnpm lint
 pnpm typecheck
 pnpm test:local-tools
 pnpm test:demo
+node scripts/export-demo.mjs
 pnpm build
 pnpm test:e2e
 ```
