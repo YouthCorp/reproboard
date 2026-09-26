@@ -14,7 +14,7 @@ export function runCli(args) {
   try {
     return execFileSync(process.execPath, [cli, ...args], {
       cwd: root, encoding: 'utf8', windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'], timeout: 180_000,
+      stdio: ['ignore', 'pipe', 'pipe'], timeout: args[0] === 'start' ? 600_000 : 180_000, maxBuffer: 8 * 1024 * 1024,
     });
   } catch {
     // CLI errors can include URLs/keys. Do not forward raw stdout/stderr.
@@ -62,5 +62,15 @@ export async function localDb(status) {
 }
 
 export function readAccounts() {
-  return JSON.parse(readFileSync(resolve(root, '.local/dev-accounts.json'), 'utf8'));
+  return JSON.parse(readFileSync(resolve(root, accountFile()), 'utf8'));
 }
+
+export function accountFile(run = process.env.REPROBOARD_TEST_RUN) {
+  if (run === undefined) return '.local/dev-accounts.json';
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(run)) throw new Error('Invalid isolated test identity');
+  return `.local/test-runs/${run}/accounts.json`;
+}
+export function testTeam(role = 'owner') {
+  return process.env.REPROBOARD_TEST_RUN ? readAccounts().find((a) => a.role === role).workspaceId : role === 'outsider' ? 'b2000000-0000-4000-8000-000000000002' : 'a1000000-0000-4000-8000-000000000001';
+}
+export const testBaseURL = process.env.REPROBOARD_TEST_RUN ? 'http://127.0.0.1:3200' : 'http://127.0.0.1:3000';

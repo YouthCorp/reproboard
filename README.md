@@ -2,7 +2,7 @@
 
 소규모 개발팀이 버그 재현 정보를 모으고, 수정 후 재검증까지 관리하는 협업 보드.
 
-**현재 상태: D10 검색·필터·정렬·상세 URL 구현, 신규 기능 동결.** 주소로 조건을 공유하고 로그인·새로고침·뒤로/앞으로 탐색에서 복원한다. D3~D9의 실제 DB 협업 흐름을 유지한다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN이다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)가 기준이다.
+**현재 상태: D12 로컬 회귀 완료(DB 46·격리 브라우저 35), CI 구성 완료/원격 실행 NOT_RUN. 신규 기능 동결.** 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN이다. [진행 기록](docs/PROGRESS.md)과 [검증 결과](docs/TEST_REPORT.md)가 기준이다.
 
 ## 왜 만드는가
 
@@ -120,7 +120,7 @@ pnpm dev
 
 `test:e2e` 전에 `pnpm build`와 브라우저 설치가 필요하다. 보드↔로그인, 404, 키보드, 390px 및 production의 개발 로그인 미노출을 검증한다. 이 smoke와 실제 DB 테스트는 별도다. `test:db-ui`는 아래 로컬 준비 후 실행하며, 3000 포트의 기존 개발 서버를 사용하거나 없으면 자동 시작한다. 기존 서버의 환경 값이 바뀌었다면 재시작한다. 실행 중에는 동일한 합성 계정을 수동 조작하지 않는다.
 
-캡처는 `playwright-report/index.html`과 `playwright-db-report/index.html`에 있다. `pnpm exec playwright show-report playwright-db-report`로 DB 화면 리포트를 볼 수 있다. 개발 인증 요청에 비밀 값이 포함되므로 DB UI의 trace/storageState는 저장하지 않는다. DB 테스트는 이번 실행의 UUID로 만든 이슈·팀·초대·receipt만 정리하며 기존 데이터는 보존한다. 만료 테스트는 해당 테스트 브라우저의 Auth 세션만 폐기한다. [CI](.github/workflows/ci.yml)는 정적 검사·로컬 보호 검사·빌드·production smoke까지 구성했다. GitHub 실행과 DB 테스트 CI는 NOT_RUN이다.
+캡처는 `playwright-report/index.html`과 `playwright-db-report/index.html`에 있다. `pnpm exec playwright show-report playwright-db-report`로 DB 화면 리포트를 볼 수 있다. 개발 인증 요청에 비밀 값이 포함되므로 DB UI의 trace/storageState는 저장하지 않는다. DB 테스트는 이번 실행의 UUID로 만든 이슈·팀·초대·receipt만 정리하며 기존 데이터는 보존한다. 만료 테스트는 해당 테스트 브라우저의 Auth 세션만 폐기한다. [CI](.github/workflows/ci.yml)는 정적 검사·로컬 보호 검사·빌드·production smoke까지 구성했다. DB/협업 CI 구성은 아래 D12 절차에 추가했다. GitHub 실행은 NOT_RUN이다.
 
 ### 로컬 Supabase / 실제 저장 준비
 
@@ -224,15 +224,49 @@ ESLint 9는 지원 종료이고 Next 통합 설정의 React 플러그인 peer는
 
 ## 한계
 
-이슈 단위 version 경합을 지원하며 같은 텍스트의 동시 타이핑·자동 병합은 제외한다. Realtime는 이벤트 재생 로그가 아니며 구독 후 다시 조회한다. D8의 지정된 로컬 장애/권한/만료 시나리오는 검증했지만 모든 네트워크 환경이나 운영 규모를 보장하지 않는다. 초안과 미확정 요청의 reload/팀 이탈/로그아웃 후 복원, 오프라인 자동 저장 큐·열 내부 수동 정렬·파일 업로드·외부 시스템 연동은 없다. 전파 지연/100개 이슈 성능과 실제 사용자 피드백은 미측정이다.
+이슈 단위 version 경합을 지원하며 같은 텍스트의 동시 타이핑·자동 병합은 제외한다. Realtime는 이벤트 재생 로그가 아니며 구독 후 다시 조회한다. D8의 지정된 로컬 장애/권한/만료 시나리오는 검증했지만 모든 네트워크 환경이나 운영 규모를 보장하지 않는다. 초안과 미확정 요청의 reload/팀 이탈/로그아웃 후 복원, 오프라인 자동 저장 큐·열 내부 수동 정렬·파일 업로드·외부 시스템 연동은 없다. 전파 지연과 실제 사용자 피드백은 미측정이다. 합성 100개 조작 관찰은 D11 결과이며 INP/전후 개선 수치가 아니다.
 
 ## 기여와 라이선스
 
 [기여 안내](CONTRIBUTING.md), [보안 제보 안내](SECURITY.md), [MIT 라이선스](LICENSE).
 
 개인 프로젝트이며 D1~D10 구현과 로컬 검증에 Codex를 사용했다. 실제 설계·구현·검증 역할은 단계 기록과 ADR의 증거로 확인한다. CASE_STUDY의 작성자 역할/성과는 아직 작성 양식이며 실제 팀 사용·성능 개선 성과는 측정하지 않았다.
-# D11 접근성·조작 관찰
+## D11 접근성·조작 관찰
 
 상세는 닫기 버튼에서 시작하고 Tab/Shift+Tab이 열린 모달 안에서 순환한다. Escape로 닫으면 원래 카드로 돌아간다. 상태 변경으로 버튼/카드가 교체되면 현재 상태 제목/같은 이슈 카드로, 직접 상세 주소로 들어왔다면 보드 제목으로 복귀한다. 포인터 드래그 손잡이는 Tab 순서에서 제외하며 상세의 상태 이동 메뉴로 모든 전환을 할 수 있다. 모바일 상세의 닫기 버튼은 스크롤해도 유지된다.
 
 로컬 스택·개발 계정 준비 후 `pnpm test:db-ui`는 키보드 생성→Done과 390/768/1440px의 합성 100개 이슈를 검증한다. `pnpm build` 후 `pnpm test:ux`는 3000 개발 로그인 세션을 3100 production에서 사용해 100개 이슈의 상세 열기/필터/검색을 각각 10회 측정한다. 두 포트는 사용 가능해야 하며 브라우저 테스트를 서로 동시에 실행하지 않는다. 생성한 팀만 식별해 정리하고 DB reset은 하지 않는다. 결과는 `docs/evidence/d11-interaction.json`; INP나 전후 성능 개선 수치가 아니다.
+
+## D12 격리된 필수 회귀와 CI
+
+Node/pnpm은 `.node-version`/packageManager 고정값을 사용한다. Docker Desktop의 Linux 엔진이 실행 중이어야 한다. 아래 명령은 저장소 루트에서 순서대로 실행한다. 기존 개발 DB를 reset하지 않는다.
+
+```text
+pnpm install --frozen-lockfile
+node scripts/ci-stack.mjs start
+pnpm db:migrate
+pnpm db:env
+pnpm exec playwright install chromium
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:local-tools
+pnpm test:integration:db
+pnpm test:integration:ui
+pnpm db:types
+git diff --exit-code -- src/lib/supabase/database.types.ts
+pnpm build
+pnpm test:e2e
+```
+
+- `test`: 순수 규칙·Query 병합·URL·복구 coordinator와 jsdom UI. DB/실제 협업 통과 근거가 아니다.
+- `test:integration:db`: 모든 `tests/db` 사례를 각각 새 사용자 4명·새 팀 2개로 실제 Auth/PostgREST/SQL/Realtime에서 실행한다. 이름 선택 인수를 생략하면 전체 실행이다.
+- `test:integration:ui`: 모든 `tests/db-ui` 사례를 각각 새 사용자/팀과 새 Chromium context로 실행한다. 두 사용자 사례는 서로 다른 계정/context를 사용한다. 개발 로그인은 실제 비밀번호 세션이며 OAuth 공급자 화면을 반복하지 않는다. 별도 3200 dev 서버와 `.next/integration`을 사용하므로 3200이 비어 있어야 한다.
+- 각 사례가 끝나면 metadata의 실행 UUID를 대조해 생성한 사용자/팀만 삭제한다. 관리자 권한은 합성 fixture 준비·정리/DB 결과 검사에만 쓰고 제품 동작은 사용자 토큰이다. `.local/dev-accounts.json`·기존 팀·env를 덮어쓰지 않는다. `db:env`는 기존 값이 다르면 중단한다. 테스트 계정 준비에는 `db:seed`가 필요 없다.
+- 테스트는 직렬·retry=0이다. 동시 실행 lock이 남았다면 이전 프로세스와 `.local/test-runs`의 실행 UUID를 확인한 후 복구한다. 강제 종료 시 남은 fixture를 전체 DB reset으로 지우지 않는다. 이전 `test:db`/`test:db-ui`는 수동 개발 계정을 쓰는 진단 경로이므로 다른 테스트와 동시에 실행하지 않는다.
+- 실패 사례만 확인할 때 `pnpm test:integration:ui "테스트 이름의 고유 부분"`처럼 선택할 수 있다. 이는 부분 실행이며 전체 PASS로 보고하지 않는다. 전체 실행은 모든 정적 테스트 이름을 탐색하며 각 하위 프로세스에서 실제 1건 실행을 확인한다. 실패 시 중단하고 이후 사례는 NOT_RUN이다.
+- 결과: `test-results/integration/{db,ui}.json`은 비밀 값 없는 이름/결과만, `.local/integration` 로그·브라우저 첨부는 로컬 전용이다. 과거 공개 PNG를 회귀마다 덮어쓰지 않는다. 사용자 비밀번호·Auth trace/storageState·원시 로그는 업로드하지 않는다.
+
+CI의 `app` job은 lint/typecheck/단위/보호/build/production smoke, `database-and-collaboration`은 새 Ubuntu runner의 로컬 Docker stack/migration/타입 일치/실제 DB/전체 핵심 E2E를 실행하도록 구성했다. 고정된 프로젝트 CLI를 사용하고 hosted secret/link/push/reset은 없다. GitHub에서 workflow를 실제 실행하기 전까지 **CI NOT_RUN**이다. 로컬 스택을 종료하려면 `node scripts/ci-stack.mjs stop`을 실행한다(볼륨 보존).
+
+공식 근거: [Supabase 로컬 CLI](https://supabase.com/docs/guides/local-development/cli/getting-started), [Supabase CI 환경](https://supabase.com/docs/guides/deployment/managing-environments), [Playwright CI·단일 worker](https://playwright.dev/docs/ci). 로컬 PASS를 Linux/GitHub PASS로 간주하지 않는다.

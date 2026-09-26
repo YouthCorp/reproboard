@@ -50,7 +50,9 @@ const inColumn = (page, row, status) => column(page, status).locator(`[data-issu
 const modal = (page) => page.locator('dialog.transition-dialog');
 const stored = async (row) => (await db.query('select * from public.issues where id=$1', [row.id])).rows[0];
 function deferred() { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; }
+const inputClocks = new WeakSet();
 async function drag(page, row, status) {
+  if (!inputClocks.has(page)) { await page.clock.install(); inputClocks.add(page); }
   const handle = card(page, row).locator('.drag-handle');
   await expect(page.locator('dialog[open]')).toHaveCount(0);
   await expect(page.locator('[data-realtime-state]')).toHaveAttribute('data-realtime-state', 'subscribed');
@@ -64,9 +66,10 @@ async function drag(page, row, status) {
   await page.mouse.move(source.x + source.width / 2 + 12, source.y + source.height / 2, { steps: 3 });
   await page.mouse.move(target.x + target.width / 2, Math.max(30, target.y + 85), { steps: 16 });
   await page.mouse.up();
-  // core 6.3.1 detaches its document click/selection suppression after 50ms.
-  // Settle that input lifecycle only; DB/UI success is always awaited by assertions.
-  await page.waitForTimeout(60);
+  await expect(page.locator('.drag-preview')).toHaveCount(0);
+  // dnd-kit 6.3.1 removes document click suppression after 50ms. Advance that
+  // real lifecycle timer; success still requires the existing DOM/RPC/SQL checks.
+  await page.clock.runFor(60);
 }
 async function oneEffect(row, requestId) {
   const { rows } = await db.query(`select (select count(*)::int from public.activity_events where issue_id=$1 and request_id=$2) as activity,

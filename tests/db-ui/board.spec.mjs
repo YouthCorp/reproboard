@@ -2,9 +2,9 @@
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
-import { localDb, localStack, readAccounts } from '../../scripts/local-stack.mjs';
+import { localDb, localStack, readAccounts, testTeam, testBaseURL } from '../../scripts/local-stack.mjs';
 
-const team = 'a1000000-0000-4000-8000-000000000001';
+const team = testTeam();
 let db, owner;
 const created = new Set();
 const accounts = readAccounts();
@@ -96,7 +96,7 @@ test('Viewer reads without edit controls; logout and another team login clear vi
 
 test('two independent users keep a stale draft on conflict and explicitly reload before another edit', async ({ page, browser }, info) => {
   const row = await fixture(`충돌 원본 ${randomUUID()}`);
-  const otherContext = await browser.newContext({ baseURL: 'http://127.0.0.1:3000' });
+  const otherContext = await browser.newContext({ baseURL: testBaseURL });
   const otherPage = await otherContext.newPage();
   try {
     await login(page, 'owner');

@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
-import { localDb, localStack, readAccounts } from '../../scripts/local-stack.mjs';
+import { localDb, localStack, readAccounts, testBaseURL } from '../../scripts/local-stack.mjs';
 
 const accounts = readAccounts(), teams = new Set(), clients = {};
 let db;
@@ -117,7 +117,7 @@ test('D5 UI completes Inbox→Ready→In Progress→Verify→fail→Verify→Don
   expect(runs.map((run) => run.result)).toEqual(['fail','pass']); expect(runs.map((run) => run.issue_version_before)).toEqual([beforeFail.version,beforePass.version]);
   await detail(page).evaluate((element) => { element.scrollTop = 0; });
   await info.attach('d5-done-history', { body: await page.screenshot(), contentType: 'image/png' });
-  const viewerContext = await browser.newContext({ baseURL: 'http://127.0.0.1:3000' });
+  const viewerContext = await browser.newContext({ baseURL: testBaseURL });
   try {
     const viewer = await viewerContext.newPage(); await login(viewer, team, row.id, 'viewer');
     await expect(detail(viewer).getByText('통과 · local-d5', { exact: true })).toBeVisible();

@@ -1,0 +1,183 @@
+{
+  "date": "2026-09-26",
+  "environment": "Windows 25H2; Node 24.19.0; local Supabase; Chromium; fresh users/teams per case; retries=0",
+  "planned": 35,
+  "executed": 35,
+  "results": [
+    {
+      "file": "tests/db-ui/accessibility.spec.mjs",
+      "name": "D11 keyboard only: create, error associations, modal containment, Ready→In Progress→Verify→Done and logical return focus",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/accessibility.spec.mjs",
+      "name": "D11 100 long Korean cards at 390/768/1440: readable columns, empty state, fullscreen mobile detail and persistent close",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/accessibility.spec.mjs",
+      "name": "D11 card keyboard path skips pointer-only handles and direct detail close returns to board heading",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/board-url.spec.mjs",
+      "name": "D10 combined URL filters and stable sorting copy to another session, reload, back/forward and detail close history",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/board-url.spec.mjs",
+      "name": "D10 issue key search, zero results, defaults and direct filtered-out detail closes inside the app",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/board-url.spec.mjs",
+      "name": "D10 invalid enums/UUIDs canonicalize once; unknown/foreign issue and workspace never leak data",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/board-url.spec.mjs",
+      "name": "D10 IME composition does not navigate/refetch, debounced replace preserves newer filters and popstate cancels pending text",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/board.spec.mjs",
+      "name": "real session creates, reads, edits and preserves the title after reload",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/board.spec.mjs",
+      "name": "Viewer reads without edit controls; logout and another team login clear visible data",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/board.spec.mjs",
+      "name": "two independent users keep a stale draft on conflict and explicitly reload before another edit",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/comments.spec.mjs",
+      "name": "D9 two browser users: literal text, realtime comment/activity, dedup frames, recipient notification/read and drafts",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/comments.spec.mjs",
+      "name": "D9 Viewer reads and marks own mention, outsider cannot access, read failure retries and mobile overflow is absent",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/comments.spec.mjs",
+      "name": "D9 commit then response loss: preserve draft, explicit same request replay; offline never queues; validation focuses textarea",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/fields.spec.mjs",
+      "name": "D4 structured create/edit/reload/re-entry shares saved board data, with desktop and mobile captures",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/fields.spec.mjs",
+      "name": "D4 form focuses invalid fields, preserves Unicode limits and suppresses composition Enter submission",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/fields.spec.mjs",
+      "name": "D4 loading, zero rows, read failure/retry, missing detail and refetch preserve the local draft",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/optimistic.spec.mjs",
+      "name": "D6 delayed A rejects against the actual DB while B succeeds; only A overlay disappears",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/optimistic.spec.mjs",
+      "name": "D6 Verify drag waits for the form; committed verification response loss replays one request without duplicate effects",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/optimistic.spec.mjs",
+      "name": "D6 later success receipt cannot overwrite a newer GET; timeout remains uncertain and explicitly retries",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/optimistic.spec.mjs",
+      "name": "D6 same-column and forbidden drops send nothing; keyboard menu stays available and Viewer has no drag handles",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/realtime.spec.mjs",
+      "name": "D7 two browser users race different fields: one commit, one conflict, copy and explicit re-edit",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/realtime.spec.mjs",
+      "name": "D7 subscription handshake gap, an event during snapshot, and duplicate real frames converge without duplicate cards",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/realtime.spec.mjs",
+      "name": "D7 actual remote change supersedes pending A, B succeeds and late conflict/success cannot lower server state",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/recovery.spec.mjs",
+      "name": "D8 A offline, B changes, A rejoins and drains a change during recovery without sending its draft",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/recovery.spec.mjs",
+      "name": "D8 WS-only failure permits HTTP writes and fallback polling; HTTP-only lost response keeps the same request",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/recovery.spec.mjs",
+      "name": "D8 live role downgrade rejects an in-flight command, preserves draft and disables forbidden actions",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/recovery.spec.mjs",
+      "name": "D8 workspace switching and logout remove old subscriptions, polling and cached rows",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/recovery.spec.mjs",
+      "name": "D8 actual revoked refresh session expires an open board and clears its private UI",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/transitions.spec.mjs",
+      "name": "D5 UI completes Inbox→Ready→In Progress→Verify→fail→Verify→Done→reopen, with actual history and captures",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/transitions.spec.mjs",
+      "name": "D5 stale verification keeps entered evidence, rejects the old version and requires explicit recheck",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/transitions.spec.mjs",
+      "name": "D5 pre-send transport failure keeps the status and explicit retry uses the same request id",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/workspaces.spec.mjs",
+      "name": "create workspace, share a fragment invitation, join and switch Member/Viewer through actual sessions",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/workspaces.spec.mjs",
+      "name": "expired invitations show a recoverable rejection; a foreign team profile stays hidden",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/workspaces.spec.mjs",
+      "name": "SSR refresh updates cookies; revoked refresh session leads to expiry guidance; logout clears cookies",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/workspaces.spec.mjs",
+      "name": "OAuth callback errors are sanitized, safe return state survives, and external redirects are refused",
+      "result": "PASS"
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
-import { assertLocalTarget, root } from '../../scripts/local-stack.mjs';
+import { accountFile, assertLocalTarget, root } from '../../scripts/local-stack.mjs';
 
 const status = { API_URL: 'http://127.0.0.1:54321', DB_URL: 'postgresql://postgres:placeholder@127.0.0.1:54322/postgres' };
 const container = {
@@ -11,6 +11,11 @@ const container = {
   Config: { Labels: { 'com.supabase.cli.project': 'reproboard', 'com.supabase.cli.workdir': root } },
   NetworkSettings: { Ports: { '5432/tcp': [{ HostIp: '127.0.0.1', HostPort: '54322' }] } },
 };
+
+test('test identity paths cannot escape the ignored local directory or fall back on malformed ids', () => {
+  assert.equal(accountFile('12345678-1234-4567-8123-123456789abc'), '.local/test-runs/12345678-1234-4567-8123-123456789abc/accounts.json');
+  for (const run of ['', '../dev-accounts', 'C:/secret', 'test', '12345678-1234-4567-8123-123456789abc/..']) assert.throws(() => accountFile(run));
+});
 test('allows the exact local project and refuses remote URLs, altered ports, credentials-in-API and wrong Docker identity', () => {
   assert.doesNotThrow(() => assertLocalTarget(status, container, 'project_id = "reproboard"'));
   for (const changes of [
@@ -37,4 +42,11 @@ test('reset without an exact local confirmation and target overrides stop before
     assert.match(result.stderr, /requires --confirm-local-reproboard/);
     assert.doesNotMatch(result.stdout, /PASS/);
   }
+});
+
+test('isolated integration runner refuses unknown modes before touching the local stack', () => {
+  const result = spawnSync(process.execPath, [resolve(root, 'scripts/test-integration.mjs'), 'reset', '--linked'], { cwd: root, encoding: 'utf8', windowsHide: true });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Usage:/);
+  assert.doesNotMatch(result.stdout, /PASS/);
 });

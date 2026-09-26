@@ -79,25 +79,20 @@ test('D8 A offline, B changes, A rejoins and drains a change during recovery wit
     await expect(a.page.getByRole('button', { name: 'Inbox에 생성', exact: true })).toBeDisabled();
     await open(b.page, row); await saveTitle(b.page, 'B가 A 단절 중 저장한 제목');
     await expect(card(a.page, row)).toContainText(row.title);
-    // A readability pause in the recording, not a success/performance measurement.
-    await a.page.waitForTimeout(1200);
     const before = snapshots; hold = true;
     await a.context.setOffline(false); await arrived.wait();
     await expect(status(a.page)).toHaveAttribute('data-connection-state', 'syncing');
     await expect(status(a.page)).toHaveAttribute('data-ws-state', 'connected');
     await expect(status(a.page)).not.toHaveAttribute('data-connection-state', 'normal');
-    await a.page.waitForTimeout(1200); // Keep the real in-flight recovery state readable in the recording.
     await saveTitle(b.page, 'B가 복구 조회 도중 다시 저장한 제목');
     await expect.poll(() => events).toBeGreaterThan(0); gate.resolve();
     await expect(card(a.page, row)).toContainText('B가 복구 조회 도중 다시 저장한 제목'); await healthy(a.page);
     expect(snapshots - before).toBeGreaterThanOrEqual(2);
     await expect(a.page.getByLabel('새 이슈 제목', { exact: true })).toHaveValue('오프라인에서 계속 작성한 초안');
     expect(writes).toBe(0); expect((await stored(row)).version).toBe(3);
-    await a.page.waitForTimeout(1200);
     await a.page.getByRole('button', { name: 'Inbox에 생성', exact: true }).click();
     await expect(a.page.getByRole('heading', { name: '오프라인에서 계속 작성한 초안', exact: true })).toHaveCount(1);
     expect(writes).toBe(1);
-    await a.page.waitForTimeout(1200);
   } finally { gate.resolve(); await Promise.all([a.context.close(), b.context.close()]); }
   await info.attach('d8-offline-recovery', { path: await a.video.path(), contentType: 'video/webm' });
 });
@@ -148,7 +143,6 @@ test('D8 WS-only failure permits HTTP writes and fallback polling; HTTP-only los
     await detail(a.page).getByRole('button', { name: '상세 닫기', exact: true }).click();
     await expect(detail(a.page)).toHaveCount(0);
     await status(a.page).evaluate((element) => element.scrollIntoView({ block: 'start' }));
-    await a.page.waitForTimeout(1200);
     httpBlocked = false;
     await a.page.getByRole('button', { name: '연결 상태 다시 확인', exact: true }).click(); await healthy(a.page);
     expect(sent).toHaveLength(1); // Recovery never resends mutations.
@@ -158,7 +152,7 @@ test('D8 WS-only failure permits HTTP writes and fallback polling; HTTP-only los
     expect((await stored(row)).version).toBe(3);
     const counts = await db.query(`select (select count(*)::int from public.activity_events where issue_id=$1 and request_id=$2) as activities,
       (select count(*)::int from private.command_receipts where workspace_id=$3 and request_id=$2) as receipts`, [row.id, sent[0].p_request_id, workspaceId]);
-    expect(counts.rows[0]).toEqual({ activities: 1, receipts: 1 }); await a.page.waitForTimeout(1200);
+    expect(counts.rows[0]).toEqual({ activities: 1, receipts: 1 });
   } finally { blocked = false; httpBlocked = false; await Promise.all([a.context.close(), b.context.close()]); }
   await info.attach('d8-partial-failures', { path: await a.video.path(), contentType: 'video/webm' });
 });
@@ -197,6 +191,7 @@ test('D8 workspace switching and logout remove old subscriptions, polling and ca
   const first = await fixture(), second = await fixture(), a = await actor(browser, info);
   const topics = new Set(); let oldReads = 0, countReads = false;
   try {
+    await a.page.clock.install();
     await a.page.routeWebSocket('**/realtime/v1/websocket**', (ws) => {
       const server = ws.connectToServer();
       ws.onMessage((m) => { const p = packet(m); if (p.event === 'phx_join') topics.add(p.topic); if (p.event === 'phx_leave') topics.delete(p.topic); server.send(m); });
@@ -209,7 +204,8 @@ test('D8 workspace switching and logout remove old subscriptions, polling and ca
       await expect.poll(() => topics.size).toBe(1);
     }
     countReads = true;
-    await a.page.waitForTimeout(16_000); expect(oldReads).toBe(0);
+    // Advance beyond the 15s polling period: exercise stale timers without wall-clock sleep.
+    await a.page.clock.runFor(16_000); expect(oldReads).toBe(0);
     await expect(card(a.page, first.row)).toHaveCount(0);
     // Returning to a removed query cannot flash its old authorized rows before a fresh read.
     const gate = deferred(), arrived = deferred();
@@ -222,7 +218,7 @@ test('D8 workspace switching and logout remove old subscriptions, polling and ca
     await a.page.getByRole('button', { name: '로그아웃', exact: true }).click();
     await expect(a.page).toHaveURL(/login\?reason=signed-out/);
     await expect.poll(() => topics.size).toBe(0);
-    oldReads = 0; await a.page.waitForTimeout(16_000); expect(oldReads).toBe(0);
+    oldReads = 0; await a.page.clock.runFor(16_000); expect(oldReads).toBe(0);
     await a.page.goBack(); await expect(card(a.page, first.row)).toHaveCount(0);
   } finally { await a.context.close(); }
 });

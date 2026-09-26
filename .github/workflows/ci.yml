@@ -33,3 +33,34 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  database-and-collaboration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      # Fresh runner-local Docker only. No hosted credentials, link, push or reset.
+      - run: node scripts/ci-stack.mjs start
+      - run: pnpm db:migrate
+      - run: pnpm db:env
+      - run: pnpm db:types
+      - run: git diff --exit-code -- src/lib/supabase/database.types.ts
+      - run: pnpm test:integration:db
+      - run: pnpm test:integration:ui
+      # Only sanitized case names/results. Never upload Auth logs or storageState.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-results
+          path: test-results/integration/*.json
+          retention-days: 7
+      - if: always()
+        run: node scripts/ci-stack.mjs stop

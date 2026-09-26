@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createClient } from '@supabase/supabase-js';
-import { localDb, localStack, readAccounts } from '../../scripts/local-stack.mjs';
+import { localDb, localStack, readAccounts, testTeam } from '../../scripts/local-stack.mjs';
 
 test('D7 publication retains RLS: actual Viewer stream reads own team, outsider stream excludes it', { timeout: 30_000 }, async () => {
   const stack = localStack(), db = await localDb(stack), accounts = readAccounts(), clients = {}, issueIds = [], requestIds = [];
-  const team = 'a1000000-0000-4000-8000-000000000001', otherTeam = 'b2000000-0000-4000-8000-000000000002';
+  const team = testTeam(), otherTeam = testTeam('outsider');
   const events = { viewer: [], outsider: [] };
   async function until(condition) {
     for (let n = 0; n < 100; n++) { if (condition()) return; await delay(100); }

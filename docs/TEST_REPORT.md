@@ -1,5 +1,35 @@
 # 테스트 실행 보고서
 
+## D12 수용 기준 감사 — 2026-09-25~26
+
+09-26 재개: 첫 격리 UI 실행 19 PASS/1 FAIL/15 NOT_RUN. `D6 same-column and forbidden drops`에서 드래그 직후 native Enter click이 dnd-kit의 50ms document click 억제에 걸렸다. 설치된 core 6.3.1의 detach 코드로 확인했다. `waitForTimeout` 대신 제어 시계로 그 정리 타이머를 진행하고, DOM/RPC/SQL assertion을 모두 유지했다. 실패 사례 재검증과 최종 전체 35/35 PASS (retry=0). 중간 실패는 이 기록에 보존한다.
+
+최종 실행: `pnpm lint`, `pnpm typecheck`, `pnpm build` PASS; `pnpm test` 57, `pnpm test:local-tools` 4, `pnpm test:integration:db` 46, `pnpm test:integration:ui` 35, `pnpm test:e2e` 6 PASS. [DB 결과](evidence/d12-db-results.json) · [격리 UI 결과](evidence/d12-ui-results.json). GitHub CI NOT_RUN. DB 테스트 사용자 0, 기존 사용자/프로필 4·팀 3·이슈 1·activity 11·검증 1·receipt 15·초대 1 보존, 댓글/알림/오류 함수 0. 소스 152/production 200개 실제 비밀 값 일치 0.
+
+D11 종료 커밋은 `5f747e2`. 본 단계는 자기 검증이며 독립 검수/외부 사용자 관찰이 아니다. 기존 개발 데이터는 유지하고 각 통합 사례에 새 합성 계정 4명과 팀 2개를 준비했다. DB 테스트는 실제 password JWT/PostgREST/RLS/RPC/SQL/Postgres Changes, UI는 Chromium의 실제 개발 로그인 세션과 서로 다른 browser context다. fixture 설정/정리·결과 확인에만 관리자 권한을 사용한다.
+
+| AC | 로컬 충족 상태/실행 근거 | 남은 경계 |
+|---|---|---|
+| AC01 | NOT_RUN: 새 clone·빈 DB 전체 재현 | 기존 스택 migration/type 일치와 새 테스트 사용자/팀 생성은 새 DB 설치와 다르다. D13/V12에서 별도 확인 |
+| AC02 | DB PASS: transitions의 25개 상태 쌍, 상태 필수조건, Done 편집 거부, 오래된 검증·원자성/과거 기록; UI D5·D11 전체 경로 | D12 격리 UI 전체 35 PASS |
+| AC03 | DB PASS: commands의 실제 Owner/Member/Viewer/타팀/anon, 직접 DML, auth.uid 없는 호출, forged FK; workspaces 프로필 최소 공개·Owner 주입 거부 | 서비스 키로 사용자 동작을 대체하지 않음 |
+| AC04 | DB PASS: workspaces의 두 세션 초대 경쟁, 24시간 만료/재사용·hash/Member 고정·역할 변경 | UI 초대 생성/가입/강등과 만료 안내는 workspaces.spec |
+| AC05 | D12 격리 회귀 PASS: optimistic의 A 지연→실제 DB 거부, 응답 전 overlay/저장 중 | 1초 목표의 별도 수치 측정과 구분 |
+| AC06 | D12 격리 회귀 PASS: A 거부/B 성공, realtime의 원격 변경+pending+늦은 응답 | 전체 배열 snapshot rollback 없음 |
+| AC07 | DB PASS: 동일 requestId 동시 재전송/다른 payload 거부, 댓글·알림 원자성; UI commit 후 response loss | 재조회 결과 확인과 거부를 구분; reload 후 미확정 요청 복원은 미지원 |
+| AC08 | DB PASS: 서로 다른 두 사용자 같은 version에 성공 1/CONFLICT 1. realtime.spec는 별도 context의 다른 필드 경합·복사·명시적 재편집 | 이슈 단위 충돌 정책 유지 |
+| AC09 | DB PASS: 실제 publication/RLS/comment/activity/notification 스트림. UI 실제 프레임 중복·구독 중 변경·낮은 version 늦은 응답 | D9 최초 콜드스타트 대기 실패 원인은 미확정 |
+| AC10 | D12 격리 회귀 PASS: recovery의 A 단절/B 변경/A 복귀·조회 중 변경·초안 보존·쓰기 자동 큐 없음 | 서버 재기동/장기 단절 반복 미검증 |
+| AC11 | D12 격리 회귀 PASS: HTTP/WS 별도 실패·fallback polling·팀 이동/로그아웃/역할 강등·세션 만료 | D12 stale polling은 제어 시계로 15초 주기 초과 확인 |
+| AC12 | DB PASS: 두 Member/Viewer/타팀, 중복·자기 알림 제거·수신자만 조회/읽음·권한 철회 재검사 | 댓글 저장은 본문 version을 올리지 않음 |
+| AC13 | D12 격리 회귀 PASS: board-url의 복사→다른 계정 로그인·reload/history·0건·잘못된 값; 단위 파서/정규화·composition 이벤트 | 실제 OS 한글 IME NOT_RUN |
+| AC14 | D11 PASS: accessibility의 Tab/Shift+Tab/Enter만으로 생성→Done, modal 첫/복귀 포커스·Escape·오류 연결; 직접 앱 조작도 확인 | 실제 스크린리더/터치/외부 사용자 NOT_RUN |
+| AC15 | D11 PASS: fields의 로딩/팀 0건/오류 재시도/초안 보존/없는 상세, board-url 검색 0건/타팀, accessibility의 390/768/1440px·100개 긴 한글 | Chromium 1종, 확대·다른 브라우저 NOT_RUN |
+| AC16 | NOT_RUN: 실제 OAuth·새 clone·최종 시연/라이선스 대조 | 외부 앱 미설정. 개발 세션은 대체 개발 경로이며 OAuth 성공으로 쓰지 않음. /demo 신규 화면만 범위 제외 |
+
+단위/UI mock 테스트와 위 실제 DB/브라우저 근거는 합산해서 같은 위험을 두 번 통과했다고 설명하지 않는다. 전체 릴리스 승인은 AC01/16 및 남은 검증 전까지 유보한다.
+
+
 ## D11 실제 결과 — 2026-09-24~25
 
 기존 D10 커밋 df63cb8에서 시작했다. Windows/Node 24.19.0/pnpm 11.19.0, 실제 로컬 Supabase·일반 사용자 Auth 세션이다. 신규 기능·의존성·migration은 추가하지 않았다.
@@ -16,7 +46,7 @@
 - 중간 실패는 삭제하지 않았다. 첫 테스트의 중복 라벨 선택은 상세 scope로 수정했고 이후 실제 포커스 실패를 해결했다. 실행 중 자동 승인 검토 서비스의 사용량 제한으로 정적 검사가 한 번 미실행됐으며 재개 후 실제 성공했다.
 
 
-현재 상태: **D11 / P11 로컬 구현 검증 PASS.** D11 전체 DB UI 회귀 35/35 PASS(3.8분, retry=0). 로딩/0건/오류 재시도·권한·저장/충돌·연결 복구도 포함한다. 실제 GitHub OAuth·독립 V03~V11는 NOT_RUN이다. 이전 단계 기록과 중간 실패는 아래에 보존했다.
+D11 당시 상태: **D11 / P11 로컬 구현 검증 PASS.** D11 전체 DB UI 회귀 35/35 PASS(3.8분, retry=0). 로딩/0건/오류 재시도·권한·저장/충돌·연결 복구도 포함한다. 실제 GitHub OAuth·독립 V03~V11는 NOT_RUN이다. 이전 단계 기록과 중간 실패는 아래에 보존했다.
 
 ## D10 실제 결과 — 2026-09-24
 

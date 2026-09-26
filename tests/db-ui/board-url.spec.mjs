@@ -1,7 +1,6 @@
 /* global window, URL, URLSearchParams */
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { localDb, localStack, readAccounts } from '../../scripts/local-stack.mjs';
 
@@ -95,8 +94,7 @@ test('D10 combined URL filters and stable sorting copy to another session, reloa
     await page.goForward(); await expect(page.locator('dialog.issue-detail')).toHaveCount(0);
     await page.goBack(); await page.goBack(); await expect(page.locator('dialog.issue-detail')).toHaveCount(0);
     await expect.poll(() => cardIds(page)).toEqual(matching);
-    mkdirSync('docs/evidence', { recursive: true });
-    await page.locator('.board-filters').scrollIntoViewIfNeeded(); await page.screenshot({ path: 'docs/evidence/d10-url-filters.png' });
+    await page.locator('.board-filters').scrollIntoViewIfNeeded(); await info.attach('d10-url-filters', { body: await page.screenshot(), contentType: 'image/png' });
   } finally { await other.close(); }
 });
 

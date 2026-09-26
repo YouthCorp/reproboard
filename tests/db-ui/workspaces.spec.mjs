@@ -4,7 +4,7 @@ import { Buffer } from 'node:buffer';
 import { URL } from 'node:url';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
-import { localDb, localStack, readAccounts } from '../../scripts/local-stack.mjs';
+import { localDb, localStack, readAccounts, testTeam, testBaseURL } from '../../scripts/local-stack.mjs';
 
 const teams = new Set();
 let db, accounts, ownerClient;
@@ -58,7 +58,7 @@ async function expireSessionCookie(context, cookies, session) {
   await context.clearCookies();
   const base = cookies[0].name.replace(/\.\d+$/, '');
   const chunks = [];
-  for (let offset = 0; offset < value.length; offset += 3000) chunks.push({ name: `${base}.${chunks.length}`, value: value.slice(offset, offset + 3000), url: 'http://127.0.0.1:3000', sameSite: 'Lax' });
+  for (let offset = 0; offset < value.length; offset += 3000) chunks.push({ name: `${base}.${chunks.length}`, value: value.slice(offset, offset + 3000), url: testBaseURL, sameSite: 'Lax' });
   await context.addCookies(chunks);
 }
 
@@ -84,7 +84,7 @@ test('create workspace, share a fragment invitation, join and switch Member/View
   const linkInput = page.getByLabel('초대 링크', { exact: true });
   await expect(linkInput).toHaveValue(/\/invite#[0-9a-f]{64}$/);
   const link = await linkInput.inputValue();
-  const context = await browser.newContext({ baseURL: 'http://127.0.0.1:3000' });
+  const context = await browser.newContext({ baseURL: testBaseURL });
   const memberPage = await context.newPage();
   const requestUrls = [];
   memberPage.on('request', (request) => requestUrls.push(request.url()));
@@ -126,7 +126,7 @@ test('expired invitations show a recoverable rejection; a foreign team profile s
   await page.goto(`/invite#${data.raw}`);
   await page.getByRole('button', { name: '초대 수락하고 Member로 참여', exact: true }).click();
   await expect(page.getByText('만료되었거나 사용할 수 없는 초대입니다.', { exact: true })).toBeVisible();
-  await page.goto('/board?workspace=b2000000-0000-4000-8000-000000000002');
+  await page.goto(`/board?workspace=${testTeam('outsider')}`);
   await expect(page.getByText('접근할 수 있는 팀이 없습니다.', { exact: false })).toBeVisible();
   await expect(page.getByText('다른 팀 Owner', { exact: true })).toHaveCount(0);
 });
@@ -172,7 +172,7 @@ test('OAuth callback errors are sanitized, safe return state survives, and exter
   });
   expect(result.status()).toBe(307);
   const target = new URL(result.headers().location);
-  expect(target.origin).toBe('http://127.0.0.1:3000');
+  expect(target.origin).toBe(testBaseURL);
   expect(target.pathname).toBe('/login');
   expect(target.searchParams.get('next')).toBe('/invite');
   expect(target.search).not.toContain('DO_NOT_REFLECT');

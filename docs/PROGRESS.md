@@ -2,9 +2,9 @@
 
 현재 상태: D11 / P11 접근성·반응형·조작 관찰 로컬 구현과 검증 완료. 키보드 생성부터 Done, 포커스 복귀, 합성 100개 production 조작을 확인했다. 실제 GitHub OAuth는 외부 앱 미설정으로 NOT_RUN.
 
-현재 단계: D11 / P11 로컬 PASS (2026-09-25, Asia/Seoul). 독립 V03~V11는 NOT_RUN이다. 신규 기능을 동결하고 이후는 기존 기능의 결함·검증·문서에 집중한다.
+현재 단계: D12 / P12 로컬 완료 (2026-09-26, Asia/Seoul). DB 46·격리 UI 35 PASS, 원격 CI와 독립 V03~V12는 NOT_RUN. 다음은 사용자 지시의 D13 깨끗한 복사본 재현·시연이다.
 
-선행 조건: 기존 로컬 Supabase·합성 계정 재사용, 패키지/lockfile/env/SQL 보존. 사용자 지시에 따라 다음은 P12 회귀·격리·CI다. D9 초기 기동 Realtime 대기 실패의 콜드스타트 원인 검증은 여전히 남는다. 실제 GitHub smoke는 README의 외부 앱 설정이 필요하다.
+선행 조건: 기존 데이터/사용자 작업을 보존한 별도 소스와 새 로컬 Docker 프로젝트로 D13을 재현한다. 실제 GitHub OAuth와 공개 배포 대상은 미설정이며 로컬 시연의 선행 조건은 아니다. D9 콜드스타트 원인 미확정은 유지한다.
 
 ## 범위와 근거
 
@@ -30,7 +30,7 @@
 | D9 댓글·알림 | DONE: P09 로컬 구현 | 로컬 PASS / V09 NOT_RUN | 원자적 댓글/멘션 알림·수신자 읽음·본문 version 불변·실시간/응답 유실. DB 46·DB UI 28·캡처 2장, 초기 기동 1회 이벤트 대기 실패 원인 미확정 |
 | D10 URL | DONE: P10 로컬 구현 | 로컬 PASS / V10 NOT_RUN | 파서/정규화·검색/필터/안정 정렬·공유 로그인·history·IME 이벤트. 단위 57·DB UI 32·production smoke 6, 캡처 1장. 신규 기능 동결 |
 | D11 접근성·UX | DONE: P11 로컬 구현 | 로컬 핵심 PASS / V11 NOT_RUN | 키보드 생성→Done·포커스·100개 긴 한글 카드·390/768/1440px, production 조작 30회. TEST_REPORT 참조 |
-| D12 회귀·CI | TODO | 전체 제품 회귀·원격 CI NOT_RUN | D10 단위 57·production smoke 6·DB UI 32건, 보호 2·DB 46건은 D9 결과. CI는 정적/보호/production smoke 구성 |
+| D12 회귀·CI | DONE: P12 로컬 구현 | DB 46·격리 UI 35·단위 57·보호 4·smoke 6 PASS / CI NOT_RUN | 사례별 사용자/팀·서버 격리, 필수 회귀와 CI 구성. TEST_REPORT |
 | D13 재현·시연 | TODO | NOT_RUN | D1~D5 캡처·D6 장애 영상 2개·D7 두 사용자 영상 2개·D8 연결 장애 영상 2개. 전체 제품 시연·새 clone 검증 없음 |
 | D14 문서·릴리스 | TODO | NOT_RUN | 문서 키트 존재는 구현·릴리스 완료 근거가 아님 |
 
@@ -43,6 +43,16 @@
 - production 동일 환경 10회씩: 상세 중앙값 31ms/최대 31ms, 필터 22.5/30ms, 검색(300ms debounce 포함) 326/334ms. 전후 개선·INP 주장은 하지 않는다.
 - lint/typecheck·단위 57·build PASS. 장시간 렌더링 문제 미관찰로 Profiler/최적화 NOT_RUN. 외부 사용자/스크린리더/실제 OS IME NOT_RUN, 자기 검증이다.
 - 증빙과 최종 회귀 결과는 TEST_REPORT. 신규 기능 동결 유지; 사용자 지시로 D12의 실제 수용 기준·격리·CI 검증으로 이어간다.
+
+## D12 / P12 — 2026-09-25~26
+
+- 각 DB/UI 사례마다 새 합성 사용자 4명·팀 2개, 별도 프로세스와 3200 dev 서버를 사용한다. 개발 계정 파일/기존 팀을 보존하며 metadata 대조 후 해당 fixture만 정리한다.
+- CI에 로컬 Supabase migration·타입 일치·격리 DB/두 context E2E job을 추가했다. 원격 secret·link/push/reset은 없으며 GitHub 실행은 NOT_RUN이다.
+- 실제 DB/API 46/46 PASS. lint·단위 57·보호 4 PASS, 스택 start/migrate/env/types·타입 diff 일치 PASS. 최종 typecheck/build·production smoke 6 PASS.
+- UI 첫 격리 실행은 19 PASS/1 FAIL/15 NOT_RUN: 50ms 입력 억제 정리 전 키보드 Enter가 무시됐다. 고정 sleep 없이 제어 시계로 정리 시간을 진행시켜 해당 사례와 최종 전체 35/35 PASS (retry=0).
+- 영상 가독성 대기는 제거하고 드래그 DOM/네트워크/SQL 조건 및 폴링 제어 시계를 사용한다. 검증 삭제/skip/자동 retry는 없다.
+- ACCEPTANCE의 AC01~16을 TEST_REPORT에 매핑했다. 실제 OAuth·새 clone/빈 DB·원격 CI·외부 사용자·OS IME/스크린리더는 별도 미검증이며 자기 검증이다.
+- 기존 사용자/프로필 4·팀 3·이슈 1·activity 11·검증 1·receipt 15·초대 1 유지, 격리 사용자/댓글/알림/오류 함수 0. 실제 비밀 값 일치 0. D13 새 복사본·빈 DB 시연으로 이어간다.
 
 ## 환경 확인 — P00 당시 기록 (현재 결과는 아래 D1 및 TEST_REPORT)
 

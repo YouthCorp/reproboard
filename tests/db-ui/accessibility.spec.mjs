@@ -1,6 +1,5 @@
 /* global document, window */
 import { test, expect } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
 import { createUxFixture, cleanupUxFixture } from '../helpers/ux-fixture.mjs';
 import { localDb, localStack } from '../../scripts/local-stack.mjs';
 
@@ -69,23 +68,22 @@ test('D11 keyboard only: create, error associations, modal containment, Ready→
   finally { await db.end(); }
 });
 
-test('D11 100 long Korean cards at 390/768/1440: readable columns, empty state, fullscreen mobile detail and persistent close', async ({ page }) => {
+test('D11 100 long Korean cards at 390/768/1440: readable columns, empty state, fullscreen mobile detail and persistent close', async ({ page }, info) => {
   test.setTimeout(90_000);
   const team = await fixture(100); await login(page, team.workspaceId);
-  mkdirSync('docs/evidence', { recursive: true });
   await expect(page.locator('.issue-card')).toHaveCount(100);
   for (const width of [390, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await expect(page.locator('[data-status="done"] .column-empty')).toContainText('이 상태의 이슈가 없습니다.');
     await page.locator('.live-board-grid .column-header').first().scrollIntoViewIfNeeded();
-    await page.screenshot({ path: `docs/evidence/d11-board-${width}.png` });
+    await info.attach(`d11-board-${width}`, { body: await page.screenshot(), contentType: 'image/png' });
     await page.locator('.issue-card-link').first().press('Enter'); await expect(detail(page)).toBeVisible();
     expect(await detail(page).evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     if (width === 390) {
       expect(await detail(page).evaluate((el) => Math.abs(el.getBoundingClientRect().width - window.innerWidth) <= 1)).toBe(true);
       await page.getByLabel('댓글 내용', { exact: true }).press('Tab');
-      await page.screenshot({ path: 'docs/evidence/d11-detail-390.png' });
+      await info.attach('d11-detail-390', { body: await page.screenshot(), contentType: 'image/png' });
       await expect(detail(page).getByRole('button', { name: '상세 닫기', exact: true })).toBeInViewport();
     }
     await page.keyboard.press('Escape'); await expect(detail(page)).toHaveCount(0);

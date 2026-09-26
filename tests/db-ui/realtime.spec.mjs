@@ -51,7 +51,9 @@ const inColumn = (page, row, status) => column(page, status).locator(`[data-issu
 
 const stored = async (row) => (await db.query('select * from public.issues where id=$1', [row.id])).rows[0];
 function deferred() { let resolve, settled = false; const promise = new Promise((done) => { resolve = () => { settled = true; done(); }; }); return { promise, resolve, wait: () => expect.poll(() => settled, { timeout: 8000 }).toBe(true) }; }
+const inputClocks = new WeakSet();
 async function drag(page, row, status) {
+  if (!inputClocks.has(page)) { await page.clock.install(); inputClocks.add(page); }
   const handle = card(page, row).locator('.drag-handle');
   await expect(page.locator('dialog[open]')).toHaveCount(0);
   await handle.evaluate((element) => element.scrollIntoView({ block: 'center' }));
@@ -63,9 +65,8 @@ async function drag(page, row, status) {
   await page.mouse.move(source.x + source.width / 2 + 12, source.y + source.height / 2, { steps: 3 });
   await page.mouse.move(target.x + target.width / 2, Math.max(30, target.y + 85), { steps: 16 });
   await page.mouse.up();
-  // core 6.3.1 detaches its document click/selection suppression after 50ms.
-  // Settle that input lifecycle only; DB/UI success is always awaited by assertions.
-  await page.waitForTimeout(60);
+  await expect(page.locator('.drag-preview')).toHaveCount(0);
+  await page.clock.runFor(60); // dnd-kit's 50ms input cleanup, not a success wait.
 }
 async function oneEffect(row, requestId) {
   const { rows } = await db.query(`select (select count(*)::int from public.activity_events where issue_id=$1 and request_id=$2) as activity,
@@ -104,8 +105,6 @@ test('D7 two browser users race different fields: one commit, one conflict, copy
     }
     await detail(owner.page).getByLabel('이슈 제목', { exact: true }).fill('Owner가 고친 제목');
     await detail(member.page).getByLabel('환경', { exact: true }).fill('Member의 보존할 환경 초안');
-    // Recording readability only. Every success condition below uses DOM/RPC/SQL assertions.
-    await owner.page.waitForTimeout(1200);
     await Promise.all(participants.map((actor) => save(actor.page)));
     await expect.poll(() => requests.length).toBe(2);
     expect(requests.map((r) => r.input.p_expected_version)).toEqual([row.version, row.version]);
@@ -123,14 +122,11 @@ test('D7 two browser users race different fields: one commit, one conflict, copy
     const localField = loserIndex === 0 ? '이슈 제목' : '환경', localValue = loserIndex === 0 ? 'Owner가 고친 제목' : 'Member의 보존할 환경 초안';
     await expect(detail(loser.page).getByLabel(localField, { exact: true })).toHaveValue(localValue);
     await detail(loser.page).getByRole('button', { name: '최신 값 보기', exact: true }).scrollIntoViewIfNeeded();
-    await loser.page.waitForTimeout(1200);
     await detail(loser.page).getByRole('button', { name: '최신 값 보기', exact: true }).click();
     await expect(detail(loser.page).getByRole('table', { name: '서버 값과 내 입력 비교' })).toContainText(localValue);
-    await loser.page.waitForTimeout(1600);
     await detail(loser.page).getByRole('button', { name: '내 입력 복사', exact: true }).click();
     await expect(detail(loser.page).getByText('내 입력을 복사했습니다.', { exact: true })).toBeVisible();
     expect(await loser.page.evaluate(() => navigator.clipboard.readText())).toContain(localValue);
-    await loser.page.waitForTimeout(1000);
     // Other user's result arrives via Postgres Changes, without manual list refresh.
     await expect(detail(winner.page).getByRole('heading', { level: 2 })).toHaveText(current.title);
     expect(requests).toHaveLength(2);
@@ -149,7 +145,6 @@ test('D7 two browser users race different fields: one commit, one conflict, copy
     await expect(detail(winner.page).getByRole('region', { name: '충돌 복구' })).toBeVisible();
     await detail(loser.page).getByRole('heading', { level: 2 }).scrollIntoViewIfNeeded();
     await detail(winner.page).getByRole('button', { name: '최신 값 보기', exact: true }).scrollIntoViewIfNeeded();
-    await loser.page.waitForTimeout(1200);
     await oneEffect(row, last.p_request_id); expect(errors).toEqual([]);
   } finally { gate.resolve(); await Promise.all(participants.map((actor) => actor.context.close())); }
   await info.attach('d7-owner', { path: await owner.video.path(), contentType: 'video/webm' });

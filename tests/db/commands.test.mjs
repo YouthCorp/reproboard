@@ -2,10 +2,10 @@ import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
-import { localDb, localStack, readAccounts } from '../../scripts/local-stack.mjs';
+import { localDb, localStack, readAccounts, testTeam } from '../../scripts/local-stack.mjs';
 
-const team = 'a1000000-0000-4000-8000-000000000001';
-const otherTeam = 'b2000000-0000-4000-8000-000000000002';
+const team = testTeam();
+const otherTeam = testTeam('outsider');
 const clients = {};
 const users = {};
 const created = new Set();
