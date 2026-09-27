@@ -1,10 +1,10 @@
 # 진행 기록
 
-현재 상태: D14 최종 문서·라이선스·릴리스 메모 초안 완료. v0.1.0 릴리스 후보이며 실제 GitHub OAuth·원격 CI·공개 배포는 NOT_RUN이다. 로컬 구현/검증과 외부 조건을 TEST_REPORT에 분리했다.
+현재 상태: D14 완료 후 YouthCorp/reproboard 비공개 저장소 생성·origin/main 연결·최초 push 완료. 첫 원격 CI가 시작됐으며 최종 결과는 TEST_REPORT를 따른다. 실제 OAuth·공개 배포는 NOT_RUN, 릴리스 후보를 유지한다.
 
 현재 단계: D14 문서·릴리스 준비 완료 (2026-09-27, Asia/Seoul). 신규 기능 동결을 유지한다. 다음은 CASE_STUDY 2페이지 초안 검토와 릴리스 메모의 외부 설정·실제 검증이다.
 
-선행 조건: 공개 Git 원격/소유자·비공개 신고 채널·OAuth App·호스팅 대상은 미설정. 공개 작업은 수행하지 않았다. 과거 D9 콜드스타트 대기 실패 원인은 미확정이며 reload 후 초안/미확정 요청 복원은 미지원이다.
+선행 조건: Git 원격은 YouthCorp/reproboard에 비공개로 연결했다. 비공개 신고 채널·OAuth App·호스팅 대상은 미설정. 공개 전환/앱 배포는 수행하지 않았다. 과거 D9 콜드스타트 대기 실패 원인은 미확정이며 reload 후 초안/미확정 요청 복원은 미지원이다.
 
 ## 범위와 근거
 
@@ -285,3 +285,11 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V13을 수�
 - PASS: pnpm test:docs·lint·test:local-tools 6. 외부 URL 37개는 GET 36 PASS/1 시간 제한 NOT_RUN, 해당 1개는 별도 공식 웹 조회 확인. 앱/DB/E2E/build 재실행·새 캡처는 문서 변경 범위상 NOT_RUN이다.
 - CONTRIBUTING/SECURITY/DEMO·v0.1.0 RELEASE_NOTES를 정리했다. 기존 영상은 UI 개선 전 기술 증빙이며 현재 해설 영상 링크를 만들지 않았다.
 - 남은 조건: 실제 OAuth·원격 CI·공개 보안 신고 채널·선택한 배포 대상 검증. 릴리스 후보 유지, 태그/push/공개는 수행하지 않는다. 다음 실행은 외부 대상 설정 뒤 RELEASE_NOTES 목록의 실제 확인이다.
+
+## GitHub 비공개 연결 — 2026-09-27
+
+- 사용자 요청에 따라 YouthCorp/reproboard를 비공개로 생성하고 기존 README/라이선스/커밋 이력을 유지했다.
+- origin HTTPS 연결과 main→origin/main 최초 push PASS. 강제 push·공개 전환·태그/Release·앱 배포는 수행하지 않았다.
+- 업로드 전 Git 이력 텍스트 396개에서 제외 파일·알려진 로컬 secret·token/private-key 패턴 일치 0을 확인했다. 값은 출력하지 않았다.
+- GitHub의 실제 소스/README·Private 표시와 첫 CI 자동 시작을 확인했다. CI 최종 판정은 확인 후 TEST_REPORT에 기록한다.
+- README/실행 안내/보안/릴리스 문서의 원격 미설정 표현을 수정했다. OAuth·공개 보안 신고 채널·호스팅은 여전히 후속이다.

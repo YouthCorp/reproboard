@@ -1,6 +1,6 @@
 # v0.1.0 릴리스 메모 초안
 
-작성일: 2026-09-27 · **릴리스 후보**. package 버전은 0.1.0이지만 Git 태그·GitHub Release·공개 배포는 아직 만들지 않았다. 실행 가능한 로컬 소스와 합성 시연 증빙을 준비했다. 원격 주소나 존재하지 않는 데모 링크를 제공하지 않는다.
+작성일: 2026-09-27 · **릴리스 후보**. package 버전은 0.1.0이지만 Git 태그·GitHub Release·공개 배포는 아직 만들지 않았다. 실행 가능한 로컬 소스와 합성 시연 증빙을 준비했다. Git 원격은 [YouthCorp/reproboard](https://github.com/YouthCorp/reproboard)에 비공개로 연결했다. 존재하지 않는 공개 데모 링크는 제공하지 않는다.
 
 ## 포함된 동작
 
@@ -30,9 +30,9 @@
 
 ## 남은 외부 작업 — 한 번에 준비할 항목
 
-- **저장소와 권한**: 공개할 Git 원격/소유자·대상을 정한다. 비공개 취약점 신고를 활성화하고 [SECURITY](../SECURITY.md)에 실제 경로를 연결한다. 공개 승인 후에만 push/Release를 진행한다.
-- **CI**: GitHub에서 두 workflow job을 실제 실행한다. Linux 로컬 stack·생성 타입 일치·DB 권한/경합·핵심 E2E·build/smoke 결과를 기록한다. 현재 CI NOT_RUN을 로컬 PASS로 대체하지 않는다.
+- **저장소와 권한**: YouthCorp/reproboard 비공개 저장소에 main push를 완료했다. 공개 전환 여부를 정한다. 비공개 취약점 신고를 활성화하고 [SECURITY](../SECURITY.md)에 실제 경로를 연결한다. 공개 승인 후에만 push/Release를 진행한다.
+- **CI**: GitHub에서 두 workflow job을 실제 실행한다. Linux 로컬 stack·생성 타입 일치·DB 권한/경합·핵심 E2E·build/smoke 결과를 기록한다. 첫 CI는 시작됐으며 최종 판정을 기다린다. 로컬 PASS로 원격 결과를 대체하지 않는다.
 - **OAuth**: 개발/운영별 GitHub OAuth App과 Supabase provider, callback·site/redirect URL을 [정확한 설정 절차](DEVELOPMENT.md)에 맞춘다. 성공·취소·콜백·로그아웃을 수동으로 확인한다. 개발 계정 로그인은 이 확인의 대체가 아니다.
 - **배포를 선택할 때**: 호스팅·HTTPS origin·hosted Supabase를 정하고 승인된 대상에만 migration/환경 변수를 적용한다. RLS/grant/publication, 일반 사용자·Viewer·타팀, production 개발 도구 미노출, 저장·충돌·복구 smoke를 확인한다. 공유 관리자 계정/RLS 해제는 사용하지 않는다.
 
-위 외부 설정이 없어 이번 작업은 로컬 문서·릴리스 준비까지만 수행한다. 포트폴리오에서는 실제 구현과 검증한 기술 사례를 소개할 수 있지만, **운영 중인 서비스·OAuth 검증 완료·정식 출시**라고 설명하지 않는다.
+D14 이후 사용자의 요청으로 비공개 원격 생성/연결/push를 완료했다. OAuth·CI 최종 판정·공개 전환·배포는 별도 확인 대상이다. 포트폴리오에서는 실제 구현과 검증한 기술 사례를 소개할 수 있지만, **운영 중인 서비스·OAuth 검증 완료·정식 출시**라고 설명하지 않는다.

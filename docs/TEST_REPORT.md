@@ -2,6 +2,12 @@
 
 기준: **2026-09-27, v0.1.0 릴리스 후보**. 로컬 PASS와 원격 CI/공급자/운영 검증을 구분한다. 개발 계정은 합성이고 모든 앱 동작은 실제 사용자 세션이다. fixture 준비·정리/SQL 결과 확인 외에 서비스 키로 사용자 동작을 대체하지 않았다. 외부 사용자 관찰과 독립 검수는 NOT_RUN이다.
 
+## 원격 연결 후속 — 2026-09-27
+
+사용자 요청으로 [YouthCorp/reproboard](https://github.com/YouthCorp/reproboard)를 비공개로 생성하고 origin/main 추적과 최초 push(9a65d30)를 완료했다. [첫 CI 실행](https://github.com/YouthCorp/reproboard/actions/runs/36320335374)은 자동 시작했다. 이 기록 시점에는 진행 중이며 PASS/FAIL 최종 판정 전이다. 아래 D14의 CI NOT_RUN은 최초 push 이전 결과다. 공개 전환·태그/Release·OAuth·배포는 수행하지 않았다.
+
+Git 이력의 텍스트 객체 396개에 대해 제외 경로·알려진 로컬 secret·GitHub token/private-key 패턴을 값 출력 없이 검사했고 일치 0이었다. 전체 보안 감사를 의미하지 않는다. 기존 사용자/DB/환경 파일은 변경하지 않았다.
+
 ## 환경과 테스트 층
 
 Windows 25H2/PowerShell 7.6.5, Node 24.19.0, pnpm 11.19.0, Chromium 153.0.8010.12, Docker Linux 엔진·로컬 Supabase/Postgres 17.6. 정확한 라이브러리는 lockfile을 따른다. 명령의 선행 조건·격리·포트는 [DEVELOPMENT](DEVELOPMENT.md)에 있다.

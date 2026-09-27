@@ -2,7 +2,7 @@
 
 **버그의 재현 정보를 모으고, 수정 뒤 다시 확인해 완료하는 소규모 팀 도구.**
 
-`v0.1.0` 릴리스 후보 · 실제 로컬 Supabase로 검증 · 공개 서비스는 아직 없습니다.
+`v0.1.0` 릴리스 후보 · [GitHub 비공개 저장소](https://github.com/YouthCorp/reproboard) 연결 완료 · 공개 서비스는 아직 없습니다.
 
 [실행하기](docs/DEVELOPMENT.md) · [실제 시연 영상](docs/DEMO.md) · [기술 사례 3건](docs/CASE_STUDY.md) · [릴리스 메모 초안](docs/RELEASE_NOTES.md)
 
@@ -58,7 +58,7 @@ pnpm build
 pnpm test:e2e
 ```
 
-실행 조건과 데이터 격리는 [개발 안내](docs/DEVELOPMENT.md), 날짜·범위·실패 이력은 [TEST_REPORT](docs/TEST_REPORT.md)에 있습니다. 로컬 단위/UI 57, 격리 DB 46, 격리 E2E 35, production smoke 6건 PASS를 기록했습니다. UI 변경 후 실제 DB UI 35건을 다시 확인했습니다. 이 숫자는 서로 다른 검증 층이며 사용자 수나 품질 개선율이 아닙니다. **원격 CI·실제 OAuth·배포 smoke는 NOT_RUN**입니다.
+실행 조건과 데이터 격리는 [개발 안내](docs/DEVELOPMENT.md), 날짜·범위·실패 이력은 [TEST_REPORT](docs/TEST_REPORT.md)에 있습니다. 로컬 단위/UI 57, 격리 DB 46, 격리 E2E 35, production smoke 6건 PASS를 기록했습니다. UI 변경 후 실제 DB UI 35건을 다시 확인했습니다. 이 숫자는 서로 다른 검증 층이며 사용자 수나 품질 개선율이 아닙니다. 첫 원격 CI는 push로 시작했으며 결과는 [TEST_REPORT](docs/TEST_REPORT.md)를 따릅니다. **실제 OAuth·배포 smoke는 NOT_RUN**입니다.
 
 ## 구조와 결정
 

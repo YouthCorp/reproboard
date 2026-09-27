@@ -93,7 +93,7 @@ Docker/WSL 오류가 재발하면 먼저 `docker version`과 `wsl --list --verbo
 4. 앱 `.env.local`의 `NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000`을 확인하고 `pnpm dev`를 재시작한다. **앱 PKCE 콜백은 `http://127.0.0.1:3000/auth/callback`**이며 config의 `additional_redirect_urls`에 정확히 등록되어 있다. GitHub에 등록하는 54321 콜백과 용도가 다르다. 브라우저도 `localhost`와 섞지 말고 127.0.0.1로 접속한다.
 5. `/login`의 GitHub 버튼으로 승인→보드, 로그아웃→재로그인을 확인한다. GitHub 승인 취소도 확인한다. 초대 링크에서 로그인한 경우 `/invite`로 복귀하며 자동 가입하지 않는다. 실제 결과를 TEST_REPORT에 추가한다.
 
-공식 근거: [Next.js SSR 쿠키·Proxy](https://supabase.com/docs/guides/auth/server-side/creating-a-client?framework=nextjs), [GitHub OAuth/PKCE](https://supabase.com/docs/guides/auth/social-login/auth-github), [로컬 config와 비밀 값](https://supabase.com/docs/guides/local-development/managing-config). hosted 환경을 선택하면 별도 OAuth App에 해당 프로젝트의 Auth callback을 등록하고 Supabase Dashboard → Authentication → Sign In/Providers 및 URL Configuration을 설정한다. 현재 hosted 설정·원격·공개 배포는 수행하지 않았다.
+공식 근거: [Next.js SSR 쿠키·Proxy](https://supabase.com/docs/guides/auth/server-side/creating-a-client?framework=nextjs), [GitHub OAuth/PKCE](https://supabase.com/docs/guides/auth/social-login/auth-github), [로컬 config와 비밀 값](https://supabase.com/docs/guides/local-development/managing-config). hosted 환경을 선택하면 별도 OAuth App에 해당 프로젝트의 Auth callback을 등록하고 Supabase Dashboard → Authentication → Sign In/Providers 및 URL Configuration을 설정한다. 현재 hosted OAuth 설정·공개 배포는 수행하지 않았다. Git 원격은 후속 작업으로 비공개 연결했다.
 
 SSR 쿠키 갱신은 Proxy의 `getClaims()`가 검증하고 콜백은 `exchangeCodeForSession()`을 사용한다. 보드·로그인·초대는 dynamic/no-store 응답이며 복귀 주소는 `/board`와 `/invite`로 제한한다. 로그아웃은 현재 브라우저 세션을 종료하고 캐시를 비운다. 갱신이 거부된 세션은 재로그인을 안내한다. 통신 장애를 세션 만료로 단정하지 않으며 발급된 JWT의 즉시 전역 무효화는 보장하지 않는다. D2 localStorage 세션은 자동 이관하지 않으므로 업그레이드 후 한 번 다시 로그인한다.
 
@@ -186,7 +186,7 @@ pnpm test:e2e
 
 ### 공개 배포 전에 사용자가 정할 외부 설정
 
-현재 연결된 Git 원격·호스팅·hosted Supabase 대상은 없다. 배포/외부 게시를 실행하지 않았다. 한 번에 준비할 정보는 공개할 저장소·호스팅 대상·앱 HTTPS origin·개발/운영 Supabase 프로젝트와 GitHub OAuth App이다.
+Git 원격은 [YouthCorp/reproboard](https://github.com/YouthCorp/reproboard)에 비공개로 연결하고 main을 push했다. 호스팅·hosted Supabase 대상은 없으며 공개 전환/앱 배포는 수행하지 않았다. 한 번에 준비할 정보는 공개할 저장소·호스팅 대상·앱 HTTPS origin·개발/운영 Supabase 프로젝트와 GitHub OAuth App이다.
 
 1. 환경마다 GitHub OAuth App을 분리하고 GitHub callback을 해당 Supabase의 `https://<project-ref>.supabase.co/auth/v1/callback`으로 등록한다. Supabase provider에 ID/secret을 입력한다. 앱 URL Configuration은 실제 HTTPS origin 및 정확한 `/auth/callback`이다. 로컬은 위 GitHub OAuth 절차의 54321/3000 주소를 사용한다.
 2. 호스팅에는 공개 URL/publishable key와 `NEXT_PUBLIC_SITE_URL`만 앱 용도로 설정한다. `DEV_LOGIN_ENABLED`는 생략/false, `.local`/테스트 계정/CLI OAuth secret/service key는 배포하지 않는다. `NEXT_PUBLIC_*`는 빌드 시 고정되므로 환경별로 다시 빌드한다. [Next 환경 변수](https://nextjs.org/docs/app/guides/environment-variables).

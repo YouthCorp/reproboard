@@ -4,7 +4,7 @@
 
 ## 취약점 신고
 
-현재 Git 원격과 비공개 보안 신고 채널이 설정되지 않았다. 따라서 동작하지 않는 신고 링크나 개인 연락처를 제공하지 않는다. **공개 이슈·댓글에 secret, 실제 사용자 데이터, 재현용 계정, 악용 가능한 상세 내용을 올리지 않는다.** 저장소 공개 전에 관리자가 아래 채널을 개설하고 실제 접수 가능 여부를 확인해야 한다.
+Git 원격은 [YouthCorp/reproboard](https://github.com/YouthCorp/reproboard)에 비공개로 연결했다. 비공개 보안 신고 채널은 아직 설정되지 않았다. 따라서 동작하지 않는 신고 링크나 개인 연락처를 제공하지 않는다. **공개 이슈·댓글에 secret, 실제 사용자 데이터, 재현용 계정, 악용 가능한 상세 내용을 올리지 않는다.** 저장소 공개 전에 관리자가 아래 채널을 개설하고 실제 접수 가능 여부를 확인해야 한다.
 
 GitHub 저장소의 Settings → Security and quality → Advanced Security에서 Private vulnerability reporting을 활성화한다. 이후 Security → Advisories → Report a vulnerability의 접근을 확인하고 이 문서에 실제 신고 경로를 연결한다. 정확한 설정 위치는 [GitHub 공식 안내](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository)를 따른다. 현재 접수 응답 시간이나 지원 SLA를 약속하지 않는다.
 
