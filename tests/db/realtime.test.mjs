@@ -29,7 +29,7 @@ test('D7 publication retains RLS: actual Viewer stream reads own team, outsider 
     }
     for (const role of ['viewer', 'outsider']) {
       await new Promise((resolve, reject) => {
-        clients[role].channel(`d7-rls-${role}-${randomUUID()}`)
+        clients[role].channel(`d7-rls-${role}-${randomUUID()}`, { config: { postgres_changes_options: { wait: true } } })
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'issues' }, (event) => events[role].push(event.new))
           .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'issues' }, (event) => events[role].push(event.new))
           .subscribe((state) => { if (state === 'SUBSCRIBED') resolve(); else if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT') reject(new Error('Realtime subscription failed')); });

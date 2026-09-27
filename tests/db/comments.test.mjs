@@ -163,11 +163,12 @@ test('D9 actual Postgres Changes: Member and Viewer see comments/activity; only 
   async function until(check) { for (let n = 0; n < 150; n++) { if (check()) return; await delay(100); } assert.fail('Expected authorized event missing: ' + JSON.stringify(Object.fromEntries(Object.entries(events).map(([role, values]) => [role, values.map((e) => e.table + ':' + e.event)])))); }
   try {
     for (const role of Object.keys(events)) {
-      const channel = clients[role].channel(`d9-${randomUUID()}`); channels.push([role, channel]);
+      const channel = clients[role].channel(`d9-${randomUUID()}`, { config: { postgres_changes_options: { wait: true } } }); channels.push([role, channel]);
       for (const table of ['comments', 'activity_events', 'notifications']) channel.on('postgres_changes', { event: '*', schema: 'public', table }, (event) => events[role].push({ table, event: event.eventType, row: event.new }));
       await new Promise((resolve, reject) => channel.subscribe((state) => { if (state === 'SUBSCRIBED') resolve(); else if (['CHANNEL_ERROR', 'TIMED_OUT'].includes(state)) reject(new Error('Subscription failed')); }));
     }
     const request = randomUUID(), created = await add('member', '실제 스트림', [ids.member2, ids.viewer], request);
+    assert.equal(created.ok, true);
     await until(() => ['member', 'member2', 'viewer'].every((role) => ['comments', 'activity_events'].every((table) => events[role].some((e) => e.table === table && e.row.request_id === request)))
       && ['member2', 'viewer'].every((role) => events[role].some((e) => e.table === 'notifications' && e.row.comment_id === created.data.id)));
     const [notification] = await notifications('viewer', created.data.id);

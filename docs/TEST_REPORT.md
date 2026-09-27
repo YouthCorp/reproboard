@@ -2,6 +2,15 @@
 
 기준: **2026-09-27, v0.1.0 릴리스 후보**. 로컬 PASS와 원격 CI/공급자/운영 검증을 구분한다. 개발 계정은 합성이고 모든 앱 동작은 실제 사용자 세션이다. fixture 준비·정리/SQL 결과 확인 외에 서비스 키로 사용자 동작을 대체하지 않았다. 외부 사용자 관찰과 독립 검수는 NOT_RUN이다.
 
+## CI Realtime 첫 구독 수정 — 2026-09-28
+
+- 원격 [e7d8221 실행](https://github.com/YouthCorp/reproboard/actions/runs/36356540213): app PASS, DB 24 PASS/25번째 D9 Realtime FAIL. 이후 DB 21개와 UI 전체는 NOT_RUN이다. 전체 CI를 성공으로 보지 않는다.
+- 수정 전 동일 D9 사례를 로컬에서 실행해 모든 역할의 이벤트 배열이 빈 채로 실패했다. 코드 변경 없는 두 번째 실행은 PASS였다. 채널 가입 직후 쓰는 초기 구독 경합과 일치하며 원격의 원시 실패 로그는 수집되지 않아 그 내부 오류까지 단정하지 않는다.
+- 앱과 D7/D9 DB 스트림에서 SDK 2.116.0의 `postgres_changes_options.wait: true`를 사용한다. 단순 소켓 가입 대신 DB 변경 수신 준비가 끝난 뒤 재조회/테스트 쓰기를 시작한다. 고정 지연·retry·skip·권한 검증 완화는 추가하지 않았다.
+- 수정 후 로컬 Realtime v2.130.0 컨테이너만 재시작하고 D9 사례 1/1 PASS. 기존 DB/사용자 데이터는 보존했다. lint/typecheck/build, 앱 단위 57, 로컬 보호/진단 8, 문서 검사 PASS.
+- CI 실패 출력은 종료 코드·허용된 오류 분류만 추가했다. 원시 오류/행/계정/토큰은 로그나 artifact에 공개하지 않는다. 알 수 없는 오류는 `inspect-private-log`로 남긴다.
+- 전체 DB/협업 회귀와 수정 커밋의 원격 CI 결과는 완료 후 아래에 기록한다. 실제 OAuth·배포 smoke는 이번 수정에서도 NOT_RUN이다.
+
 ## 원격 연결 후속 — 2026-09-27
 
 사용자 요청으로 [YouthCorp/reproboard](https://github.com/YouthCorp/reproboard)를 비공개로 생성하고 origin/main 추적과 최초 push(9a65d30)를 완료했다. [첫 CI 실행](https://github.com/YouthCorp/reproboard/actions/runs/36320335374)은 자동 시작했다. 이 기록 시점에는 진행 중이며 PASS/FAIL 최종 판정 전이다. 아래 D14의 CI NOT_RUN은 최초 push 이전 결과다. 공개 전환·태그/Release·OAuth·배포는 수행하지 않았다.
@@ -26,7 +35,8 @@ Windows 25H2/PowerShell 7.6.5, Node 24.19.0, pnpm 11.19.0, Chromium 153.0.8010.1
 | 새 소스·빈 로컬 DB 재현 | PASS | 09-26. [환경·해시·절차](evidence/d13-reproduction.json) |
 | 실제 앱 시연/녹화 | 4 PASS, PNG 8·WebM 5 | 09-26. [파일 해시](evidence/d13-demo-results.json), [시연](DEMO.md). UI 개선 전 영상 |
 | D14 문서·라이선스·관련 회귀 | 문서 검사·lint·보호 6 PASS | 09-27. Markdown 21개 로컬 경로/heading·실행 명령 검사. 직접 의존성 28개와 폰트 대조 |
-| GitHub CI / 실제 OAuth / 공개 배포 smoke | NOT_RUN | 원격/외부 앱/호스팅 미설정 |
+| GitHub CI | FAIL (수정 전 e7d8221) | 09-28 app PASS, DB D9 첫 구독 실패. 상단 후속 기록 참조 |
+| 실제 OAuth / 공개 배포 smoke | NOT_RUN | 외부 앱/호스팅 미설정 |
 
 위 숫자는 서로 다른 검증 층과 날짜다. 하나의 전체 성공률로 합산하지 않는다. 이번 문서 변경만으로 과거 앱 테스트를 오늘 다시 실행했다고 표시하지 않는다.
 

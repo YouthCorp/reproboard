@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import ts from 'typescript';
 import { localStack, root } from './local-stack.mjs';
 import { createTestIdentities, cleanupTestIdentities } from './test-identities.mjs';
+import { failureSummary } from './integration-diagnostics.mjs';
 
 const require = createRequire(import.meta.url);
 // Execute every discovered case, each with new users/teams and its own process.
@@ -56,8 +57,10 @@ try {
       const result = await execute(args, env);
       writeFileSync(`${output}.log`, result.output); // Private: never upload raw HTTP/Auth diagnostics.
       const passed = result.code === 0 && (mode === 'db' ? /^# tests 1\r?$/m.test(result.output) && /^# fail 0\r?$/m.test(result.output) : /\b1 passed\b/.test(result.output));
-      results.push({ ...item, result: passed ? 'PASS' : 'FAIL' });
+      const failure = passed ? undefined : failureSummary(result.output, result.code);
+      results.push({ ...item, result: passed ? 'PASS' : 'FAIL', ...(failure ? { failure } : {}) });
       console.log(`${passed ? 'PASS' : 'FAIL'} ${results.length}/${cases.length} ${item.name}`);
+      if (failure) console.log(`Safe failure summary: ${JSON.stringify(failure)}`);
       if (!passed) process.exitCode = 1;
     } finally { await cleanupTestIdentities(fixture); }
     writeFileSync(resolve(directory,'results.json'), JSON.stringify(results,null,2));

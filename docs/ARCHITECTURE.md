@@ -58,6 +58,8 @@ Supabase SSR의 browser/server client·쿠키와 Proxy의 `getClaims`를 사용�
 
 [realtime-refresh](../src/features/issues/realtime-refresh.ts)와 [issue-realtime](../src/features/issues/issue-realtime.tsx)은 **구독 완료 → 이전 조회 취소 → 멤버십/최신 조회 → 조회 중 dirty 변경 재조회**를 수행한다. dirty 신호를 짧게 모으고 깨끗해질 때까지 수렴한다. 첫 진입도 같은 순서로 구독과 조회 사이 공백을 막는다.
 
+구독 완료는 소켓 채널 가입만을 뜻하지 않는다. `config.postgres_changes_options.wait: true`로 실제 Postgres Changes 수신 준비까지 기다린 뒤 `SUBSCRIBED`에서 최신 조회를 시작한다. 준비 실패는 SDK의 CHANNEL_ERROR/TIMED_OUT 경로와 HTTP 폴링으로 처리한다. 이 옵션이 없는 초기 구현은 새 Realtime 서버의 첫 구독에서 이벤트를 놓칠 수 있었다([공식 설명](https://supabase.com/docs/guides/troubleshooting/realtime-postgres-changes-troubleshooting)).
+
 WS 연결과 HTTP 요청 성공은 별도다. WS만 불안정하면 HTTP 저장을 허용하고 foreground에서 15초 임시 폴링한다. navigator.onLine은 힌트이며 저장 성공을 보장하지 않는다. Query/mutation은 networkMode=always·retry=false로 paused mutation 자동 재개/오프라인 큐를 만들지 않는다.
 
 멤버십은 15초 및 focus/복구/거부 시, 인증은 60초 및 focus/online/401 시 재검사한다. Viewer 강등 시 쓰기를 막고 초안은 보여주며, 소속 소실 시 팀 데이터/조작을 제거한다. DB는 매 명령마다 즉시 권한을 검사한다. 팀 전환·로그아웃·unmount는 구독/타이머/조회와 해당 캐시/store를 정리하고 늦은 명령 응답이 이전 범위에 재삽입되지 않게 한다. UI 권한 반영까지 폴링 간격의 지연은 가능하다.

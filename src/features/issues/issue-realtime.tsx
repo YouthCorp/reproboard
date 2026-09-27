@@ -55,7 +55,10 @@ export function WorkspaceConnection({ client, workspaceId, children }: { client:
     function connect() {
       if (!alive || !navigator.onLine || channel) return;
       setWs("connecting");
-      const current = client.channel(`issues:${workspaceId}:${crypto.randomUUID()}`);
+      // A joined socket alone does not guarantee that Postgres Changes is listening.
+      const current = client.channel(`issues:${workspaceId}:${crypto.randomUUID()}`, {
+        config: { postgres_changes_options: { wait: true } },
+      });
       channel = current;
       const filter = { schema: "public", table: "issues", filter: `workspace_id=eq.${workspaceId}` };
       current.on("postgres_changes", { ...filter, event: "INSERT" }, () => refresh.changed())

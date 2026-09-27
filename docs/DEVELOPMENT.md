@@ -36,7 +36,7 @@ pnpm dev
 
 `test:e2e` 전에 `pnpm build`와 브라우저 설치가 필요하다. 보드↔로그인, 404, 키보드, 390px 및 production의 개발 로그인 미노출을 검증한다. 이 smoke와 실제 DB 테스트는 별도다. `test:db-ui`는 아래 로컬 준비 후 실행하며, 3000 포트의 기존 개발 서버를 사용하거나 없으면 자동 시작한다. 기존 서버의 환경 값이 바뀌었다면 재시작한다. 실행 중에는 동일한 합성 계정을 수동 조작하지 않는다.
 
-캡처는 `playwright-report/index.html`과 `playwright-db-report/index.html`에 있다. `pnpm exec playwright show-report playwright-db-report`로 DB 화면 리포트를 볼 수 있다. 개발 인증 요청에 비밀 값이 포함되므로 DB UI의 trace/storageState는 저장하지 않는다. DB 테스트는 이번 실행의 UUID로 만든 이슈·팀·초대·receipt만 정리하며 기존 데이터는 보존한다. 만료 테스트는 해당 테스트 브라우저의 Auth 세션만 폐기한다. [CI](../.github/workflows/ci.yml)는 정적 검사·로컬 보호 검사·빌드·production smoke까지 구성했다. DB/협업 CI와 격리 실행 절차는 아래에 있다. GitHub 실행은 NOT_RUN이다.
+캡처는 `playwright-report/index.html`과 `playwright-db-report/index.html`에 있다. `pnpm exec playwright show-report playwright-db-report`로 DB 화면 리포트를 볼 수 있다. 개발 인증 요청에 비밀 값이 포함되므로 DB UI의 trace/storageState는 저장하지 않는다. DB 테스트는 이번 실행의 UUID로 만든 이슈·팀·초대·receipt만 정리하며 기존 데이터는 보존한다. 만료 테스트는 해당 테스트 브라우저의 Auth 세션만 폐기한다. [CI](../.github/workflows/ci.yml)는 정적 검사·로컬 보호 검사·빌드·production smoke까지 구성했다. DB/협업 CI와 격리 실행 절차는 아래에 있다. 현재 GitHub 실행 결과는 [TEST_REPORT](TEST_REPORT.md)를 확인한다.
 
 ### 로컬 Supabase / 실제 저장 준비
 
@@ -127,9 +127,9 @@ pnpm test:e2e
 - 각 사례가 끝나면 metadata의 실행 UUID를 대조해 생성한 사용자/팀만 삭제한다. 관리자 권한은 합성 fixture 준비·정리/DB 결과 검사에만 쓰고 제품 동작은 사용자 토큰이다. `.local/dev-accounts.json`·기존 팀·env를 덮어쓰지 않는다. `db:env`는 기존 값이 다르면 중단한다. 테스트 계정 준비에는 `db:seed`가 필요 없다.
 - 테스트는 직렬·retry=0이다. 동시 실행 lock이 남았다면 이전 프로세스와 `.local/test-runs`의 실행 UUID를 확인한 후 복구한다. 강제 종료 시 남은 fixture를 전체 DB reset으로 지우지 않는다. 이전 `test:db`/`test:db-ui`는 수동 개발 계정을 쓰는 진단 경로이므로 다른 테스트와 동시에 실행하지 않는다.
 - 실패 사례만 확인할 때 `pnpm test:integration:ui "테스트 이름의 고유 부분"`처럼 선택할 수 있다. 이는 부분 실행이며 전체 PASS로 보고하지 않는다. 전체 실행은 모든 정적 테스트 이름을 탐색하며 각 하위 프로세스에서 실제 1건 실행을 확인한다. 실패 시 중단하고 이후 사례는 NOT_RUN이다.
-- 결과: `test-results/integration/{db,ui}.json`은 비밀 값 없는 이름/결과만, `.local/integration` 로그·브라우저 첨부는 로컬 전용이다. 과거 공개 PNG를 회귀마다 덮어쓰지 않는다. 사용자 비밀번호·Auth trace/storageState·원시 로그는 업로드하지 않는다.
+- 결과: `test-results/integration/{db,ui}.json`은 비밀 값 없는 이름/결과와 허용 목록의 실패 분류만, `.local/integration` 로그·브라우저 첨부는 로컬 전용이다. 과거 공개 PNG를 회귀마다 덮어쓰지 않는다. 사용자 비밀번호·Auth trace/storageState·원시 로그는 업로드하지 않는다.
 
-CI의 `app` job은 lint/typecheck/단위/보호/문서/build/production smoke, `database-and-collaboration`은 새 Ubuntu runner의 로컬 Docker stack/migration/타입 일치/실제 DB/전체 핵심 E2E를 실행하도록 구성했다. 고정된 프로젝트 CLI를 사용하고 hosted secret/link/push/reset은 없다. GitHub에서 workflow를 실제 실행하기 전까지 **CI NOT_RUN**이다. 로컬 스택을 종료하려면 `node scripts/ci-stack.mjs stop`을 실행한다(볼륨 보존).
+CI의 `app` job은 lint/typecheck/단위/보호/문서/build/production smoke, `database-and-collaboration`은 새 Ubuntu runner의 로컬 Docker stack/migration/타입 일치/실제 DB/전체 핵심 E2E를 실행하도록 구성했다. 고정된 프로젝트 CLI를 사용하고 hosted secret/link/push/reset은 없다. GitHub의 실제 PASS/FAIL과 미실행 범위는 [TEST_REPORT](TEST_REPORT.md)에 기록한다. 로컬 스택을 종료하려면 `node scripts/ci-stack.mjs stop`을 실행한다(볼륨 보존).
 
 공식 근거: [Supabase 로컬 CLI](https://supabase.com/docs/guides/local-development/cli/getting-started), [Supabase CI 환경](https://supabase.com/docs/guides/deployment/managing-environments), [Playwright CI·단일 worker](https://playwright.dev/docs/ci). 로컬 PASS를 Linux/GitHub PASS로 간주하지 않는다.
 

@@ -302,3 +302,12 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V13을 수�
 - GitHub 공식 README 안내와 Outline의 제품 소개/설치/기여 문서 구성을 참고했다. 별도 단일 표준이 있다고 단정하거나 다른 프로젝트 문구를 복사하지 않았다.
 - PASS: 문서 21개·로컬 링크 187개·package 명령 검사와 git diff --check. 앱/DB/의존성 변경은 없으며 해당 회귀 재실행은 NOT_RUN이다.
 - 09-28 재개: 이전 커밋/push는 자동 승인 검토 사용량 제한으로 실행되지 않았다. 보존된 변경을 확인하고 같은 범위의 문서 검증·원격 반영을 재개했다.
+
+## CI Realtime 첫 구독 수정 — 2026-09-28
+
+- 원격 e7d8221의 app PASS/DB 25번째 FAIL 확인. 로컬 D9 첫 실행은 이벤트 0건으로 FAIL, 변경 없는 재실행은 PASS였다.
+- 앱과 D7/D9 DB 테스트에 SDK의 실제 변경 수신 준비 대기를 적용했다. 구독 완료 후 최신 조회/dirty 재조회 계약을 유지한다.
+- DB 보존 상태에서 로컬 Realtime만 재시작한 D9 1/1 PASS. 고정 sleep·재시도·skip·검증 완화는 추가하지 않았다.
+- lint/typecheck/build·단위 57·로컬 보호/진단 8·문서 검사 PASS. 전체 DB/협업 회귀는 실행 중이며 최종 결과는 TEST_REPORT에 보완한다.
+- CI에 비밀 값 없는 고정 실패 분류를 남기고 원시 로그/사용자 정보는 업로드하지 않는다. README에 작업 이력은 추가하지 않는다.
+- 기존 비공개 원격에 수정 반영 후 실제 CI를 확인한다. OAuth/배포는 NOT_RUN이며 이번 변경 범위가 아니다.
