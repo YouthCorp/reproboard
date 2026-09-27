@@ -1,27 +1,31 @@
 # 기여 안내
 
-현재는 D3 인증·팀·초대·역할 관리 단계다. 실제 GitHub 로그인은 외부 provider 설정 후 별도 검증한다. Node 24.19.0·pnpm 11.19.0과 lockfile을 사용하며, 실제 실행 순서·코드 경로·검증 범위는 README를 따른다.
+ReproBoard는 v0.1.0 릴리스 후보이며 D10 이후 신규 기능을 동결했다. 현재는 재현 가능한 결함·접근성·문서 불일치 수정에 집중한다. 제품 조건은 [PRD](docs/PRD.md), 상태 소유권과 DB 계약은 [ARCHITECTURE](docs/ARCHITECTURE.md)를 먼저 읽는다.
 
-## 시작하기
+## 개발 환경
 
-README의 로컬 환경 구성과 테스트 명령을 먼저 따른다. 제품 규칙은 docs/PRD.md, 기술 경계는 docs/ARCHITECTURE.md, 검증 기준은 docs/ACCEPTANCE.md에 있다.
+Node 24.19.0·pnpm 11.19.0을 사용하고 lockfile을 유지한다. [개발 안내](docs/DEVELOPMENT.md)의 설치→로컬 Docker/Supabase→migration→seed→환경 변수→개발 서버 순서를 따른다. `.env.example`에는 예시만 넣는다. 계정·실제 비밀 값·Auth storageState·원시 테스트 로그는 커밋하지 않는다.
 
-## 변경 제안
+기존 변경을 먼저 확인하고 보존한다. DB 수정은 새 migration으로 남기며 hosted DB reset은 사용하지 않는다. 테스트 fixture는 실행 UUID로 구분한 로컬 사용자/팀만 정리한다. 타입 변경은 `pnpm db:types`로 생성하고 diff를 검토한다.
 
-- 버그는 환경·사전 조건·재현 단계·기대/실제 결과를 포함해 Issue를 작성한다.
-- 기능은 사용자 문제와 현재 MVP 범위에 들어가는 이유를 설명한다. 신규 큰 기능은 구현 전에 논의한다.
-- PR은 문제, 변경 후 동작, 실제 검증, 알려진 제한을 짧게 적는다.
-- 상태 전환·권한·캐시/동시성을 바꾸면 관련 테스트와 문서도 업데이트한다.
-- 실제 사용자 데이터·비밀 값·OAuth secret·개인 storageState를 포함하지 않는다.
+## 변경과 검증
 
-## 코드 기준
+```text
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:local-tools
+pnpm test:docs
+```
 
-TypeScript의 명확한 도메인 타입과 작은 기능 단위 모듈을 사용한다. 기존 formatter/lint 설정을 따른다. 무의미한 추상화·전체 폴더 재편보다 문제를 해결하는 좁은 변경을 선호한다.
+권한/명령/상태 변경은 `pnpm test:integration:db`, 협업/화면 변경은 `pnpm test:integration:ui`, production 영향은 `pnpm build`와 `pnpm test:e2e`를 실행한다. 상세한 전제·포트·격리는 개발 안내를 따른다. 단순 문서 변경은 문서 검사와 관련 정적 검사로 범위를 정하고 이전 앱 테스트의 실행 날짜를 유지한다. CI 구성은 있지만 원격 실행 결과는 아직 없다.
 
-변경 후 `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`를 실행한다. 화면 탐색에 영향이 있으면 Chromium 설치 후 `pnpm test:e2e`를 실행한다. DB/권한/명령 변경은 로컬 준비 후 `pnpm test:db`, 저장 화면 변경은 `pnpm test:db-ui`, 로컬 도구 변경은 `pnpm test:local-tools`로 검증한다. 전체 실시간 협업 검증은 이후 단계다.
+테스트를 삭제·skip하거나 assertion을 약화해 실패를 숨기지 않는다. PASS/FAIL/NOT_RUN, 환경, 재현 절차를 구분한다. 장애 주입은 테스트 전용이어야 하며 서비스 키로 사용자 동작을 대체하지 않는다. UI 수정은 키보드 대안·포커스·긴 한국어·390/768/1440px를 확인한다.
 
-실행한 테스트와 미실행 이유를 구분하고, 관련 없는 테스트 제거·skip으로 통과시키지 않는다. UI 변경에는 실제 화면을, 데이터 경합 변경에는 재현 절차를 포함한다.
+## 변경 설명
 
-## 개발 데이터
+브랜치를 만들면 `codex/` 접두사를 사용한다. 변경 설명은 문제와 최종 동작, 영향받는 규칙, 실행한 검증과 미실행 이유, 필요한 캡처를 포함한다. 작업 대화 전체를 공개 문서에 복사하지 않는다. PROGRESS는 단계당 5~10줄, 중요한 설계 결정은 기존 ADR 3건에 연결한다.
 
-reset/seed는 로컬 개발 DB에서만 실행한다. 합성 데이터와 개발 전용 계정으로 재현한다. 운영 서비스 사용을 전제로 하는 저장소가 아니며 지원 환경과 한계는 README에 따른다.
+서버 데이터는 Query, 공유 임시 요청 상태는 Zustand, 검색·필터·정렬·상세는 URL이 소유한다. DB의 권한·version·멱등성·상태 조건을 UI 편의 때문에 완화하지 않는다. 사용자 승인 없는 공개 게시·운영 변경은 수행하지 않는다.
+
+보안 문제는 공개 이슈에 비밀 값이나 악용 절차를 올리지 말고 [SECURITY](SECURITY.md)를 따른다. 현재 비공개 신고 채널은 개설 전이다. 기여 시 [MIT](LICENSE)와 [외부 자산 고지](THIRD_PARTY_NOTICES.md)를 보존하고 출처가 있는 자산은 원래 라이선스를 함께 남긴다.

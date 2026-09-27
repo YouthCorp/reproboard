@@ -1,10 +1,10 @@
 # 진행 기록
 
-현재 상태: D13 이후 UI/UX 개선과 로컬 회귀 완료. 단계별 보드·문서형 상세·SUIT·한글 문구 정리, 실제 DB UI 35·production smoke 6 PASS. 원격 CI·실제 GitHub OAuth·공개 배포는 NOT_RUN.
+현재 상태: D14 최종 문서·라이선스·릴리스 메모 초안 완료. v0.1.0 릴리스 후보이며 실제 GitHub OAuth·원격 CI·공개 배포는 NOT_RUN이다. 로컬 구현/검증과 외부 조건을 TEST_REPORT에 분리했다.
 
-현재 단계: 포트폴리오 제작 전 UI/UX 개선 완료 (2026-09-27, Asia/Seoul). 다음은 사용자의 별도 요청에 따른 포트폴리오 제작/검증 범위 정리다. D14 릴리스 완료로 간주하지 않으며 신규 기능 동결을 유지한다.
+현재 단계: D14 문서·릴리스 준비 완료 (2026-09-27, Asia/Seoul). 신규 기능 동결을 유지한다. 다음은 CASE_STUDY 2페이지 초안 검토와 릴리스 메모의 외부 설정·실제 검증이다.
 
-선행 조건: 기존 로컬 DB·환경 복귀 및 데이터 해시 일치 확인. 공개 대상·실제 OAuth 설정이 없어 외부 작업은 README의 단일 목록으로 남겼다. 과거 D9 콜드스타트 실패 원인은 미확정이다.
+선행 조건: 공개 Git 원격/소유자·비공개 신고 채널·OAuth App·호스팅 대상은 미설정. 공개 작업은 수행하지 않았다. 과거 D9 콜드스타트 대기 실패 원인은 미확정이며 reload 후 초안/미확정 요청 복원은 미지원이다.
 
 ## 범위와 근거
 
@@ -32,7 +32,7 @@
 | D11 접근성·UX | DONE: P11 로컬 구현 | 로컬 핵심 PASS / V11 NOT_RUN | 키보드 생성→Done·포커스·100개 긴 한글 카드·390/768/1440px, production 조작 30회. TEST_REPORT 참조 |
 | D12 회귀·CI | DONE: P12 로컬 구현 | DB 46·격리 UI 35·단위 57·보호 4·smoke 6 PASS / CI NOT_RUN | 사례별 사용자/팀·서버 격리, 필수 회귀와 CI 구성. TEST_REPORT |
 | D13 재현·시연 | DONE: P13 로컬 | README 새 소스/빈 DB·실제 시연 4·smoke 6 PASS | 별도 project/volume·28개 의존성·원본 데이터 보존, 영상 5/PNG 8. OAuth/공개 배포 NOT_RUN |
-| D14 문서·릴리스 | TODO | NOT_RUN | 문서 키트 존재는 구현·릴리스 완료 근거가 아님 |
+| D14 문서·릴리스 | DONE: P14 로컬 준비 | 문서·lint·보호 6 PASS / 외부 NOT_RUN | 사례 3건+2페이지 초안·라이선스/링크·v0.1.0 후보. 정식 태그/공개 없음 |
 
 ## UI/UX 개선 — 2026-09-27
 
@@ -100,7 +100,7 @@
 - 실제 검증: Node 24.19.0 / pnpm 11.19.0 / Next 16.3.5 / React 19.3.0 / TypeScript 5.9.3 / Supabase CLI 2.117.0. 일반 터미널의 Node 24.12.0과 달라 검증 프로세스의 PATH를 고정 런타임으로 맞췄다. 전역 설정 변경은 하지 않았다. 실행 절차는 README가 기준이다.
 - Docker Desktop 4.90.0 / 엔진 29.7.2 / WSL 2.6.3.0. Ubuntu 프록시의 `backend.sock` 부재 오류 이후 Windows·Ubuntu 엔진 응답과 소켓 존재를 확인했다. `pnpm db:start` exit 0, 컨테이너 8개 실행, PG 17.6 조회, Auth·Studio HTTP 200. 재설치·초기화·배포판 제거 없이 진행했으며 재발 원인은 미확정이다.
 - D2는 외부 계정 없이 실행한다. PG 17 migration과 보호된 `db:seed/env/reset/types`를 추가했다. 기본 SQL seed 대신 명시적 도구가 합성 계정·팀을 준비한다. `.env.example`은 빈 이름만, `.env.local`과 `.local`은 gitignore이며 앱은 공개 키+실제 사용자 세션만 사용한다. 현재 명령은 README 참조.
-- D3 사용자 작업: [README의 GitHub OAuth 설정](../README.md#github-oauth-설정--사용자가-할-외부-작업)에 앱 등록→루트 `.env`→provider 활성화→재기동→실제 승인/취소 순서를 모았다. 홈페이지는 `http://127.0.0.1:3000`, GitHub 등록 콜백은 `http://127.0.0.1:54321/auth/v1/callback`, 앱 PKCE 콜백은 `http://127.0.0.1:3000/auth/callback`. 실제 실행 중인 Auth allowlist에는 앱 콜백이 반영됐고 GitHub provider는 비활성화 상태다. 비밀 값은 채팅·커밋에 남기지 않는다.
+- D3 사용자 작업: [README의 GitHub OAuth 설정](DEVELOPMENT.md#github-oauth-설정--사용자가-할-외부-작업)에 앱 등록→루트 `.env`→provider 활성화→재기동→실제 승인/취소 순서를 모았다. 홈페이지는 `http://127.0.0.1:3000`, GitHub 등록 콜백은 `http://127.0.0.1:54321/auth/v1/callback`, 앱 PKCE 콜백은 `http://127.0.0.1:3000/auth/callback`. 실제 실행 중인 Auth allowlist에는 앱 콜백이 반영됐고 GitHub provider는 비활성화 상태다. 비밀 값은 채팅·커밋에 남기지 않는다.
 - D13~14 공개 작업 전제: 사용자가 GitHub 원격 저장소와 공개 범위, 필요 시 개발/배포용 Supabase·호스팅 대상을 지정해야 한다. 현재는 원격 연결·계정 생성·배포·외부 게시를 하지 않는다. 로컬 개발 자체에는 외부 Supabase 계정이 필요하지 않다.
 
 ## 다음 실행 프롬프트
@@ -275,3 +275,13 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V13을 수�
 - 다음 단계와 선행 조건:
 
 중요한 결정만 DECISIONS에 확장한다. 단계별 전체 대화를 복사하지 않는다.
+
+## P14 — 최종 문서와 릴리스 후보 (2026-09-27)
+
+- README를 목적·현재 실제 화면·실행/시연·핵심 3건 중심으로 줄이고 상세 설치/CI/새 DB 재현은 DEVELOPMENT로 분리했다.
+- PRD/ARCHITECTURE/ACCEPTANCE/TEST_REPORT를 현재 코드·날짜별 검증과 맞췄고 과거 단계 설명·깨진 heading 링크를 정리했다.
+- ADR 3건을 채택된 결정으로 명시하고 CASE_STUDY에 문제→대안→선택→검증→한계 및 2페이지 포트폴리오 초안을 작성했다. 작성자/Codex 역할을 구분했다.
+- 기존 MIT·ReproBoard contributors 표기 보존, package license 추가. 직접 의존성 28개·SUIT 원본/OFL·해시를 대조하고 THIRD_PARTY_NOTICES에 기록했다.
+- PASS: pnpm test:docs·lint·test:local-tools 6. 외부 URL 37개는 GET 36 PASS/1 시간 제한 NOT_RUN, 해당 1개는 별도 공식 웹 조회 확인. 앱/DB/E2E/build 재실행·새 캡처는 문서 변경 범위상 NOT_RUN이다.
+- CONTRIBUTING/SECURITY/DEMO·v0.1.0 RELEASE_NOTES를 정리했다. 기존 영상은 UI 개선 전 기술 증빙이며 현재 해설 영상 링크를 만들지 않았다.
+- 남은 조건: 실제 OAuth·원격 CI·공개 보안 신고 채널·선택한 배포 대상 검증. 릴리스 후보 유지, 태그/push/공개는 수행하지 않는다. 다음 실행은 외부 대상 설정 뒤 RELEASE_NOTES 목록의 실제 확인이다.

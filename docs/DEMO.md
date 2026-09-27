@@ -16,7 +16,7 @@
 
 ## 재현·녹화 명령
 
-[README의 깨끗한 복사본 절차](../README.md#d13-깨끗한-소스새-로컬-db-재현)대로 설치→별도 Docker 프로젝트→migration→seed→env를 준비한다. 합성 Owner/Member/Viewer/타팀 Owner 4명과 팀 2개가 만들어진다. 테스트는 장면별 필요한 1~2개 이슈와 임시 팀을 실제 명령으로 준비하고 종료 후 정리한다. 임의로 12개가 준비됐다고 가정하지 않는다.
+[개발 안내의 깨끗한 복사본 절차](DEVELOPMENT.md#깨끗한-소스새-로컬-db-재현)대로 설치→별도 Docker 프로젝트→migration→seed→env를 준비한다. 합성 Owner/Member/Viewer/타팀 Owner 4명과 팀 2개가 만들어진다. 테스트는 장면별 필요한 1~2개 이슈와 임시 팀을 실제 명령으로 준비하고 종료 후 정리한다. 임의로 12개가 준비됐다고 가정하지 않는다.
 
 ```text
 pnpm exec playwright install chromium
@@ -56,4 +56,8 @@ OS 녹화 도구로 앱 창만 선택하고 개발자 도구의 Network/쿠키/�
 
 ## 공개 환경
 
-README의 외부 설정 목록대로 대상·OAuth·환경별 URL·RLS·production smoke가 준비된 이후 별도 실행한다. 개발 계정을 배포하거나 공유 Owner 암호를 공개하지 않는다. RLS를 해제하지 않는다. 현재 시연은 loopback 로컬 전용이다.
+[개발 안내의 외부 설정 목록](DEVELOPMENT.md#공개-배포-전에-사용자가-정할-외부-설정)대로 대상·OAuth·환경별 URL·RLS·production smoke가 준비된 이후 별도 실행한다. 개발 계정을 배포하거나 공유 Owner 암호를 공개하지 않는다. RLS를 해제하지 않는다. 현재 시연은 loopback 로컬 전용이다.
+
+## 현재 UI를 소개할 때
+
+대표 이미지는 [1440px 보드](evidence/ui-after/board-1440.png)·[상세](evidence/ui-after/detail-1440.png)·[390px 상세](evidence/ui-after/detail-390.png)를 사용한다. 모두 2026-09-27 합성 데이터다. 기존 WebM은 기술 시연 원본이고 현재 UI의 새 해설 영상은 아직 없다. 현재 소스로 위 녹화 명령을 다시 실행하고 프레임/개인정보/음성을 검토한 뒤 게시한다. 파일이 생기기 전 영상 링크를 만들지 않는다.

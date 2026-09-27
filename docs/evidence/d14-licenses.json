@@ -1,0 +1,155 @@
+{
+  "date": "2026-09-27T12:41:12.836Z",
+  "sourceLicense": "MIT",
+  "copyright": "2026 ReproBoard contributors (existing notice retained)",
+  "directDependencies": [
+    {
+      "name": "@dnd-kit/core",
+      "version": "6.3.1",
+      "license": "MIT"
+    },
+    {
+      "name": "@supabase/ssr",
+      "version": "0.12.7",
+      "license": "MIT"
+    },
+    {
+      "name": "@supabase/supabase-js",
+      "version": "2.116.0",
+      "license": "MIT"
+    },
+    {
+      "name": "@tanstack/react-query",
+      "version": "5.102.8",
+      "license": "MIT"
+    },
+    {
+      "name": "next",
+      "version": "16.3.5",
+      "license": "MIT"
+    },
+    {
+      "name": "react",
+      "version": "19.3.0",
+      "license": "MIT"
+    },
+    {
+      "name": "react-dom",
+      "version": "19.3.0",
+      "license": "MIT"
+    },
+    {
+      "name": "zustand",
+      "version": "5.0.15",
+      "license": "MIT"
+    },
+    {
+      "name": "@eslint/js",
+      "version": "10.0.1",
+      "license": "MIT"
+    },
+    {
+      "name": "@next/eslint-plugin-next",
+      "version": "16.3.5",
+      "license": "MIT"
+    },
+    {
+      "name": "@playwright/test",
+      "version": "1.63.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "@testing-library/dom",
+      "version": "10.4.1",
+      "license": "MIT"
+    },
+    {
+      "name": "@testing-library/jest-dom",
+      "version": "7.0.1",
+      "license": "MIT"
+    },
+    {
+      "name": "@testing-library/react",
+      "version": "16.3.3",
+      "license": "MIT"
+    },
+    {
+      "name": "@testing-library/user-event",
+      "version": "14.6.7",
+      "license": "MIT"
+    },
+    {
+      "name": "@types/node",
+      "version": "24.10.1",
+      "license": "MIT"
+    },
+    {
+      "name": "@types/react",
+      "version": "19.3.0",
+      "license": "MIT"
+    },
+    {
+      "name": "@types/react-dom",
+      "version": "19.3.0",
+      "license": "MIT"
+    },
+    {
+      "name": "@vitejs/plugin-react",
+      "version": "6.1.1",
+      "license": "MIT"
+    },
+    {
+      "name": "eslint",
+      "version": "10.10.0",
+      "license": "MIT"
+    },
+    {
+      "name": "eslint-plugin-react-hooks",
+      "version": "7.1.1",
+      "license": "MIT"
+    },
+    {
+      "name": "jsdom",
+      "version": "30.0.1",
+      "license": "MIT"
+    },
+    {
+      "name": "pg",
+      "version": "8.23.0",
+      "license": "MIT"
+    },
+    {
+      "name": "supabase",
+      "version": "2.117.0",
+      "license": "MIT"
+    },
+    {
+      "name": "typescript",
+      "version": "5.9.3",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "typescript-eslint",
+      "version": "8.70.0",
+      "license": "MIT"
+    },
+    {
+      "name": "vite",
+      "version": "8.3.0",
+      "license": "MIT"
+    },
+    {
+      "name": "vitest",
+      "version": "5.0.0",
+      "license": "MIT"
+    }
+  ],
+  "font": {
+    "name": "SUIT",
+    "version": "2.0.1",
+    "license": "OFL-1.1",
+    "bytes": 625480,
+    "sha256": "db2759b2be68ef40651f5007208fafe7eb89e8737cfd57809f49ce2b90d786c6"
+  },
+  "scope": "Installed direct dependency manifests and bundled font; not a transitive legal audit"
+}
