@@ -93,7 +93,7 @@ export function TransitionDialog({ client, issue, target, close, saved }: { clie
       <fieldset disabled={busy}>
         <legend className="sr-only">상태 이동 입력</legend>
         {reason && field("reason", base.status === "done" ? "재오픈 사유" : "이동 사유", "필수 · 공백 제거 후 1~4,000자")}
-        {verification && <><p className="verification-intent">{target === "done" ? "재검증 통과를 기록하고 Done으로 이동합니다." : "재검증 실패를 기록하고 In Progress로 되돌립니다."}</p>
+        {verification && <><p className="verification-intent">{target === "done" ? "재검증 통과를 기록하고 완료로 이동합니다." : "재검증 실패를 기록하고 수정 중으로 되돌립니다."}</p>
           {field("tested_build", "검증한 앱 버전", "필수 · 실제로 검증한 버전 · 최대 120자")}
           {field("tested_environment", "검증 환경", "필수 · OS/브라우저 등 실제 검증 환경 · 최대 4,000자")}
           {field("note", target === "done" ? "검증 메모" : "검증 실패 이유", `${target === "done" ? "선택" : "필수"} · 최대 4,000자`)}
@@ -102,7 +102,7 @@ export function TransitionDialog({ client, issue, target, close, saved }: { clie
       <p className="transition-message" role="status" tabIndex={-1}>{message}</p>
       <div className="form-actions"><button type="button" className="button button-secondary" disabled={busy} onClick={close} data-transition-cancel>이동 취소</button>
         {busy && <button type="button" className="button button-secondary" onClick={close}>보드에서 계속 작업</button>}
-        <button className="button button-primary" type="submit" disabled={!commands.canWrite || connection?.online === false || mutation.isPending || (!unconfirmed && (stale || !allowed || missing.length > 0))}>{mutation.isPending ? "이동 중…" : unconfirmed ? "같은 이동 요청으로 다시 확인" : verification ? target === "done" ? "통과 기록 후 Done" : "실패 기록 후 In Progress" : "이동 확인"}</button></div>
+        <button className="button button-primary" type="submit" disabled={!commands.canWrite || connection?.online === false || mutation.isPending || (!unconfirmed && (stale || !allowed || missing.length > 0))}>{mutation.isPending ? "이동 중…" : unconfirmed ? "같은 이동 요청으로 다시 확인" : verification ? target === "done" ? "통과 기록 후 완료" : "실패 기록 후 수정 중" : "이동 확인"}</button></div>
     </form>
   </dialog>;
 }
@@ -112,7 +112,7 @@ export function TransitionMenu({ client, issue, blocked = false, saved }: { clie
   const options = isStatus(issue.status) ? transitions[issue.status] : [];
   return <section className="transition-menu" aria-label="상태 이동">
     <h3 className="transition-heading" tabIndex={-1}>상태 이동 · 현재 {nameOf(issue.status)}</h3><p className="form-hint">{blocked ? "작성 중인 변경을 먼저 저장하거나 최신 값으로 다시 편집하세요." : "저장된 정보를 확인한 뒤 이동을 확정합니다."}</p>
-    <div className="transition-options">{options.map((status) => <button type="button" className="button button-secondary" key={status} disabled={blocked} onClick={() => setTarget(status)}>{status === "done" ? "검증 통과 → Done" : issue.status === "verify" ? "검증 실패 → In Progress" : issue.status === "done" ? "재오픈 → Inbox" : `${nameOf(status)}로 이동`}</button>)}</div>
+    <div className="transition-options">{options.map((status) => <button type="button" className="button button-secondary" key={status} disabled={blocked} onClick={() => setTarget(status)}>{status === "done" ? "검증 통과 → 완료" : issue.status === "verify" ? "검증 실패 → 수정 중" : issue.status === "done" ? "재오픈 → 접수" : `${nameOf(status)}${status === "in_progress" || status === "verify" ? "으로" : "로"} 이동`}</button>)}</div>
     {target && <TransitionDialog client={client} issue={issue} target={target} close={() => setTarget(null)} saved={saved} />}
   </section>;
 }

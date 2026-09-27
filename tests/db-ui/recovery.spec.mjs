@@ -34,16 +34,16 @@ async function login(page, workspace, role = 'owner') {
   await page.goto(`/login?next=${encodeURIComponent(`/board?workspace=${workspace}`)}`);
   await page.getByLabel('개발 계정', { exact: true }).selectOption(role);
   await page.getByRole('button', { name: '개발 계정으로 로그인', exact: true }).click();
-  await expect(page.getByText(`역할: ${role}`, { exact: true })).toBeVisible();
+  await expect(page.getByText(`역할: ${{owner:'관리자',member:'멤버',viewer:'읽기 전용'}[role]}`, { exact: true })).toBeVisible();
 }
 const status = (page) => page.locator('[data-connection-state]');
 const healthy = (page) => expect(status(page)).toHaveAttribute('data-connection-state', 'normal', { timeout: 25_000 });
 const card = (page, row) => page.locator(`[data-issue-id="${row.id}"]`);
 const detail = (page) => page.locator('dialog.issue-detail');
 const stored = async (row) => (await db.query('select * from public.issues where id=$1', [row.id])).rows[0];
-async function open(page, row) { await card(page, row).locator('.issue-card-link').click(); await expect(detail(page).getByLabel('이슈 제목', { exact: true })).toBeVisible(); }
+async function open(page, row) { await card(page, row).locator('.issue-card-link').click(); await expect(detail(page).getByLabel('버그 제목', { exact: true })).toBeVisible(); }
 async function saveTitle(page, title) {
-  await detail(page).getByLabel('이슈 제목', { exact: true }).fill(title);
+  await detail(page).getByLabel('버그 제목', { exact: true }).fill(title);
   await detail(page).getByRole('button', { name: '변경 저장', exact: true }).click();
   await expect(detail(page).locator('.form-message')).toContainText('저장했습니다.');
 }
@@ -72,11 +72,11 @@ test('D8 A offline, B changes, A rejoins and drains a change during recovery wit
     a.page.on('request', (request) => { if (request.url().includes('/rpc/create_issue')) writes++; });
     await login(a.page, workspaceId); await login(b.page, workspaceId, 'member'); await healthy(a.page); await healthy(b.page);
     await status(a.page).evaluate((element) => element.scrollIntoView({ block: 'start' }));
-    await a.page.getByLabel('새 이슈 제목', { exact: true }).fill('연결이 끊겨도 남을 내 초안');
+    await a.page.getByLabel('새 버그 제목', { exact: true }).fill('연결이 끊겨도 남을 내 초안');
     await a.context.setOffline(true);
     await expect(status(a.page)).toHaveAttribute('data-connection-state', 'offline');
-    await a.page.getByLabel('새 이슈 제목', { exact: true }).fill('오프라인에서 계속 작성한 초안');
-    await expect(a.page.getByRole('button', { name: 'Inbox에 생성', exact: true })).toBeDisabled();
+    await a.page.getByLabel('새 버그 제목', { exact: true }).fill('오프라인에서 계속 작성한 초안');
+    await expect(a.page.getByRole('button', { name: '버그 등록', exact: true })).toBeDisabled();
     await info.attach('d13-offline-draft', { body: await a.page.screenshot(), contentType: 'image/png' });
     await open(b.page, row); await saveTitle(b.page, 'B가 A 단절 중 저장한 제목');
     await expect(card(a.page, row)).toContainText(row.title);
@@ -89,10 +89,10 @@ test('D8 A offline, B changes, A rejoins and drains a change during recovery wit
     await expect.poll(() => events).toBeGreaterThan(0); gate.resolve();
     await expect(card(a.page, row)).toContainText('B가 복구 조회 도중 다시 저장한 제목'); await healthy(a.page);
     expect(snapshots - before).toBeGreaterThanOrEqual(2);
-    await expect(a.page.getByLabel('새 이슈 제목', { exact: true })).toHaveValue('오프라인에서 계속 작성한 초안');
+    await expect(a.page.getByLabel('새 버그 제목', { exact: true })).toHaveValue('오프라인에서 계속 작성한 초안');
     expect(writes).toBe(0); expect((await stored(row)).version).toBe(3);
     await info.attach('d13-recovered-draft', { body: await a.page.screenshot(), contentType: 'image/png' });
-    await a.page.getByRole('button', { name: 'Inbox에 생성', exact: true }).click();
+    await a.page.getByRole('button', { name: '버그 등록', exact: true }).click();
     await expect(a.page.getByRole('heading', { name: '오프라인에서 계속 작성한 초안', exact: true })).toHaveCount(1);
     expect(writes).toBe(1);
   } finally { gate.resolve(); await Promise.all([a.context.close(), b.context.close()]); }
@@ -119,8 +119,8 @@ test('D8 WS-only failure permits HTTP writes and fallback polling; HTTP-only los
     await status(a.page).evaluate((element) => element.scrollIntoView({ block: 'start' }));
     blocked = true; drop();
     await expect(status(a.page)).toHaveAttribute('data-connection-state', 'degraded');
-    await a.page.getByLabel('새 이슈 제목', { exact: true }).fill('WS가 끊겨도 HTTP로 저장');
-    await a.page.getByRole('button', { name: 'Inbox에 생성', exact: true }).click();
+    await a.page.getByLabel('새 버그 제목', { exact: true }).fill('WS가 끊겨도 HTTP로 저장');
+    await a.page.getByRole('button', { name: '버그 등록', exact: true }).click();
     await expect(a.page.getByRole('heading', { name: 'WS가 끊겨도 HTTP로 저장', exact: true })).toHaveCount(1);
     await expect(status(a.page)).toHaveAttribute('data-ws-state', 'error');
     await open(b.page, row); await saveTitle(b.page, '실시간 단절 중 B 변경 · 임시 조회로 복구');
@@ -135,13 +135,13 @@ test('D8 WS-only failure permits HTTP writes and fallback polling; HTTP-only los
       else await route.fulfill({ response });
     });
     await open(a.page, row);
-    await detail(a.page).getByLabel('이슈 제목', { exact: true }).fill('DB commit 후 HTTP 응답만 유실');
+    await detail(a.page).getByLabel('버그 제목', { exact: true }).fill('DB commit 후 HTTP 응답만 유실');
     await detail(a.page).getByRole('button', { name: '변경 저장', exact: true }).click();
     await expect(detail(a.page).getByRole('button', { name: '같은 요청으로 다시 확인', exact: true })).toBeVisible();
     await expect(status(a.page)).toHaveAttribute('data-connection-state', 'http-error');
     await expect(status(a.page)).toHaveAttribute('data-ws-state', 'connected');
     expect(await a.page.evaluate(() => navigator.onLine)).toBe(true);
-    await expect(detail(a.page).getByLabel('이슈 제목', { exact: true })).toHaveValue('DB commit 후 HTTP 응답만 유실');
+    await expect(detail(a.page).getByLabel('버그 제목', { exact: true })).toHaveValue('DB commit 후 HTTP 응답만 유실');
     await detail(a.page).getByRole('button', { name: '상세 닫기', exact: true }).click();
     await expect(detail(a.page)).toHaveCount(0);
     await status(a.page).evaluate((element) => element.scrollIntoView({ block: 'start' }));
@@ -168,17 +168,17 @@ test('D8 live role downgrade rejects an in-flight command, preserves draft and d
     await a.page.route('**/rpc/update_issue', async (route) => {
       arrived.resolve(); await gate.promise; const response = await route.fetch(); result = await response.json(); await route.fulfill({ response });
     });
-    await detail(a.page).getByLabel('이슈 제목', { exact: true }).fill('권한 강등 뒤에도 남을 초안');
+    await detail(a.page).getByLabel('버그 제목', { exact: true }).fill('권한 강등 뒤에도 남을 초안');
     await detail(a.page).getByRole('button', { name: '변경 저장', exact: true }).click(); await arrived.wait();
-    await b.page.getByText('팀 멤버와 권한', { exact: true }).click();
-    await b.page.getByRole('button', { name: '합성 Member → Viewer', exact: true }).click();
-    await expect(b.page.getByRole('button', { name: '합성 Member → Member', exact: true })).toBeVisible();
+    await b.page.getByText('팀 관리', { exact: true }).click();
+    await b.page.getByRole('button', { name: '합성 Member → 읽기 전용', exact: true }).click();
+    await expect(b.page.getByRole('button', { name: '합성 Member → 멤버', exact: true })).toBeVisible();
     gate.resolve(); await expect.poll(() => result?.code).toBe('FORBIDDEN');
-    await expect(a.page.getByText('역할: viewer', { exact: true })).toBeVisible();
-    await expect(detail(a.page).getByLabel('이슈 제목', { exact: true })).toHaveValue('권한 강등 뒤에도 남을 초안');
-    await expect(detail(a.page).getByLabel('이슈 제목', { exact: true })).toHaveAttribute('readonly', '');
+    await expect(a.page.getByText('역할: 읽기 전용', { exact: true })).toBeVisible();
+    await expect(detail(a.page).getByLabel('버그 제목', { exact: true })).toHaveValue('권한 강등 뒤에도 남을 초안');
+    await expect(detail(a.page).getByLabel('버그 제목', { exact: true })).toHaveAttribute('readonly', '');
     await expect(detail(a.page).getByRole('button', { name: '변경 저장', exact: true })).toBeDisabled();
-    await expect(detail(a.page).getByRole('button', { name: 'Ready로 이동', exact: true })).toBeDisabled();
+    await expect(detail(a.page).getByRole('button', { name: '진행 대기로 이동', exact: true })).toBeDisabled();
     expect((await stored(row)).version).toBe(1);
     // No membership-removal product feature: fixture-only revocation exercises actual RLS and cache eviction.
     await db.query('delete from public.workspace_members where workspace_id=$1 and user_id=$2', [workspaceId, accounts.find((u) => u.role === 'member').id]);
@@ -202,7 +202,7 @@ test('D8 workspace switching and logout remove old subscriptions, polling and ca
     a.page.on('request', (request) => { if (countReads && request.url().includes('/rest/v1/') && request.url().includes(first.workspaceId)) oldReads++; });
     await login(a.page, first.workspaceId); await healthy(a.page);
     for (const workspace of [second.workspaceId, first.workspaceId, second.workspaceId]) {
-      await a.page.getByLabel('워크스페이스', { exact: true }).selectOption(workspace); await healthy(a.page);
+      await a.page.getByLabel('작업할 팀', { exact: true }).selectOption(workspace); await healthy(a.page);
       await expect.poll(() => topics.size).toBe(1);
     }
     countReads = true;
@@ -215,7 +215,7 @@ test('D8 workspace switching and logout remove old subscriptions, polling and ca
       if (route.request().url().includes(first.workspaceId)) { arrived.resolve(); await gate.promise; }
       await route.continue();
     });
-    await a.page.getByLabel('워크스페이스', { exact: true }).selectOption(first.workspaceId); await arrived.wait();
+    await a.page.getByLabel('작업할 팀', { exact: true }).selectOption(first.workspaceId); await arrived.wait();
     await expect(card(a.page, first.row)).toHaveCount(0); gate.resolve(); await healthy(a.page);
     await a.page.getByRole('button', { name: '로그아웃', exact: true }).click();
     await expect(a.page).toHaveURL(/login\?reason=signed-out/);
@@ -230,7 +230,7 @@ test('D8 actual revoked refresh session expires an open board and clears its pri
   const { workspaceId, row } = await fixture(), a = await actor(browser, info);
   try {
     await login(a.page, workspaceId); await healthy(a.page);
-    await a.page.getByLabel('새 이슈 제목', { exact: true }).fill('로그인 종료 때 메모리에서 제거할 합성 초안');
+    await a.page.getByLabel('새 버그 제목', { exact: true }).fill('로그인 종료 때 메모리에서 제거할 합성 초안');
     const cookies = (await a.context.cookies()).filter((c) => /^sb-.+-auth-token(?:\.\d+)?$/.test(c.name)).sort((x, y) => x.name.localeCompare(y.name));
     const session = JSON.parse(Buffer.from(cookies.map((c) => c.value).join('').slice('base64-'.length), 'base64url').toString('utf8'));
     const claims = JSON.parse(Buffer.from(session.access_token.split('.')[1], 'base64url').toString('utf8'));
@@ -241,6 +241,6 @@ test('D8 actual revoked refresh session expires an open board and clears its pri
     await expect(a.page).toHaveURL(/login\?reason=session-expired/, { timeout: 20_000 });
     await expect(a.page.getByText('세션이 만료되었거나 종료됐습니다. 다시 로그인하세요.', { exact: true })).toBeVisible();
     await expect(card(a.page, row)).toHaveCount(0);
-    await expect(a.page.getByLabel('새 이슈 제목', { exact: true })).toHaveCount(0);
+    await expect(a.page.getByLabel('새 버그 제목', { exact: true })).toHaveCount(0);
   } finally { await a.context.close(); }
 });

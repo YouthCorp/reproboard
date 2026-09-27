@@ -43,7 +43,7 @@ async function login(page, workspaceId, role = 'owner') {
   await page.goto(`/login?next=${encodeURIComponent(`/board?workspace=${workspaceId}`)}`);
   await page.getByLabel('개발 계정', { exact: true }).selectOption(role);
   await page.getByRole('button', { name: '개발 계정으로 로그인', exact: true }).click();
-  await expect(page.getByText(`역할: ${role}`, { exact: true })).toBeVisible();
+  await expect(page.getByText(`역할: ${{owner:'관리자',member:'멤버',viewer:'읽기 전용'}[role]}`, { exact: true })).toBeVisible();
 }
 const card = (page, row) => page.locator(`[data-issue-id="${row.id}"]`);
 const column = (page, status) => page.locator(`section[data-status="${status}"]`);
@@ -81,7 +81,7 @@ async function videoContext(browser, info) {
 
 const detail = (page) => page.locator('dialog.issue-detail');
 const synced = (page) => expect(page.locator('[data-realtime-state]')).toHaveAttribute('data-realtime-state', 'subscribed', { timeout: 20_000 });
-async function open(page, row) { await card(page, row).locator('.issue-card-link').click(); await expect(detail(page).getByLabel('이슈 제목', { exact: true })).toBeVisible(); }
+async function open(page, row) { await card(page, row).locator('.issue-card-link').click(); await expect(detail(page).getByLabel('버그 제목', { exact: true })).toBeVisible(); }
 async function save(page) { await detail(page).getByRole('button', { name: '변경 저장', exact: true }).click(); }
 function packet(message) {
   const data = JSON.parse(message.toString());
@@ -103,7 +103,7 @@ test('D7 two browser users race different fields: one commit, one conflict, copy
         const response = await route.fetch(); responses.push({ index, result: await response.json() }); await route.fulfill({ response });
       });
     }
-    await detail(owner.page).getByLabel('이슈 제목', { exact: true }).fill('Owner가 고친 제목');
+    await detail(owner.page).getByLabel('버그 제목', { exact: true }).fill('Owner가 고친 제목');
     await detail(member.page).getByLabel('환경', { exact: true }).fill('Member의 보존할 환경 초안');
     await Promise.all(participants.map((actor) => save(actor.page)));
     await expect.poll(() => requests.length).toBe(2);
@@ -119,11 +119,11 @@ test('D7 two browser users race different fields: one commit, one conflict, copy
     expect((await db.query('select count(*)::int as n from private.command_receipts where workspace_id=$1 and request_id=any($2::uuid[])', [workspaceId, ids])).rows[0].n).toBe(1);
     await expect(detail(loser.page).locator('.form-message')).toContainText('다른 변경이 먼저 저장됐습니다.');
     await expect(detail(loser.page).getByRole('region', { name: '충돌 복구' })).toBeVisible();
-    const localField = loserIndex === 0 ? '이슈 제목' : '환경', localValue = loserIndex === 0 ? 'Owner가 고친 제목' : 'Member의 보존할 환경 초안';
+    const localField = loserIndex === 0 ? '버그 제목' : '환경', localValue = loserIndex === 0 ? 'Owner가 고친 제목' : 'Member의 보존할 환경 초안';
     await expect(detail(loser.page).getByLabel(localField, { exact: true })).toHaveValue(localValue);
     await detail(loser.page).getByRole('button', { name: '최신 값 보기', exact: true }).scrollIntoViewIfNeeded();
     await detail(loser.page).getByRole('button', { name: '최신 값 보기', exact: true }).click();
-    await expect(detail(loser.page).getByRole('table', { name: '서버 값과 내 입력 비교' })).toContainText(localValue);
+    await expect(detail(loser.page).getByRole('table', { name: '최신 내용과 내 입력 비교' })).toContainText(localValue);
     await detail(loser.page).getByRole('button', { name: '내 입력 복사', exact: true }).click();
     await expect(detail(loser.page).getByText('내 입력을 복사했습니다.', { exact: true })).toBeVisible();
     expect(await loser.page.evaluate(() => navigator.clipboard.readText())).toContain(localValue);
@@ -132,7 +132,7 @@ test('D7 two browser users race different fields: one commit, one conflict, copy
     expect(requests).toHaveLength(2);
     await info.attach('d7-conflict', { body: await loser.page.screenshot(), contentType: 'image/png' });
     await detail(loser.page).getByRole('button', { name: '최신 값으로 다시 편집', exact: true }).click();
-    await expect(detail(loser.page).getByLabel('이슈 제목', { exact: true })).toBeFocused();
+    await expect(detail(loser.page).getByLabel('버그 제목', { exact: true })).toBeFocused();
     expect(requests).toHaveLength(2);
     await detail(loser.page).getByLabel(localField, { exact: true }).fill(`${localValue} · 확인 후 수정`);
     await save(loser.page); await expect.poll(() => requests.length).toBe(3);
@@ -171,20 +171,20 @@ test('D7 subscription handshake gap, an event during snapshot, and duplicate rea
     });
     await login(a, workspaceId); await joinArrived.wait();
     await expect(card(a, row)).toContainText('구독 전 제목');
-    await detail(b).getByLabel('이슈 제목', { exact: true }).fill('구독 공백 사이의 변경'); await save(b);
+    await detail(b).getByLabel('버그 제목', { exact: true }).fill('구독 공백 사이의 변경'); await save(b);
     await expect.poll(async () => (await stored(row)).version).toBe(2);
     holdSnapshot = true; joinGate.resolve(); await snapshotArrived.wait();
-    await detail(b).getByLabel('이슈 제목', { exact: true }).fill('구독 완료 조회 도중의 변경'); await save(b);
+    await detail(b).getByLabel('버그 제목', { exact: true }).fill('구독 완료 조회 도중의 변경'); await save(b);
     await expect.poll(() => events).toBeGreaterThan(0); snapshotGate.resolve();
     await expect(card(a, row)).toContainText('구독 완료 조회 도중의 변경'); await synced(a);
     expect(gets).toBeGreaterThanOrEqual(3); await expect(card(a, row)).toHaveCount(1);
-    await open(a, row); await expect(detail(a).getByLabel('이슈 제목', { exact: true })).toHaveValue('구독 완료 조회 도중의 변경');
+    await open(a, row); await expect(detail(a).getByLabel('버그 제목', { exact: true })).toHaveValue('구독 완료 조회 도중의 변경');
     await detail(a).getByRole('button', { name: '상세 닫기', exact: true }).click();
     await detail(b).getByRole('button', { name: '상세 닫기', exact: true }).click();
     await expect(detail(a)).toHaveCount(0); await expect(detail(b)).toHaveCount(0);
-    await b.getByLabel('새 이슈 제목', { exact: true }).fill('중복 INSERT 알림 카드');
-    await expect(b.getByLabel('새 이슈 제목', { exact: true })).toHaveValue('중복 INSERT 알림 카드');
-    await b.getByRole('button', { name: 'Inbox에 생성', exact: true }).click();
+    await b.getByLabel('새 버그 제목', { exact: true }).fill('중복 INSERT 알림 카드');
+    await expect(b.getByLabel('새 버그 제목', { exact: true })).toHaveValue('중복 INSERT 알림 카드');
+    await b.getByRole('button', { name: '버그 등록', exact: true }).click();
     await expect(b.getByRole('heading', { name: '중복 INSERT 알림 카드', exact: true })).toHaveCount(1);
     await expect(a.getByRole('heading', { name: '중복 INSERT 알림 카드', exact: true })).toHaveCount(1);
     expect((await db.query('select count(*)::int as n from public.issues where workspace_id=$1', [workspaceId])).rows[0].n).toBe(2);
@@ -212,7 +212,7 @@ test('D7 actual remote change supersedes pending A, B succeeds and late conflict
     await drag(a, aRow, 'ready'); await arrived.wait();
     await expect(inColumn(a, aRow, 'ready')).toContainText('저장 중');
     await drag(a, bRow, 'ready'); await expect(inColumn(b, bRow, 'ready')).toBeVisible();
-    await open(b, aRow); await detail(b).getByLabel('이슈 제목', { exact: true }).fill('Member의 최신 A 제목'); await save(b);
+    await open(b, aRow); await detail(b).getByLabel('버그 제목', { exact: true }).fill('Member의 최신 A 제목'); await save(b);
     await expect(inColumn(a, aRow, 'inbox')).toContainText('Member의 최신 A 제목');
     await expect(card(a, aRow)).toContainText('저장 중'); await expect(card(a, aRow).locator('.drag-handle')).toBeDisabled();
     gate.resolve(); await expect(card(a, aRow)).toContainText('다른 변경이 먼저 저장됐습니다.');
@@ -220,9 +220,9 @@ test('D7 actual remote change supersedes pending A, B succeeds and late conflict
     reject = false;
     await drag(a, aRow, 'ready'); await successArrived.wait();
     // The successful response is held after commit. B sees it via the actual socket.
-    await expect(detail(b).locator('.detail-toolbar')).toContainText('Ready');
+    await expect(detail(b).locator('.detail-toolbar')).toContainText('진행 대기');
     await detail(b).getByRole('button', { name: '최신 값으로 다시 편집', exact: true }).click();
-    await detail(b).getByRole('button', { name: 'In Progress로 이동', exact: true }).click();
+    await detail(b).getByRole('button', { name: '수정 중으로 이동', exact: true }).click();
     await b.locator('dialog.transition-dialog').getByRole('button', { name: '이동 확인', exact: true }).click();
     await expect(inColumn(a, aRow, 'in_progress')).toContainText('저장 중');
     successGate.resolve(); await expect(card(a, aRow).locator('.drag-handle')).toBeEnabled();

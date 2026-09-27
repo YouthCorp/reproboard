@@ -12,6 +12,15 @@ export function BoardFilters({ client, workspaceId, state, change }: {
   const members = useMembers(client, workspaceId);
   // Only the not-yet-committed input lives here; URL owns every applied condition.
   const [draft, setDraft] = useState(state.q), [observed, setObserved] = useState(state.q);
+  const filterDetails = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const narrow = window.matchMedia("(max-width: 650px)");
+    // Native disclosure owns its open state. Controlling onToggle and open together
+    // can replay the initial toggle after the mobile media query closes it.
+    const adjust = () => { if (filterDetails.current) filterDetails.current.open = !narrow.matches; };
+    adjust(); narrow.addEventListener("change", adjust);
+    return () => narrow.removeEventListener("change", adjust);
+  }, []);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined), composing = useRef(false);
   if (observed !== state.q) { setObserved(state.q); setDraft(state.q); }
   useEffect(() => {
@@ -32,13 +41,15 @@ export function BoardFilters({ client, workspaceId, state, change }: {
     change({ q: "", severity: "", priority: "", assignee: "", sort: "updated" });
   }
   const unknownAssignee = state.assignee && state.assignee !== "none" && members.isSuccess && !members.data.some((member) => member.user_id === state.assignee);
+  const applied = [state.severity, state.priority, state.assignee ? state.assignee === "none" ? "담당자 미지정" : members.data?.find((m) => m.user_id === state.assignee)?.display_name ?? "담당자 확인 필요" : "", state.sort === "priority" ? "우선순위 순" : ""].filter(Boolean);
   return <section className="board-filters" aria-label="이슈 검색과 필터">
-    <label className="board-search">제목·이슈키 검색
+    <label className="board-search">제목·번호 검색
       <input type="search" value={draft} placeholder="제목 또는 RB-번호" aria-describedby="board-search-help"
         onChange={(event) => { setDraft(event.target.value); if (!composing.current) schedule(event.target.value); }}
         onCompositionStart={() => { composing.current = true; clearTimeout(timer.current); }}
         onCompositionEnd={(event) => { composing.current = false; setDraft(event.currentTarget.value); schedule(event.currentTarget.value); }} />
     </label>
+    <details className="filter-options" ref={filterDetails}><summary>필터·정렬{applied.length ? ` · ${applied.join(" · ")}` : " · 전체"}</summary><div className="filter-controls">
     <div className="board-filter-control"><label htmlFor="filter-severity">심각도 필터</label><select id="filter-severity" value={state.severity} onChange={(event) => change({ severity: event.target.value })}>
       <option value="">전체 심각도</option>{Object.entries(severities).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
     </select></div>
@@ -50,9 +61,10 @@ export function BoardFilters({ client, workspaceId, state, change }: {
       {state.assignee && state.assignee !== "none" && !members.data?.some((member) => member.user_id === state.assignee) && <option value={state.assignee}>담당자 확인 필요</option>}
       {members.data?.map((member) => <option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}
     </select></div>
-    <div className="board-filter-control"><label htmlFor="filter-sort">이슈 정렬</label><select id="filter-sort" value={state.sort} onChange={(event) => change({ sort: event.target.value })}>
+    <div className="board-filter-control"><label htmlFor="filter-sort">정렬</label><select id="filter-sort" value={state.sort} onChange={(event) => change({ sort: event.target.value })}>
       <option value="updated">최근 수정 순</option><option value="priority">우선순위 순</option>
     </select></div>
+    </div></details>
     <button type="button" className="button button-secondary" onClick={reset}>검색·필터 초기화</button>
     <p id="board-search-help" className="form-hint">제목·이슈키의 일부를 검색합니다. 최대 120자, 앞뒤 공백 제외. 입력을 마치면 조건이 주소에 반영됩니다.</p>
     {members.isError && <p role="alert">담당자 목록을 불러오지 못했습니다. <button onClick={() => members.refetch()}>필터 담당자 다시 조회</button></p>}

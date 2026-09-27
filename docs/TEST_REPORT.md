@@ -1,5 +1,11 @@
 # 테스트 실행 보고서
 
+## UI/UX 개선 회귀 — 2026-09-27
+
+lint/typecheck·단위 57·build, 실제 DB/별도 두 browser context UI 35, production smoke 6 PASS. 마지막 수정 관련 URL 4/팀·인증 4, 최종 화면/모바일/폰트 차단/Viewer 4, 실제 폰트 비교 1 PASS. 합성 100개 production 조작 30회 관찰도 완료했다. [단일 개선 기록](UI_UX_REVIEW.md#실제-검증과-수정한-회귀)에 초기 실패·수정·명령·캡처·미실행 범위를 모았고, [35건 실행 결과](evidence/ui-regression.json)와 [실제 표본](evidence/ui-interaction.json)을 남겼다.
+
+원본 제품 테이블 10개·Auth id·config/env/계정 파일 해시 일치, 원래 팀 3·이슈 1 보존. 독립 DB 46건은 이번에 재실행하지 않았다(D12 PASS). 실제 OAuth·원격 CI·공개 배포·외부 사용자·실제 OS IME/스크린리더는 NOT_RUN이며 자기 검증이다. D13 아래 기록은 당시 UI와 소스의 결과로 유지한다.
+
 ## D13 실제 재현·시연 — 2026-09-26
 
 **로컬 범위 PASS. 공개 배포/실제 OAuth/원격 CI NOT_RUN.** 기존 데이터는 보존하고 `1f0b86c`의 git archive를 `.local/cleanroom-20260926/reproboard`에 풀었다. Node 24.19.0/pnpm 11.19.0/Windows 25H2/Chromium, 같은 OS의 pnpm store·Docker 이미지·브라우저 캐시는 재사용했다. 새 OS나 외부 기여자의 독립 재현 결과가 아니다. [환경·명령·DB 검증 증빙](evidence/d13-reproduction.json).

@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </ol>
       </section>
       <section className="login-card" aria-labelledby="login-title">
-        <span className="outline-badge">개발 중</span>
+        <span className="outline-badge">{accounts ? "로컬 체험 · 합성 데이터" : "팀 작업 공간"}</span>
         <h2 id="login-title">팀의 보드로 시작하기</h2>
         <p>GitHub 계정으로 로그인하고 팀에 참여하세요.</p>
         {params.reason === "session-expired" && <p role="alert">세션이 만료되었거나 종료됐습니다. 다시 로그인하세요.</p>}
@@ -35,7 +35,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         {accounts && <DevLogin accounts={accounts} next={next} />}
         <div className="login-divider" />
         <Link className="preview-link" href="/board">보드 화면 미리보기 <span aria-hidden="true">→</span></Link>
-        <p className="preview-note">데이터가 없는 화면 골격을 둘러보세요.</p>
+        <p className="preview-note">로그인 전에 5단계 작업 흐름을 살펴보세요.</p>
       </section>
     </div>
   );

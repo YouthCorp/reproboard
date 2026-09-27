@@ -15,8 +15,8 @@ export function Notifications({ client, workspaceId, userId, selectIssue }: { cl
       if (result.data.length < 200) return rows.reverse();
     }
   } });
-  return <details className="notifications"><summary>내 알림 · 이 팀 {notifications.data?.filter((n) => !n.read_at).length ?? "…"}건 안 읽음</summary>
-    <p className="form-hint">이 팀에서 나를 멘션한 댓글입니다. 자기 멘션은 알림을 보내지 않습니다.</p>
+  return <details className="notifications"><summary>내 알림 · {notifications.data?.filter((n) => !n.read_at).length ?? "…"}건 안 읽음</summary>
+    <p className="form-hint">이 팀에서 나를 선택해 알림을 보낸 댓글입니다. 내가 나를 선택한 댓글은 제외됩니다.</p>
     {notifications.isPending && <p role="status">알림을 불러오는 중…</p>}
     {notifications.isError && <p role="alert">알림을 불러오지 못했습니다. <button onClick={() => notifications.refetch()}>알림 다시 조회</button></p>}
     {notifications.data?.length === 0 && <p>아직 알림이 없습니다.</p>}

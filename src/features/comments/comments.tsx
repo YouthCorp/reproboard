@@ -44,16 +44,16 @@ export function Comments({ client, workspaceId, issueId, canWrite }: { client: A
     {comments.data?.length === 0 && <p>아직 댓글이 없습니다.</p>}
     <ol className="comment-list">{comments.data?.map((comment) => <li key={comment.id}>
       <strong>{name(comment.actor_id)}</strong><p className="comment-body">{comment.body}</p>
-      {comment.mention_ids.length > 0 && <p className="form-hint">멘션: {comment.mention_ids.map(name).join(" · ")}</p>}
+      {comment.mention_ids.length > 0 && <p className="form-hint">알림 받을 팀원: {comment.mention_ids.map(name).join(" · ")}</p>}
       <time className="form-hint">{new Date(comment.created_at).toLocaleString("ko-KR")}</time>
     </li>)}</ol>
     {retained ? <form onSubmit={(event) => { event.preventDefault(); void submit(); }}>
       <label htmlFor="comment-body">댓글 내용</label>
       <textarea id="comment-body" ref={input} rows={3} value={body} onChange={(event) => setBody(event.target.value)} readOnly={!canWrite || frozen}
         aria-invalid={!!validation} aria-describedby="comment-help comment-error" />
-      <p id="comment-help" className="form-hint">일반 텍스트 · 공백 제거 후 {Array.from(body.trim()).length}/4,000자 · 이슈 본문 수정과 별도로 저장됩니다.</p>
+      <p id="comment-help" className="form-hint">{Array.from(body.trim()).length}/4,000자 · 댓글은 본문과 별도로 저장됩니다.</p>
       <p id="comment-error" role={validation ? "alert" : undefined}>{validation}</p>
-      <fieldset disabled={!canWrite || frozen}><legend>멘션할 팀 멤버 (최대 8명)</legend>
+      <fieldset disabled={!canWrite || frozen}><legend>알림을 보낼 팀원 (최대 8명)</legend>
         {members.isPending && <p>멤버 조회 중…</p>}
         {members.isError && <p role="alert">멤버를 불러오지 못했습니다. <button type="button" onClick={() => members.refetch()}>멤버 다시 조회</button></p>}
         <div className="mention-options">{members.data?.map((member) => <label key={member.user_id}>
@@ -63,15 +63,15 @@ export function Comments({ client, workspaceId, issueId, canWrite }: { client: A
       </fieldset>
       {!canWrite && <p>댓글 작성 권한이 없습니다. 작성 중인 입력은 유지됩니다.</p>}
       {command.message && <p role="status">{command.message}</p>}
-      <button className="button" disabled={!canWrite || command.pending || connection?.online === false}>
+      <button className="button button-primary" disabled={!canWrite || command.pending || connection?.online === false}>
         {command.pending ? "댓글 저장 중…" : command.unconfirmed ? "같은 댓글 요청 확인" : "댓글 등록"}
       </button>
-    </form> : <p>Viewer는 댓글을 읽을 수 있습니다.</p>}
+    </form> : <p>읽기 전용 멤버는 댓글을 확인할 수 있습니다.</p>}
     <details className="comment-activity"><summary>최근 활동 (최대 50건)</summary>
       {activity.isPending && <p>활동 조회 중…</p>}
       {activity.isError && <p role="alert">활동을 불러오지 못했습니다. <button onClick={() => activity.refetch()}>활동 다시 조회</button></p>}
       {activity.data?.length === 0 && <p>아직 활동이 없습니다.</p>}
-      <ol>{activity.data?.map((event) => <li key={event.id}>{name(event.actor_id)} · {event.event_type === "comment_added" ? "댓글 등록" : event.event_type === "issue_created" ? "이슈 생성" : event.event_type === "issue_status_changed" ? "상태 이동" : "본문 수정"} · {new Date(event.created_at).toLocaleString("ko-KR")}</li>)}</ol>
+      <ol>{activity.data?.map((event) => <li key={event.id}>{name(event.actor_id)} · {event.event_type === "comment_added" ? "댓글 등록" : event.event_type === "issue_created" ? "버그 등록" : event.event_type === "issue_status_changed" ? "상태 이동" : "본문 수정"} · {new Date(event.created_at).toLocaleString("ko-KR")}</li>)}</ol>
     </details>
   </section>;
 }

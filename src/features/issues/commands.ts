@@ -27,5 +27,10 @@ export async function executeIssueCommand(client: AppSupabase, command: BoardCom
   if (response.error) throw new Error("UNKNOWN_RESULT");
   const data = response.data;
   if (!data || typeof data !== "object" || Array.isArray(data) || typeof data.ok !== "boolean") throw new Error("UNKNOWN_RESULT");
+  // Presentation only: keep DB enums, rejection codes and receipt payloads unchanged.
+  if (!data.ok && typeof data.message === "string") {
+    const labels: Record<string, string> = { Inbox: "접수", Ready: "진행 대기", "In Progress": "수정 중", Verify: "재검증", Done: "완료", Owner: "관리자", Member: "멤버", Viewer: "읽기 전용" };
+    return { ...data, message: data.message.replace(/\b(Inbox|Ready|In Progress|Verify|Done|Owner|Member|Viewer)\b/g, (label) => labels[label]).replaceAll("이슈", "버그") } as CommandResult;
+  }
   return data as CommandResult;
 }

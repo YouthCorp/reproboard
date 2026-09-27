@@ -42,7 +42,7 @@ async function login(page, workspaceId, role = 'owner') {
   await page.goto(`/login?next=${encodeURIComponent(`/board?workspace=${workspaceId}`)}`);
   await page.getByLabel('개발 계정', { exact: true }).selectOption(role);
   await page.getByRole('button', { name: '개발 계정으로 로그인', exact: true }).click();
-  await expect(page.getByText(`역할: ${role}`, { exact: true })).toBeVisible();
+  await expect(page.getByText(`역할: ${{owner:'관리자',member:'멤버',viewer:'읽기 전용'}[role]}`, { exact: true })).toBeVisible();
 }
 const card = (page, row) => page.locator(`[data-issue-id="${row.id}"]`);
 const column = (page, status) => page.locator(`section[data-status="${status}"]`);
@@ -100,8 +100,8 @@ test('D6 delayed A rejects against the actual DB while B succeeds; only A overla
     expect((await stored(a)).status).toBe('inbox');
     await expect(card(page, a).locator('.drag-handle')).toBeDisabled();
     await card(page, a).locator('.issue-card-link').click();
-    await expect(page.getByLabel('이슈 제목', { exact: true })).toBeDisabled();
-    await expect(page.locator('dialog.issue-detail .detail-toolbar')).toContainText('Ready');
+    await expect(page.getByLabel('버그 제목', { exact: true })).toBeDisabled();
+    await expect(page.locator('dialog.issue-detail .detail-toolbar')).toContainText('진행 대기');
     await page.getByRole('button', { name: '상세 닫기', exact: true }).click();
     await drag(page, b, 'ready');
     await expect(inColumn(page, b, 'ready').getByText(`${b.issue_key} 저장했습니다.`, { exact: true })).toBeVisible();
@@ -125,7 +125,7 @@ test('D6 delayed A rejects against the actual DB while B succeeds; only A overla
   await info.attach('d6-request-isolation', { path: await video.path(), contentType: 'video/webm' });
 });
 
-test('D6 Verify drag waits for the form; committed verification response loss replays one request without duplicate effects', async ({ browser }, info) => {
+test('D6 재검증 drag waits for the form; committed verification response loss replays one request without duplicate effects', async ({ browser }, info) => {
   test.setTimeout(60_000);
   const workspaceId = await team(), row = await issue(workspaceId, '검증 저장 후 응답 유실 복구', 'verify');
   const { context, page, video } = await videoContext(browser, info); const payloads = [];
@@ -145,7 +145,7 @@ test('D6 Verify drag waits for the form; committed verification response loss re
     });
     await drag(page, row, 'done');
     await modal(page).getByLabel('검증 환경', { exact: true }).fill('Windows Chromium · 실제 로컬 DB');
-    await modal(page).getByRole('button', { name: '통과 기록 후 Done', exact: true }).click();
+    await modal(page).getByRole('button', { name: '통과 기록 후 완료', exact: true }).click();
     await expect(modal(page)).toContainText('결과 확인 중');
     await expect(modal(page).getByLabel('검증 환경', { exact: true })).toHaveValue('Windows Chromium · 실제 로컬 DB');
     await modal(page).getByRole('button', { name: '보드에서 계속 작업', exact: true }).click();
@@ -185,7 +185,7 @@ test('D6 later success receipt cannot overwrite a newer GET; timeout remains unc
     await expect(inColumn(page, a, 'in_progress')).toContainText(`${a.issue_key} 저장했습니다.`);
     await expect(inColumn(page, a, 'ready')).toHaveCount(0);
     await card(page, a).locator('.issue-card-link').click();
-    await expect(page.locator('dialog.issue-detail .detail-toolbar')).toContainText('In Progress');
+    await expect(page.locator('dialog.issue-detail .detail-toolbar')).toContainText('수정 중');
     await page.getByRole('button', { name: '상세 닫기', exact: true }).click();
     expect((await stored(a)).version).toBe(newer.version);
     await drag(page, b, 'ready');
@@ -210,7 +210,7 @@ test('D6 same-column and forbidden drops send nothing; keyboard menu stays avail
   await expect(page.locator('.board-move-message')).toContainText('허용되지 않은 상태 이동');
   expect(sends).toBe(0); expect((await stored(row)).status).toBe('inbox');
   const open = card(page, row).locator('.issue-card-link'); await open.focus(); await page.keyboard.press('Enter');
-  const ready = page.getByRole('button', { name: 'Ready로 이동', exact: true }); await ready.focus(); await page.keyboard.press('Enter');
+  const ready = page.getByRole('button', { name: '진행 대기로 이동', exact: true }); await ready.focus(); await page.keyboard.press('Enter');
   const confirm = modal(page).getByRole('button', { name: '이동 확인', exact: true }); await confirm.focus(); await page.keyboard.press('Enter');
   await expect(modal(page)).toHaveCount(0); expect((await stored(row)).status).toBe('ready'); expect(sends).toBe(1);
   const viewer = await browser.newContext(); const other = await viewer.newPage();

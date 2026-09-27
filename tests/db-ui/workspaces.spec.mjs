@@ -66,21 +66,27 @@ test('create workspace, share a fragment invitation, join and switch Member/View
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const name = `합성 브라우저 팀 ${randomUUID()}`;
+  // Register before any UI assertion: a changed label must not leak a committed fixture.
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname !== '/rest/v1/rpc/create_workspace') return;
+    const body = request.postDataJSON();
+    if (body?.p_payload?.name === name && typeof body.p_workspace_id === 'string') teams.add(body.p_workspace_id);
+  });
   await login(page, 'owner');
-  await page.getByText('새 워크스페이스 만들기', { exact: true }).click();
-  await page.getByLabel('새 워크스페이스 이름', { exact: true }).fill(name);
-  await page.getByRole('button', { name: '워크스페이스 생성', exact: true }).click();
-  await expect(page.getByRole('combobox', { name: '워크스페이스', exact: true })).toContainText(name);
+  await page.getByText('새 팀 만들기', { exact: true }).click();
+  await page.getByLabel('새 팀 이름', { exact: true }).fill(name);
+  await page.getByRole('button', { name: '팀 만들기', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: '작업할 팀', exact: true })).toContainText(name);
   const created = await db.query('select id from public.workspaces where name=$1', [name]);
   expect(created.rows).toHaveLength(1);
   const workspace = created.rows[0].id; teams.add(workspace);
   await expect(page).toHaveURL(new RegExp(`workspace=${workspace}`));
   await expect(page.locator('#workspace-select option:checked')).toHaveText(name);
-  await expect(page.getByText('역할: owner', { exact: true })).toBeVisible();
+  await expect(page.getByText('역할: 관리자', { exact: true })).toBeVisible();
   expect((await db.query('select owner_id from public.workspaces where id=$1', [workspace])).rows[0].owner_id).toBe(accounts.find((item) => item.role === 'owner').id);
-  await page.getByText('팀 멤버와 권한', { exact: true }).click();
-  await expect(page.getByRole('button', { name: '합성 Owner → Viewer', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Member 초대 링크 생성', exact: true }).click();
+  await page.getByText('팀 관리', { exact: true }).click();
+  await expect(page.getByRole('button', { name: '합성 Owner → 읽기 전용', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: '멤버 초대 링크 만들기', exact: true }).click();
   const linkInput = page.getByLabel('초대 링크', { exact: true });
   await expect(linkInput).toHaveValue(/\/invite#[0-9a-f]{64}$/);
   const link = await linkInput.inputValue();
@@ -94,23 +100,23 @@ test('create workspace, share a fragment invitation, join and switch Member/View
     await memberPage.getByLabel('개발 계정', { exact: true }).selectOption('member');
     await memberPage.getByRole('button', { name: '개발 계정으로 로그인', exact: true }).click();
     await expect(memberPage).toHaveURL(/\/invite$/);
-    await memberPage.getByRole('button', { name: '초대 수락하고 Member로 참여', exact: true }).click();
+    await memberPage.getByRole('button', { name: '초대 수락하고 멤버로 참여', exact: true }).click();
     await expect(memberPage).toHaveURL(new RegExp(`workspace=${workspace}`));
-    await expect(memberPage.getByText('역할: member', { exact: true })).toBeVisible();
-    await expect(memberPage.getByLabel('새 이슈 제목', { exact: true })).toBeVisible();
+    await expect(memberPage.getByText('역할: 멤버', { exact: true })).toBeVisible();
+    await expect(memberPage.getByLabel('새 버그 제목', { exact: true })).toBeVisible();
     expect(requestUrls.some((url) => url.includes(link.split('#')[1]))).toBe(false);
     await page.reload();
-    await page.getByText('팀 멤버와 권한', { exact: true }).click();
-    await page.getByRole('button', { name: '합성 Member → Viewer', exact: true }).click();
-    await expect(page.getByRole('button', { name: '합성 Member → Member', exact: true })).toBeVisible();
+    await page.getByText('팀 관리', { exact: true }).click();
+    await page.getByRole('button', { name: '합성 Member → 읽기 전용', exact: true }).click();
+    await expect(page.getByRole('button', { name: '합성 Member → 멤버', exact: true })).toBeVisible();
     await memberPage.reload();
-    await expect(memberPage.getByText('Viewer는 조회만 할 수 있습니다.', { exact: true })).toBeVisible();
-    await memberPage.getByText('팀 멤버와 권한', { exact: true }).click();
-    await expect(memberPage.getByRole('button', { name: 'Member 초대 링크 생성', exact: true })).toHaveCount(0);
-    await expect(memberPage.getByLabel('새 이슈 제목', { exact: true })).toHaveCount(0);
-    await page.getByRole('button', { name: '합성 Member → Member', exact: true }).click();
+    await expect(memberPage.getByText('읽기 전용입니다. 버그 내용을 확인할 수 있습니다.', { exact: true })).toBeVisible();
+    await memberPage.getByText('팀 관리', { exact: true }).click();
+    await expect(memberPage.getByRole('button', { name: '멤버 초대 링크 만들기', exact: true })).toHaveCount(0);
+    await expect(memberPage.getByLabel('새 버그 제목', { exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: '합성 Member → 멤버', exact: true }).click();
     await memberPage.reload();
-    await expect(memberPage.getByLabel('새 이슈 제목', { exact: true })).toBeVisible();
+    await expect(memberPage.getByLabel('새 버그 제목', { exact: true })).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     // Reload removed the raw link; this capture contains no invitation token.
@@ -124,7 +130,7 @@ test('expired invitations show a recoverable rejection; a foreign team profile s
   await db.query("update private.workspace_invites set created_at=statement_timestamp()-interval '25 hours', expires_at=statement_timestamp()-interval '1 hour' where id=$1", [data.inviteId]);
   await login(page, 'viewer');
   await page.goto(`/invite#${data.raw}`);
-  await page.getByRole('button', { name: '초대 수락하고 Member로 참여', exact: true }).click();
+  await page.getByRole('button', { name: '초대 수락하고 멤버로 참여', exact: true }).click();
   await expect(page.getByText('만료되었거나 사용할 수 없는 초대입니다.', { exact: true })).toBeVisible();
   await page.goto(`/board?workspace=${testTeam('outsider')}`);
   await expect(page.getByText('접근할 수 있는 팀이 없습니다.', { exact: false })).toBeVisible();
@@ -133,7 +139,7 @@ test('expired invitations show a recoverable rejection; a foreign team profile s
 
 test('SSR refresh updates cookies; revoked refresh session leads to expiry guidance; logout clears cookies', async ({ page, context }) => {
   await login(page, 'owner');
-  await expect(page.getByLabel('새 이슈 제목', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('새 버그 제목', { exact: true })).toBeVisible();
   const response = await page.reload();
   // Next dev rewrites page Cache-Control. Auth route no-store and production headers are checked separately.
   expect(response.headers()['cache-control']).toContain('no-cache');
@@ -157,13 +163,13 @@ test('SSR refresh updates cookies; revoked refresh session leads to expiry guida
   await page.goto('/board');
   await expect(page).toHaveURL(/\/login\?reason=session-expired/);
   await expect(page.getByText('세션이 만료되었거나 종료됐습니다. 다시 로그인하세요.', { exact: true })).toBeVisible();
-  await expect(page.getByLabel('새 이슈 제목', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('새 버그 제목', { exact: true })).toHaveCount(0);
   await login(page, 'owner');
   await page.getByRole('button', { name: '로그아웃', exact: true }).click();
   await expect(page.getByText('로그아웃했습니다.', { exact: true })).toBeVisible();
   expect((await context.cookies()).filter((item) => /^sb-.+-auth-token(?:\.\d+)?$/.test(item.name)).length).toBe(0);
   await page.goto('/board');
-  await expect(page.getByText(/아래는 실제 조회 결과가 아닙니다/)).toBeVisible();
+  await expect(page.getByText(/아래는 5단계 작업 흐름을 보여주는 미리보기입니다/)).toBeVisible();
 });
 
 test('OAuth callback errors are sanitized, safe return state survives, and external redirects are refused', async ({ request }) => {

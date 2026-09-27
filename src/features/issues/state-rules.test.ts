@@ -16,14 +16,14 @@ describe("PRD transition contract", () => {
     expect(needsReason("in_progress", "ready")).toBe(true); expect(needsReason("verify", "in_progress")).toBe(false);
     expect(needsVerification("verify", "done")).toBe(true); expect(needsVerification("verify", "in_progress")).toBe(true);
   });
-  it("allows title-only Inbox and requires all reproduction/classification fields before Ready", () => {
+  it("allows title-only 접수 and requires all reproduction/classification fields before 진행 대기", () => {
     expect(stateFieldErrors("inbox", emptyValues, false)).toEqual({});
     expect(Object.keys(stateFieldErrors("ready", emptyValues, false))).toEqual(["steps", "expected", "actual", "environment", "reproduction", "severity", "priority"]);
     expect(stateFieldErrors("ready", ready, false)).toEqual({});
     for (const key of ["steps", "expected", "actual", "environment"] as const) expect(stateFieldErrors("ready", { ...ready, [key]: "\u3000\uFEFF" }, false)[key]).toBeTruthy();
     expect(stateFieldErrors("ready", { ...ready, reproduction: "intermittent", reproduction_note: " " }, false).reproduction_note).toBeTruthy();
   });
-  it("requires a current writer assignee and fix/build fields while allowing a retreat to Ready", () => {
+  it("requires a current writer assignee and fix/build fields while allowing a retreat to 진행 대기", () => {
     expect(stateFieldErrors("in_progress", ready, false).assignee_id).toBeTruthy();
     expect(stateFieldErrors("in_progress", ready, true)).toEqual({});
     expect(Object.keys(stateFieldErrors("verify", ready, true))).toEqual(["fix_note", "target_build"]);

@@ -8,7 +8,7 @@ export const textFields = [
   { key: "environment", label: "환경", max: 4000 },
   { key: "reproduction_note", label: "발생 조건 메모", max: 4000 },
   { key: "fix_note", label: "수정 메모", max: 4000 },
-  { key: "target_build", label: "대상 빌드", max: 120 },
+  { key: "target_build", label: "수정한 앱 버전", max: 120 },
 ] as const;
 export const reproductions = { unknown: "미확인", reproduced: "재현됨", intermittent: "간헐적 재현", not_reproduced: "재현 안 됨" };
 export const severities = { unset: "미설정", S1: "S1 · 핵심 기능 중단·데이터 손실", S2: "S2 · 주요 기능 문제·우회 어려움", S3: "S3 · 부분 문제·우회 가능", S4: "S4 · 표현·경미한 불편" };
@@ -37,7 +37,7 @@ export function validateFields(values: IssueValues, members: Member[], existingA
   if (!Object.hasOwn(severities, values.severity)) errors.severity = "심각도를 선택하세요.";
   if (!Object.hasOwn(priorities, values.priority)) errors.priority = "우선순위를 선택하세요.";
   if (values.reproduction === "intermittent" && !values.reproduction_note.trim()) errors.reproduction_note = "간헐적 재현에는 발생 조건 메모가 필요합니다.";
-  if (values.assignee_id && values.assignee_id !== existingAssignee && !members.some((m) => m.user_id === values.assignee_id && (m.role === "owner" || m.role === "member"))) errors.assignee_id = "담당자는 같은 팀의 Owner 또는 Member여야 합니다.";
+  if (values.assignee_id && values.assignee_id !== existingAssignee && !members.some((m) => m.user_id === values.assignee_id && (m.role === "owner" || m.role === "member"))) errors.assignee_id = "담당자는 같은 팀의 관리자 또는 멤버여야 합니다.";
   return errors;
 }
 export function completeness(values: Pick<IssueValues, "steps" | "expected" | "actual" | "environment">) {
@@ -46,9 +46,9 @@ export function completeness(values: Pick<IssueValues, "steps" | "expected" | "a
   return { count: 4 - missing.length, missing };
 }
 export const boardColumns = [
-  { id: "inbox", name: "Inbox", description: "새로 접수된 버그", tone: "neutral" },
-  { id: "ready", name: "Ready", description: "착수할 준비가 된 버그", tone: "blue" },
-  { id: "in_progress", name: "In Progress", description: "수정 중인 버그", tone: "amber" },
-  { id: "verify", name: "Verify", description: "재검증을 기다리는 버그", tone: "violet" },
-  { id: "done", name: "Done", description: "재검증을 마친 버그", tone: "green" },
+  { id: "inbox", name: "접수", description: "새로 접수된 버그", tone: "neutral" },
+  { id: "ready", name: "진행 대기", description: "착수할 준비가 된 버그", tone: "blue" },
+  { id: "in_progress", name: "수정 중", description: "수정 중인 버그", tone: "amber" },
+  { id: "verify", name: "재검증", description: "재검증을 기다리는 버그", tone: "violet" },
+  { id: "done", name: "완료", description: "재검증을 마친 버그", tone: "green" },
 ] as const;

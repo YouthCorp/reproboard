@@ -4,6 +4,7 @@ import { useId, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AppSupabase } from "@/lib/supabase/browser";
 import { useMembers } from "@/features/workspaces/use-members";
+import { roleLabels } from "@/features/workspaces/role-labels";
 import { type Issue, type IssueCommand } from "./commands";
 import { completeness, issueValues, normalized, priorities, priorityHelp, reproductions, severities, severityHelp, textFields, validateFields, type FieldErrors, type IssueValues } from "./fields";
 import { stateFieldErrors } from "./state-rules";
@@ -88,14 +89,14 @@ export function IssueForm({ client, workspaceId, issue, canWrite = true }: FormP
     }
   }
   function textControl(field: (typeof textFields)[number]) {
-    const label = field.key === "title" ? issue ? "이슈 제목" : "새 이슈 제목" : field.label;
+    const label = field.key === "title" ? issue ? "버그 제목" : "새 버그 제목" : field.label;
     const props = { id: `${id}-${field.key}`, name: field.key, value: draft[field.key], readOnly: !canWrite, "aria-invalid": !!errors[field.key],
       "aria-describedby": `${id}-${field.key}-hint${errors[field.key] ? ` ${id}-${field.key}-error` : ""}`,
       onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => change(field.key, event.target.value) };
     return <div className="issue-field" key={field.key}>
       <label htmlFor={props.id}>{label}</label>
       {field.key === "title" || field.key === "target_build" ? <input {...props} required={field.key === "title"} /> : <textarea {...props} rows={field.key === "steps" ? 4 : 3} />}
-      <p className="form-hint" id={`${id}-${field.key}-hint`}>{field.key === "title" && "필수 · "}{Array.from(draft[field.key].trim()).length.toLocaleString("ko-KR")} / {field.max.toLocaleString("ko-KR")}자 · 앞뒤 공백 제외{field.key === "reproduction_note" ? " · 간헐적 재현이면 필수" : ""}</p>
+      <p className="form-hint" id={`${id}-${field.key}-hint`}>{field.key === "title" && "필수 · "}{Array.from(draft[field.key].trim()).length.toLocaleString("ko-KR")} / {field.max.toLocaleString("ko-KR")}자{field.key === "reproduction_note" ? " · 간헐적으로 발생할 때 작성" : ""}</p>
       {errors[field.key] && <p className="field-error" id={`${id}-${field.key}-error`}>{errors[field.key]}</p>}
     </div>;
   }
@@ -110,7 +111,7 @@ export function IssueForm({ client, workspaceId, issue, canWrite = true }: FormP
     {issue && <TransitionMenu client={client} issue={issue} blocked={!canWrite || connection?.online === false || locked || (!done && (dirty || stale))} saved={(saved) => {
       if (!dirty) { setDraft(issueValues(saved)); setBaseVersion(saved.version); }
     }} />}
-    {done && <p className="read-only-note">Done의 본문은 잠겨 있습니다. 재오픈 후 편집할 수 있습니다.{dirty && " 작성 중이던 초안은 재오픈 전까지 보존합니다."}</p>}
+    {done && <p className="read-only-note">완료의 본문은 잠겨 있습니다. 재오픈 후 편집할 수 있습니다.{dirty && " 작성 중이던 초안은 재오픈 전까지 보존합니다."}</p>}
     {issue && (stale || conflict) && <ConflictRecovery issue={issue} draft={draft} members={members.data ?? []} locked={locked} newer={stale} restart={() => {
       setDraft(issueValues(issue)); setBaseVersion(issue.version); setErrors({}); setConflict(false); setMessage(""); focusField("title");
     }} />}
@@ -118,30 +119,40 @@ export function IssueForm({ client, workspaceId, issue, canWrite = true }: FormP
     onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }}
     onKeyDown={(event) => { if (event.key === "Enter" && (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229)) event.preventDefault(); }}>
     <fieldset disabled={locked || done}>
-      <legend className="sr-only">{issue ? "이슈 편집" : "Inbox 이슈 등록"}</legend>
+      <legend className="sr-only">{issue ? "버그 편집" : "버그 등록"}</legend>
       {textControl(textFields[0])}
-      {!issue && <button className="disclosure-button" type="button" aria-expanded={expanded} aria-controls={`${id}-fields`} onClick={() => setExpanded(!expanded)}>{expanded ? "추가 필드 접기" : "추가 필드 입력 (선택)"}</button>}
+      {!issue && <button className="disclosure-button" type="button" aria-expanded={expanded} aria-controls={`${id}-fields`} onClick={() => setExpanded(!expanded)}>{expanded ? "재현 정보 접기" : "재현 정보 함께 작성"}</button>}
       <div id={`${id}-fields`} hidden={!expanded}>
-        <div className="completeness" aria-live="polite"><strong>작성 중인 재현 정보 {fulfilled.count}/4 충족</strong><p>{fulfilled.missing.length ? `누락: ${fulfilled.missing.join(" · ")}` : "재현 단계·기대 결과·실제 결과·환경을 모두 입력했습니다."}</p></div>
-        {textFields.slice(1, 5).map(textControl)}
-        {selectControl("reproduction", "재현 상태", reproductions, "직접 확인한 재현 결과를 선택하세요. 입력 충족 수와는 별개입니다.")}
-        {textControl(textFields[5])}
-        <div className="field-pair">{selectControl("severity", "심각도 (severity)", severities, severityHelp)}{selectControl("priority", "우선순위 (priority)", priorities, priorityHelp)}</div>
+        <section className="issue-properties" aria-label="분류와 담당자">
+        <div className="field-pair">{selectControl("severity", "심각도", severities, "사용자에게 미치는 영향")}{selectControl("priority", "우선순위", priorities, "팀에서 처리할 순서")}</div>
         <div className="issue-field"><label htmlFor={`${id}-assignee_id`}>담당자</label>
           <select disabled={!canWrite} id={`${id}-assignee_id`} name="assignee_id" value={draft.assignee_id ?? ""} onChange={(event) => change("assignee_id", event.target.value || null)} aria-invalid={!!errors.assignee_id} aria-describedby={`${id}-assignee-hint`}>
             <option value="">미지정</option>
             {draft.assignee_id && !members.data?.some((m) => m.user_id === draft.assignee_id && m.role !== "viewer") && <option value={draft.assignee_id} disabled>기존 담당자 · 권한 확인 또는 재지정 필요</option>}
-            {members.data?.filter((m) => m.role === "owner" || m.role === "member").map((m) => <option key={m.user_id} value={m.user_id}>{m.display_name} · {m.role}</option>)}
-          </select><p id={`${id}-assignee-hint`} className={errors.assignee_id ? "field-error" : "form-hint"}>{errors.assignee_id || "같은 팀의 Owner 또는 Member만 새로 지정할 수 있습니다."}</p>
+            {members.data?.filter((m) => m.role === "owner" || m.role === "member").map((m) => <option key={m.user_id} value={m.user_id}>{m.display_name} · {roleLabels[m.role]}</option>)}
+          </select><p id={`${id}-assignee-hint`} className={errors.assignee_id ? "field-error" : "form-hint"}>{errors.assignee_id || "같은 팀의 관리자 또는 멤버만 새로 지정할 수 있습니다."}</p>
           {members.isPending && <p role="status">담당자 목록을 불러오는 중…</p>}
           {members.isError && <p role="alert">담당자를 불러오지 못했습니다. <button type="button" onClick={() => members.refetch()}>담당자 다시 조회</button></p>}
         </div>
-        <p className="form-hint">수정 메모·대상 빌드는 Verify부터 필수입니다. 현재 상태의 필수 정보는 이전 상태로 이동한 뒤 지울 수 있습니다.</p>
-        {textFields.slice(6).map(textControl)}
+        <details className="classification-help"><summary>심각도와 우선순위는 어떻게 다른가요?</summary><p>{severityHelp}</p><p>{priorityHelp}</p></details>
+        </section>
+        <section className="issue-form-section" aria-label="재현 정보 작성">
+          <h3>재현 정보</h3>
+          <div className="completeness" aria-live="polite"><strong>작성 중인 재현 정보 {fulfilled.count}/4 충족</strong><p>{fulfilled.missing.length ? `누락: ${fulfilled.missing.join(" · ")}` : "재현 단계·기대 결과·실제 결과·환경을 모두 입력했습니다."}</p></div>
+          {textControl(textFields[1])}
+          <div className="field-pair">{textControl(textFields[2])}{textControl(textFields[3])}</div>
+          {textControl(textFields[4])}
+          {selectControl("reproduction", "재현 상태", reproductions, "직접 확인한 결과를 선택하세요. 위의 충족 수는 정보 작성 여부입니다.")}
+          {textControl(textFields[5])}
+        </section>
+        <section className="issue-form-section" aria-label="수정 내용 작성"><h3>수정 내용</h3>
+          <p className="section-help">재검증으로 옮기기 전에 무엇을 고쳤는지, 어느 버전인지 남겨 주세요.</p>
+          {textFields.slice(6).map(textControl)}
+        </section>
       </div>
     </fieldset>
-    <div className="form-actions"><button className="button button-primary" type="submit" disabled={!canWrite || connection?.online === false || mutation.isPending || (sharedRequest && sharedRequest.command.requestId !== unconfirmed?.requestId) || (stale && !unconfirmed)}>{mutation.isPending ? "저장 중…" : unconfirmed ? "같은 요청으로 다시 확인" : issue ? "변경 저장" : "Inbox에 생성"}</button>
-      <span className="form-hint">{issue ? "저장 전 입력은 이 폼에만 유지됩니다." : "제목만 입력해도 Inbox에 등록할 수 있습니다."}</span></div>
+    <div className="form-actions"><button className="button button-primary" type="submit" disabled={!canWrite || connection?.online === false || mutation.isPending || (sharedRequest && sharedRequest.command.requestId !== unconfirmed?.requestId) || (stale && !unconfirmed)}>{mutation.isPending ? "저장 중…" : unconfirmed ? "같은 요청으로 다시 확인" : issue ? "변경 저장" : "버그 등록"}</button>
+      <span className="form-hint">{issue ? "아직 저장하지 않은 내용은 이 화면에만 남습니다." : "제목만 적어도 등록할 수 있습니다. 재현 정보는 나중에 추가하세요."}</span></div>
     <p className="form-message" role="status" tabIndex={-1}>{message}</p>
   </form></>;
 }

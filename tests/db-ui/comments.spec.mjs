@@ -33,7 +33,7 @@ async function login(page, workspace, role = 'owner') {
   await page.goto(`/login?next=${encodeURIComponent(`/board?workspace=${workspace}`)}`);
   await page.getByLabel('개발 계정', { exact: true }).selectOption(role);
   await page.getByRole('button', { name: '개발 계정으로 로그인', exact: true }).click();
-  if (role !== 'outsider') await expect(page.getByText(`역할: ${role}`, { exact: true })).toBeVisible();
+  if (role !== 'outsider') await expect(page.getByText(`역할: ${{owner:'관리자',member:'멤버',viewer:'읽기 전용'}[role]}`, { exact: true })).toBeVisible();
   else await expect(page.getByText('접근할 수 있는 팀이 없습니다. 팀 주소와 로그인 계정을 확인하세요.')).toBeVisible();
 }
 async function open(page, row) { await page.locator(`[data-issue-id="${row.id}"] .issue-card-link`).click(); await expect(page.getByRole('region', { name: '댓글과 활동' })).toBeVisible(); }
@@ -66,13 +66,13 @@ test('D9 two browser users: literal text, realtime comment/activity, dedup frame
     await open(a.page, row); await open(b.page, row);
     await expect(comments(a.page).getByText('아직 댓글이 없습니다.', { exact: true })).toBeVisible();
     await b.page.getByLabel('댓글 내용', { exact: true }).fill('원격 댓글이 와도 남아 있는 내 초안');
-    await b.page.getByLabel('이슈 제목', { exact: true }).fill('댓글 도착 전부터 편집한 제목');
+    await b.page.getByLabel('버그 제목', { exact: true }).fill('댓글 도착 전부터 편집한 제목');
     const body = '<img src=x onerror=alert(1)> 합성 재현 결과: 모바일에서도 발생합니다.';
     await submit(a.page, body, ['합성 Owner', '합성 Member', '합성 Viewer']);
     await expect(comments(b.page).locator('.comment-body').filter({ hasText: body })).toHaveCount(1);
     await expect(comments(b.page).locator('img')).toHaveCount(0); await expect.poll(() => events).toBeGreaterThan(0);
     await expect(b.page.getByLabel('댓글 내용', { exact: true })).toHaveValue('원격 댓글이 와도 남아 있는 내 초안');
-    await expect(b.page.getByLabel('이슈 제목', { exact: true })).toHaveValue('댓글 도착 전부터 편집한 제목');
+    await expect(b.page.getByLabel('버그 제목', { exact: true })).toHaveValue('댓글 도착 전부터 편집한 제목');
     await comments(b.page).locator('.comment-activity summary').click();
     await expect(comments(b.page).locator('.comment-activity li').filter({ hasText: '댓글 등록' })).toHaveCount(1);
     await submit(b.page, '합성 Member: 같은 환경에서 확인했습니다.', ['합성 Owner']);
@@ -89,7 +89,7 @@ test('D9 two browser users: literal text, realtime comment/activity, dedup frame
     await b.page.locator('.notifications').scrollIntoViewIfNeeded(); await info.attach('d9-notifications', { body: await b.page.screenshot(), contentType: 'image/png' });
     await b.page.locator('.notification-link').click(); await expect(b.page.getByLabel('댓글 내용', { exact: true })).toBeVisible();
     expect((await db.query('select version from public.issues where id=$1', [row.id])).rows[0].version).toBe(1);
-    await b.page.getByLabel('이슈 제목', { exact: true }).fill('댓글 이후 본문 수정도 충돌 없이 저장');
+    await b.page.getByLabel('버그 제목', { exact: true }).fill('댓글 이후 본문 수정도 충돌 없이 저장');
     await b.page.getByRole('button', { name: '변경 저장', exact: true }).click();
     await expect(b.page.locator('dialog .form-message')).toContainText('저장했습니다.');
     expect((await db.query('select version from public.issues where id=$1', [row.id])).rows[0].version).toBe(2);

@@ -28,7 +28,7 @@ export function DevLogin({ accounts, next = "/board" }: { accounts: DevAccount[]
   }
   return <form className="dev-login" onSubmit={login}>
     <h3>로컬 합성 계정</h3>
-    <p>개발 환경 전용입니다. 실제 Supabase 세션으로 합성 팀의 데이터를 저장합니다.</p>
+    <p>합성 데이터로 실제 기능을 체험할 수 있는 개발 전용 계정입니다.</p>
     <label htmlFor="dev-role">개발 계정</label>
     <select id="dev-role" value={role} onChange={(event) => setRole(event.target.value)} disabled={pending}>
       {accounts.map((account) => <option key={account.role} value={account.role}>{account.label}</option>)}

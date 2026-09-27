@@ -31,7 +31,7 @@ function AcceptForm({ client, token }: { client: AppSupabase; token: string }) {
         sessionStorage.removeItem(storageKey);
         router.replace(`/board?workspace=${result.data.workspaceId}`);
       }
-    }}>{command.pending ? "참여 중…" : command.unconfirmed ? "같은 요청으로 다시 확인" : "초대 수락하고 Member로 참여"}</button>
+    }}>{command.pending ? "참여 중…" : command.unconfirmed ? "같은 요청으로 다시 확인" : "초대 수락하고 멤버로 참여"}</button>
     <p role="status">{command.message}</p>
   </>;
 }
@@ -51,9 +51,9 @@ export function InviteAccept() {
   }, []);
   return <section className="invite-page" aria-labelledby="invite-title">
     <p className="page-eyebrow">WORKSPACE INVITATION</p><h1 id="invite-title">팀 초대 수락</h1>
-    <p>초대는 24시간 동안 한 번만 사용할 수 있습니다. 로그인한 계정이 Member로 참여합니다.</p>
+    <p>초대는 24시간 동안 한 번만 사용할 수 있습니다. 로그인한 계정이 멤버로 참여합니다.</p>
     {token === null ? <p role="status">초대 링크를 확인하는 중…</p> : token === "storage-error" ? <p role="alert">브라우저 저장 공간을 사용할 수 없습니다. 이 사이트의 저장을 허용한 뒤 초대 링크를 다시 여세요.</p> : !token ?
-      <p role="alert">올바른 초대 링크가 없습니다. Owner에게 받은 링크를 다시 여세요.</p> : !ready ? <p role="status">로그인을 확인하는 중…</p> :
+      <p role="alert">올바른 초대 링크가 없습니다. 관리자에게 받은 링크를 다시 여세요.</p> : !ready ? <p role="status">로그인을 확인하는 중…</p> :
       !client || !session ? <Link className="button button-primary" href="/login?next=%2Finvite">로그인하고 초대 계속하기</Link> : <>
         <p>현재 계정: {typeof session.user.user_metadata.display_name === "string" ? session.user.user_metadata.display_name : "로그인한 사용자"}</p>
         <AcceptForm key={`${session.user.id}/${token}`} client={client} token={token} />

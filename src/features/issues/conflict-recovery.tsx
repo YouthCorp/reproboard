@@ -27,9 +27,9 @@ export function ConflictRecovery({ issue, draft, members, locked, newer, restart
     catch { setCopy("클립보드에 접근할 수 없습니다. 아래 입력을 선택해 직접 복사하세요."); setFallback(text); }
   }
   return <section className="stale-draft" aria-label="충돌 복구">
-    <p role="alert">다른 변경이 있습니다. 작성 중인 입력은 유지했습니다.</p>
-    <p>현재 서버 제목: {issue.title}</p>
-    <p>서로 다른 필드를 고쳐도 같은 이슈의 수정은 충돌합니다. 자동 병합하거나 다시 저장하지 않습니다.</p>
+    <p role="alert">다른 팀원이 먼저 수정했어요. 작성 중인 내용은 그대로 남아 있습니다.</p>
+    <p>먼저 저장된 제목: {issue.title}</p>
+    <p>같은 버그를 함께 수정하면 먼저 저장한 내용이 반영됩니다. 다른 항목을 수정했더라도 최신 내용을 확인해 주세요.</p>
     <div className="form-actions">
       <button type="button" className="button button-secondary" onClick={async () => {
         setShow(true); setReadError(false);
@@ -41,14 +41,14 @@ export function ConflictRecovery({ issue, draft, members, locked, newer, restart
     {show && <div className="conflict-comparison">
       <p>마지막 조회한 서버 값과 내 입력입니다. 서버 상태: {boardColumns.find((c) => c.id === issue.status)?.name}</p>
       {readError && <p role="alert">최신 조회에 실패했습니다. 마지막 조회 값을 표시합니다.</p>}
-      <table><caption>서버 값과 내 입력 비교</caption><thead><tr><th scope="col">필드</th><th scope="col">서버 값</th><th scope="col">내 입력</th></tr></thead>
+      <table><caption>최신 내용과 내 입력 비교</caption><thead><tr><th scope="col">필드</th><th scope="col">서버 값</th><th scope="col">내 입력</th></tr></thead>
         <tbody>{fields.map(({ key, label }) => <tr key={key}><th scope="row">{label}</th><td>{value(key, saved) || "미입력"}</td><td>{value(key, draft) || "미입력"}</td></tr>)}</tbody>
       </table>
     </div>}
     <p role="status">{copy}</p>
     {fallback && <label>복사할 내 입력<textarea readOnly value={fallback} rows={8} onFocus={(event) => event.target.select()} /></label>}
-    <p>최신 값을 불러오면 이 폼의 작성 중인 내용을 교체합니다. 필요한 입력을 먼저 복사하세요. 다시 편집한 뒤 변경 저장을 눌러야 제출됩니다.</p>
+    <p>‘최신 값으로 다시 편집’을 누르면 작성 중인 내용이 바뀝니다. 필요한 입력을 먼저 복사한 뒤 다시 편집하고 저장해 주세요.</p>
     <button type="button" className="button button-secondary" disabled={locked || !newer || issue.status === "done" || readError} onClick={restart}>최신 값으로 다시 편집</button>
-    {issue.status === "done" && <p>Done의 본문은 재오픈 후 다시 편집할 수 있습니다. 보존한 입력을 복사할 수 있습니다.</p>}
+    {issue.status === "done" && <p>완료의 본문은 재오픈 후 다시 편집할 수 있습니다. 보존한 입력을 복사할 수 있습니다.</p>}
   </section>;
 }

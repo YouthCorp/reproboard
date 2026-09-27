@@ -8,6 +8,7 @@ import { IssueBoard } from "./issue-board";
 import { IssueDetail } from "./issue-detail";
 import { WorkspaceCreate } from "@/features/workspaces/workspace-create";
 import { TeamManagement } from "@/features/workspaces/team-management";
+import { roleLabels } from "@/features/workspaces/role-labels";
 import { Notifications } from "@/features/comments/notifications";
 import { IssueCommands } from "./issue-commands";
 import { mergeIssueSnapshot } from "./issue-cache";
@@ -37,7 +38,7 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
     queryFn: async ({ signal }) => {
       const result = await client.from("issues").select("*").eq("workspace_id", workspaceId)
         .order("updated_at", { ascending: false }).order("id").range(0, 500).abortSignal(signal);
-      if (result.error) throw new Error("이슈를 불러오지 못했습니다.");
+      if (result.error) throw new Error("버그를 불러오지 못했어요. 다시 시도해 주세요.");
       if (result.data.length > 500) throw new Error("지원 범위인 500개를 초과했습니다. 전체 조회를 표시할 수 없습니다.");
       return result.data;
     } });
@@ -49,44 +50,42 @@ export function LiveBoard({ client, user, signOut, signOutError }: { client: App
     change({ workspace: workspaceId, issue: id ?? "" }, "push");
   }
   return <>
-    <div className="session-bar">
+    <div className="page-heading"><div><p className="page-eyebrow">REPRODUCE → RESOLVE → RECHECK</p><h1>버그 보드</h1><p>재현을 남기고, 수정한 버전에서 다시 확인하세요.</p></div><div className="session-bar">
       <span>로그인됨 · {typeof user.user_metadata.display_name === "string" ? user.user_metadata.display_name : "사용자"}</span>
       <button className="button button-secondary" onClick={signOut}>로그아웃</button>
-    </div>
+    </div></div>
     {signOutError && <p role="alert">{signOutError}</p>}
-    <div className="page-heading"><div><h1>버그 보드</h1><p>재현에 필요한 정보를 모으고, 다음 작업을 준비하세요.</p></div></div>
-    <p className="connection-notice">실제 팀 데이터가 DB에 저장됩니다. 개발 계정의 팀은 합성 데이터입니다. 변경 알림을 받으면 서버를 다시 조회합니다. 저장 중·결과 확인 중 표시는 아직 확정되지 않은 요청입니다.</p>
-    <WorkspaceCreate client={client} />
     {workspaces.isError && workspaces.data && <p role="alert">최신 팀을 확인하지 못했습니다. <button onClick={() => workspaces.refetch()}>팀 다시 조회</button></p>}
     {workspaces.isPending ? <p role="status">팀을 불러오는 중…</p> : !workspaces.data ?
       <p role="alert">팀을 불러오지 못했습니다. <button onClick={() => workspaces.refetch()}>다시 조회</button></p> : <>
       <div className="workspace-toolbar">
-        <label htmlFor="workspace-select">워크스페이스</label>
+        <label htmlFor="workspace-select">작업할 팀</label>
         <select id="workspace-select" value={workspace ? workspaceId : ""} onChange={(event) => change({ workspace: event.target.value, issue: "", assignee: "" })}>
           <option disabled value="">팀 선택</option>
           {workspaces.data.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}
         </select>
-        {membership.data && <span>역할: {membership.data.role}</span>}
+        {membership.data && <span>역할: {roleLabels[membership.data.role]}</span>}
+        {workspace?.name.startsWith("합성") && <span className="synthetic-label">합성 데이터</span>}
+        <WorkspaceCreate client={client} />
       </div>
       {!workspace ? <p role="status">접근할 수 있는 팀이 없습니다. 팀 주소와 로그인 계정을 확인하세요.</p> :
         membership.isPending ? <p role="status">권한을 확인하는 중…</p> : !membership.data ?
           <p role="alert">팀 권한을 확인할 수 없습니다. <button onClick={() => { membership.refetch(); workspaces.refetch(); }}>다시 조회</button></p> :
           <WorkspaceConnection key={`${user.id}/${workspaceId}`} client={client} workspaceId={workspaceId}><IssueCommands client={client} canWrite={canWrite}><section className="live-inbox" aria-labelledby="inbox-title">
-            <IssueRealtime />
-            <Notifications client={client} workspaceId={workspaceId} userId={user.id} selectIssue={selectIssue} />
-            <div className="board-caption"><h2 id="inbox-title" tabIndex={-1}>팀 이슈 · {issues.data?.length ?? "…"}개</h2>
-              <button className="button button-secondary" onClick={() => { issues.refetch(); membership.refetch(); workspaces.refetch(); }}>최신 목록 조회</button></div>
-            <TeamManagement client={client} workspaceId={workspaceId} isOwner={!membership.isError && membership.data.role === "owner"} />
+            <div className="board-tools">
+              <IssueRealtime />
+              <Notifications client={client} workspaceId={workspaceId} userId={user.id} selectIssue={selectIssue} />
+              <TeamManagement client={client} workspaceId={workspaceId} isOwner={!membership.isError && membership.data.role === "owner"} />
+            </div>
             {membership.isError && <p role="alert">최신 권한 확인에 실패했습니다. <button onClick={() => membership.refetch()}>권한 다시 조회</button></p>}
-            {membership.data.role === "viewer" && <p className="read-only-note">Viewer는 조회만 할 수 있습니다.</p>}
+            {membership.data.role === "viewer" && <p className="read-only-note">읽기 전용입니다. 버그 내용을 확인할 수 있습니다.</p>}
             <PermissionIssueForm client={client} workspaceId={workspaceId} canWrite={canWrite} />
             <BoardFilters key={workspaceId} client={client} workspaceId={workspaceId} state={boardState} change={change} />
-            {issues.isPending && <p role="status">이슈를 불러오는 중…</p>}
+            {issues.isPending && <p role="status">버그를 불러오는 중…</p>}
             {issues.isError && <p role="alert">{issues.error.message} {issues.data && "마지막 조회 값을 표시합니다."} <button onClick={() => issues.refetch()}>다시 조회</button></p>}
-            {issues.isFetching && !issues.isPending && <p role="status">최신 목록 확인 중…</p>}
-            {issues.data && <>{issues.data.length === 0 && <p className="empty-inbox">아직 등록된 이슈가 없습니다.</p>}
-              <p role="status" className="board-result-count">조회 결과 {visible.length} / {issues.data.length}개</p>
-              {issues.data.length > 0 && visible.length === 0 && <p className="empty-inbox">검색·필터에 맞는 이슈가 없습니다. 조건을 변경하거나 초기화하세요.</p>}
+            <div className="board-caption"><h2 id="inbox-title" tabIndex={-1}>진행 현황</h2><div className="board-caption-actions"><span role="status" className="board-fetch-status">{issues.isFetching && !issues.isPending ? "최신 목록 확인 중…" : ""}</span>{issues.data && <p role="status" className="board-result-count">조회 결과 {visible.length} / {issues.data.length}개</p>}<button className="button button-secondary" onClick={() => { issues.refetch(); membership.refetch(); workspaces.refetch(); }}>최신 목록 조회</button></div></div>
+            {issues.data && <>{issues.data.length === 0 && <p className="empty-inbox">아직 등록된 버그가 없습니다. 제목만 적어 첫 버그를 등록해 보세요.</p>}
+              {issues.data.length > 0 && visible.length === 0 && <p className="empty-inbox">조건에 맞는 버그가 없습니다. 검색어나 필터를 바꾸거나 초기화해 주세요.</p>}
               <IssueBoard client={client} workspaceId={workspaceId} issues={visible} canWrite={canWrite} select={selectIssue} /></>}
             {selectedId && <IssueDetail key={selectedId} client={client} workspaceId={workspaceId} issue={selectedIssue} canWrite={canWrite}
               loading={issues.isPending} error={issues.isError} refreshing={issues.isFetching}

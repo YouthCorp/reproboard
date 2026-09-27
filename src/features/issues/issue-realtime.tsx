@@ -119,22 +119,26 @@ export function IssueRealtime() {
   const status = connectionStatus(state);
   return <div className="realtime-status" role="status" data-connection-state={status}
     data-realtime-state={status === "normal" ? "subscribed" : status === "syncing" ? "syncing" : "error"} data-ws-state={state.ws} data-http-state={state.http}>
-    <p>{connectionMessages[status]}</p>
-    <span>Realtime: {{ connecting: "연결 중", connected: "연결됨", error: "불안정" }[state.ws]} · HTTP: {{ unknown: "미확인", checking: "조회 중", ok: "응답 확인", error: "요청 실패" }[state.http]}</span>{" "}
-    <button type="button" className="button button-secondary" onClick={state.refresh} disabled={!state.online}>연결 상태 다시 확인</button>
+    {status !== "normal" && <p>{connectionMessages[status]}</p>}
+    <details className="connection-details"><summary>{status === "normal" ? "정상 · 연결 정보" : "연결 정보 확인"}</summary>
+      {status === "normal" && <p>{connectionMessages[status]}</p>}
+      <span>실시간 알림: {{ connecting: "연결 중", connected: "연결됨", error: "불안정" }[state.ws]} · 저장·조회: {{ unknown: "미확인", checking: "조회 중", ok: "응답 확인", error: "요청 실패" }[state.http]}</span>{" "}
+      {status === "normal" && <button type="button" className="button button-secondary" onClick={state.refresh}>연결 상태 다시 확인</button>}
+    </details>
+    {status !== "normal" && <button type="button" className="button button-secondary" onClick={state.refresh} disabled={!state.online}>연결 상태 다시 확인</button>}
   </div>;
 }
 
 function connectionStatus(state: Connection) {
-  return !state.online ? "offline" : state.http === "error" ? "http-error" : state.ws !== "connected" ? "degraded"
+  return !state.online ? "offline" : state.http === "error" ? "http-error" : state.ws === "connecting" ? "syncing" : state.ws !== "connected" ? "degraded"
     : state.sync !== "subscribed" || state.http !== "ok" ? "syncing" : "normal";
 }
 const connectionMessages = {
   offline: "오프라인 · 초안을 유지합니다. 새 저장은 보내지 않으며 연결 후에도 자동 전송하지 않습니다.",
-  "http-error": "HTTP 요청 실패 · 저장을 보장할 수 없습니다. 결과 불명 요청은 같은 요청으로 직접 확인하세요.",
-  degraded: "실시간 불안정 · HTTP 저장은 가능합니다. 15초 간격으로 임시 조회하며 초안을 유지합니다.",
-  syncing: "동기화 중 · 구독과 최신 서버 값을 확인하고 있습니다. 초안을 유지합니다.",
-  normal: "정상 · 실시간 구독과 최신 조회를 확인했습니다. 각 저장은 서버 응답으로 확인합니다.",
+  "http-error": "저장·조회 연결 실패 · 저장 여부가 확인되지 않은 요청은 ‘같은 요청으로 결과 확인’을 눌러 주세요. 작성 중인 내용은 유지됩니다.",
+  degraded: "실시간 알림이 불안정합니다. 저장 요청은 보낼 수 있고, 목록은 15초마다 확인합니다. 각 요청의 저장 결과를 확인해 주세요.",
+  syncing: "동기화 중 · 최신 변경을 확인하고 있습니다. 작성 중인 내용은 유지됩니다.",
+  normal: "실시간 알림과 최신 목록을 확인했습니다. 저장 완료 여부는 각 요청의 응답으로 확인합니다.",
 };
 
 // Modal/mobile users must see the connection warning without closing their draft.

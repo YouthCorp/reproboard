@@ -23,9 +23,9 @@ test("anonymous board preview and login clearly explain unavailable actions", as
   await page.goto("/");
   await expect(page).toHaveURL(/\/board$/);
   await expect(page.getByRole("heading", { name: "버그 보드", exact: true })).toBeVisible();
-  await expect(page.getByText(/아래는 실제 조회 결과가 아닙니다/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "이슈 등록" })).toBeDisabled();
-  for (const name of ["Inbox", "Ready", "In Progress", "Verify", "Done"]) {
+  await expect(page.getByText(/아래는 5단계 작업 흐름을 보여주는 미리보기입니다/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "버그 등록" })).toBeDisabled();
+  for (const name of ["접수", "진행 대기", "수정 중", "재검증", "완료"]) {
     await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
   }
   await testInfo.attach("board-desktop", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });

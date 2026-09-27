@@ -14,17 +14,20 @@ import { canTransition, needsReason, needsVerification, stateFieldErrors } from 
 import { TransitionDialog } from "./transition-menu";
 import { useConnection } from "./issue-realtime";
 
-function Card({ issue, pending, message, canWrite, select, retry }: { issue: Issue; pending?: PendingCommand; message?: string; canWrite: boolean; select: (id: string) => void; retry: (command: BoardCommand) => void }) {
+function Card({ issue, assignee, pending, message, canWrite, select, retry }: { issue: Issue; assignee: string; pending?: PendingCommand; message?: string; canWrite: boolean; select: (id: string) => void; retry: (command: BoardCommand) => void }) {
   const { setNodeRef, setActivatorNodeRef, isDragging, attributes, listeners } = useDraggable({ id: issue.id, disabled: !canWrite || !!pending });
   const fulfilled = completeness(issue);
   return <li ref={setNodeRef} className={`issue-card${isDragging ? " is-dragging" : ""}`} data-issue-id={issue.id}>
     {canWrite && <button ref={setActivatorNodeRef} type="button" className="drag-handle" {...attributes} {...listeners} tabIndex={-1}
-      aria-label={`${issue.issue_key} 드래그로 상태 이동`} aria-describedby="board-drag-help" disabled={!!pending}>⠿ 상태 이동</button>}
+      aria-label={`${issue.issue_key} 드래그로 상태 이동`} aria-describedby="board-drag-help" disabled={!!pending}>⠿</button>}
     <button type="button" className="issue-card-link" onClick={() => select(issue.id)} aria-label={`${issue.issue_key} ${issue.title} 상세 열기`}>
       <span className="issue-key">{issue.issue_key}</span><h4>{issue.title}</h4>
-      <span className="issue-classification">{issue.severity === "unset" ? "심각도 미설정" : issue.severity} · {issue.priority === "unset" ? "우선순위 미설정" : issue.priority}</span>
-      <strong className="card-completeness">재현 정보 {fulfilled.count}/4 충족</strong>
-      <span className="card-missing">{fulfilled.missing.length ? `누락: ${fulfilled.missing.join(" · ")}` : "재현 정보 입력 완료"}</span>
+      <span className="card-meta"><span title="심각도 · 버그가 미치는 영향">심각도 {issue.severity === "unset" ? "미설정" : issue.severity}</span><span className={`card-priority priority-${issue.priority}`} title="우선순위 · 팀의 처리 순서">우선 {issue.priority === "unset" ? "미설정" : issue.priority}</span></span>
+      <span className="card-assignee"><span className="assignee-mark" aria-hidden="true">{issue.assignee_id ? assignee.slice(0, 1) : "―"}</span>{assignee}</span>
+      <span className={`card-reproduction${fulfilled.missing.length ? " needs-information" : ""}`}>
+        <strong className="card-completeness">재현 정보 {fulfilled.count}/4 충족</strong>
+        {fulfilled.missing.length > 0 && <span className="card-missing">누락: {fulfilled.missing.join(" · ")}</span>}
+      </span>
     </button>
     {pending && <div className={`card-command ${pending.phase}`}>
       <p role="status">{pending.phase === "pending" ? "저장 중…" : "결과 확인 중 · 저장됐을 수 있습니다."}</p>
@@ -74,7 +77,7 @@ export function IssueBoard({ client, workspaceId, issues, canWrite, select }: { 
   const dialogIssue = issues.find((row) => row.id === dialog?.issueId);
   const activeIssue = issues.find((row) => row.id === dragged?.id);
   return <>
-    <p id="board-drag-help" className="form-hint">{canWrite ? "카드의 이동 손잡이를 다른 열로 드래그하세요. 키보드는 상세의 상태 이동 메뉴를 이용하세요. 열 내부 순서는 선택한 정렬을 따릅니다." : "Viewer는 이슈를 조회할 수 있습니다."}</p>
+    <p id="board-drag-help" className="form-hint board-help">{canWrite ? "카드를 열어 내용을 작성하고 상태를 옮기세요. ⠿ 손잡이로도 이동할 수 있습니다." : "읽기 전용입니다. 카드를 열어 내용을 확인하세요."}</p>
     <p className="board-move-message" role="status">{message}</p>
     <DndContext id="issue-board-dnd" sensors={sensors} collisionDetection={pointerWithin}
       accessibility={{ screenReaderInstructions: { draggable: "상태 이동은 카드 상세의 상태 이동 메뉴에서 키보드로 할 수 있습니다." }, announcements: {
@@ -88,9 +91,9 @@ export function IssueBoard({ client, workspaceId, issues, canWrite, select }: { 
       <div className="board-grid live-board-grid">{boardColumns.map((column) => {
         const rows = issues.filter((issue) => displayedStatus(issue, canWrite ? requests[issueCommandKey(issue.workspace_id, issue.id)] : undefined) === column.id);
         return <Column key={column.id} column={column} count={rows.length}>
-          {rows.length === 0 ? <p className="column-empty">이 상태의 이슈가 없습니다.</p> : <ul className="issue-list">{rows.map((issue) => {
+          {rows.length === 0 ? <p className="column-empty">이 단계의 버그가 없습니다.</p> : <ul className="issue-list">{rows.map((issue) => {
             const key = issueCommandKey(issue.workspace_id, issue.id);
-            return <Card key={issue.id} issue={issue} canWrite={allowMove} pending={requests[key]} message={messages[key]} select={select} retry={send} />;
+            return <Card key={issue.id} issue={issue} assignee={issue.assignee_id ? members.data?.find((member) => member.user_id === issue.assignee_id)?.display_name ?? "담당자 확인 중" : "담당자 미지정"} canWrite={allowMove} pending={requests[key]} message={messages[key]} select={select} retry={send} />;
           })}</ul>}
         </Column>;
       })}</div>

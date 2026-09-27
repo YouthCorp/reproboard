@@ -49,7 +49,7 @@ async function login(page, next, role = 'owner') {
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await page.getByLabel('개발 계정', { exact: true }).selectOption(role);
   await page.getByRole('button', { name: '개발 계정으로 로그인', exact: true }).click();
-  await expect(page.getByText(`역할: ${role}`, { exact: true })).toBeVisible();
+  await expect(page.getByText(`역할: ${{owner:'관리자',member:'멤버',viewer:'읽기 전용'}[role]}`, { exact: true })).toBeVisible();
 }
 const board = (workspaceId) => `/board?workspace=${workspaceId}`;
 const query = (page) => new URL(page.url()).searchParams;
@@ -64,10 +64,10 @@ test('D10 combined URL filters and stable sorting copy to another session, reloa
   await login(page, board(workspaceId)); await healthy(page);
   const originalHistory = await page.evaluate(() => window.history.length);
   await expect.poll(() => cardIds(page)).toEqual(rows.map((r) => r.id).sort());
-  await page.getByLabel('이슈 정렬', { exact: true }).selectOption('priority');
+  await page.getByLabel('정렬', { exact: true }).selectOption('priority');
   const matching = [rows[0].id, rows[3].id].sort();
   await expect.poll(() => cardIds(page)).toEqual([rows[1].id, ...matching, rows[2].id]);
-  await page.getByLabel('제목·이슈키 검색', { exact: true }).fill('  login  ');
+  await page.getByLabel('제목·번호 검색', { exact: true }).fill('  login  ');
   await expect.poll(() => query(page).get('q')).toBe('login');
   await page.getByLabel('심각도 필터', { exact: true }).selectOption('S2');
   await page.getByLabel('우선순위 필터', { exact: true }).selectOption('P1');
@@ -84,7 +84,7 @@ test('D10 combined URL filters and stable sorting copy to another session, reloa
     await memberPage.getByRole('link', { name: '로그인 안내' }).click();
     await memberPage.getByLabel('개발 계정', { exact: true }).selectOption('member');
     await memberPage.getByRole('button', { name: '개발 계정으로 로그인', exact: true }).click();
-    await expect(memberPage.getByText('역할: member', { exact: true })).toBeVisible();
+    await expect(memberPage.getByText('역할: 멤버', { exact: true })).toBeVisible();
     await expect(memberPage.locator('dialog.issue-detail #detail-title')).toHaveText(rows.find((r) => r.id === matching[0]).title);
     await expect(memberPage.locator('.board-result-count')).toHaveText('조회 결과 2 / 4개');
     await page.reload(); await expect(page.locator('dialog.issue-detail')).toBeVisible();
@@ -101,11 +101,11 @@ test('D10 combined URL filters and stable sorting copy to another session, reloa
 test('D10 issue key search, zero results, defaults and direct filtered-out detail closes inside the app', async ({ page }) => {
   const { workspaceId, rows } = await fixture();
   await login(page, board(workspaceId)); await healthy(page);
-  await page.getByLabel('제목·이슈키 검색', { exact: true }).fill(rows[1].issue_key.toLowerCase());
+  await page.getByLabel('제목·번호 검색', { exact: true }).fill(rows[1].issue_key.toLowerCase());
   await expect.poll(() => cardIds(page)).toEqual([rows[1].id]);
-  await page.getByLabel('제목·이슈키 검색', { exact: true }).fill('일치하는 이슈 없음');
-  await expect(page.getByText('검색·필터에 맞는 이슈가 없습니다. 조건을 변경하거나 초기화하세요.')).toBeVisible();
-  await expect(page.getByText('아직 등록된 이슈가 없습니다.', { exact: true })).toHaveCount(0);
+  await page.getByLabel('제목·번호 검색', { exact: true }).fill('일치하는 이슈 없음');
+  await expect(page.getByText('조건에 맞는 버그가 없습니다. 검색어나 필터를 바꾸거나 초기화해 주세요.')).toBeVisible();
+  await expect(page.getByText('아직 등록된 버그가 없습니다. 제목만 적어 첫 버그를 등록해 보세요.', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '검색·필터 초기화', exact: true }).click();
   await expect(page).toHaveURL(board(workspaceId));
   await page.getByLabel('담당자 필터', { exact: true }).selectOption('none');
@@ -128,7 +128,7 @@ test('D10 invalid enums/UUIDs canonicalize once; unknown/foreign issue and works
   await expect(page).toHaveURL(board(workspaceId)); await expect(page.locator('.issue-card')).toHaveCount(4);
   for (const id of [randomUUID(), foreign.rows[0].id]) {
     await page.goto(`${board(workspaceId)}&issue=${id}`);
-    await expect(page.getByText('이슈가 없거나 접근 권한이 없습니다. 팀과 주소를 확인하세요.')).toBeVisible();
+    await expect(page.getByText('버그가 없거나 볼 수 없는 팀입니다. 팀과 주소를 확인해 주세요.')).toBeVisible();
     await expect(page.getByText(foreign.rows[0].title, { exact: true })).toHaveCount(0); await close(page);
   }
   await page.goto(`${board(workspaceId)}&assignee=${accounts.find((a) => a.role === 'outsider').id}`);
@@ -165,7 +165,7 @@ test('D10 IME composition does not navigate/refetch, debounced replace preserves
       if (before !== after) window.d10SearchWrites.push(after);
     };
   });
-  const history = await page.evaluate(() => window.history.length), input = page.getByLabel('제목·이슈키 검색', { exact: true });
+  const history = await page.evaluate(() => window.history.length), input = page.getByLabel('제목·번호 검색', { exact: true });
   await input.dispatchEvent('compositionstart'); await input.fill('ㅎ'); await page.clock.runFor(600);
   await input.fill('한글'); await page.clock.runFor(600); expect(query(page).has('q')).toBe(false);
   await input.dispatchEvent('compositionend', { data: '한글' }); await page.clock.runFor(299); expect(query(page).has('q')).toBe(false);
