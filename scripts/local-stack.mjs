@@ -36,7 +36,9 @@ export function assertStackOwnership(containers, project, workdir = root) {
   for (const container of containers) {
     const labels = container.Config?.Labels ?? {};
     if (labels['com.supabase.cli.project'] !== project
-      || resolve(labels['com.supabase.cli.workdir'] ?? '') !== resolve(workdir)) {
+      || typeof labels['com.supabase.cli.workdir'] !== 'string'
+      || !labels['com.supabase.cli.workdir']
+      || resolve(labels['com.supabase.cli.workdir']) !== resolve(workdir)) {
       throw new Error('Refusing stack cleanup: Docker container belongs to another project or checkout.');
     }
   }

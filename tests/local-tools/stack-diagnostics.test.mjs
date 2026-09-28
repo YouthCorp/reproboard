@@ -19,4 +19,7 @@ test('cleanup permits stopped or absent containers but rejects a foreign checkou
   assert.throws(() => assertStackOwnership([owned], 'other-project'));
   assert.throws(() => assertStackOwnership([owned], 'reproboard', '/different-checkout'));
   assert.throws(() => assertStackOwnership([{}], 'reproboard'));
+  for (const workdir of [undefined, '']) {
+    assert.throws(() => assertStackOwnership([{ Config: { Labels: { 'com.supabase.cli.project': 'reproboard', 'com.supabase.cli.workdir': workdir } } }], 'reproboard'));
+  }
 });
