@@ -1,0 +1,31 @@
+{
+  "planned": 5,
+  "executed": 5,
+  "results": [
+    {
+      "file": "tests/db-ui/recovery.spec.mjs",
+      "name": "D8 A offline, B changes, A rejoins and drains a change during recovery without sending its draft",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/recovery.spec.mjs",
+      "name": "D8 WS-only failure permits HTTP writes and fallback polling; HTTP-only lost response keeps the same request",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/recovery.spec.mjs",
+      "name": "D8 live role downgrade rejects an in-flight command, preserves draft and disables forbidden actions",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/recovery.spec.mjs",
+      "name": "D8 workspace switching and logout remove old subscriptions, polling and cached rows",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/recovery.spec.mjs",
+      "name": "D8 actual revoked refresh session expires an open board and clears its private UI",
+      "result": "PASS"
+    }
+  ]
+}

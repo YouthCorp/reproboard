@@ -1,0 +1,21 @@
+{
+  "planned": 3,
+  "executed": 3,
+  "results": [
+    {
+      "file": "tests/db-ui/realtime.spec.mjs",
+      "name": "D7 two browser users race different fields: one commit, one conflict, copy and explicit re-edit",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/realtime.spec.mjs",
+      "name": "D7 subscription handshake gap, an event during snapshot, and duplicate real frames converge without duplicate cards",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/realtime.spec.mjs",
+      "name": "D7 actual remote change supersedes pending A, B succeeds and late conflict/success cannot lower server state",
+      "result": "PASS"
+    }
+  ]
+}

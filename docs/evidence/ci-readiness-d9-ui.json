@@ -1,0 +1,21 @@
+{
+  "planned": 3,
+  "executed": 3,
+  "results": [
+    {
+      "file": "tests/db-ui/comments.spec.mjs",
+      "name": "D9 two browser users: literal text, realtime comment/activity, dedup frames, recipient notification/read and drafts",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/comments.spec.mjs",
+      "name": "D9 Viewer reads and marks own mention, outsider cannot access, read failure retries and mobile overflow is absent",
+      "result": "PASS"
+    },
+    {
+      "file": "tests/db-ui/comments.spec.mjs",
+      "name": "D9 commit then response loss: preserve draft, explicit same request replay; offline never queues; validation focuses textarea",
+      "result": "PASS"
+    }
+  ]
+}

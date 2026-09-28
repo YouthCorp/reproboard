@@ -9,7 +9,8 @@
 - 앱과 D7/D9 DB 스트림에서 SDK 2.116.0의 `postgres_changes_options.wait: true`를 사용한다. 단순 소켓 가입 대신 DB 변경 수신 준비가 끝난 뒤 재조회/테스트 쓰기를 시작한다. 고정 지연·retry·skip·권한 검증 완화는 추가하지 않았다.
 - 수정 후 로컬 Realtime v2.130.0 컨테이너만 재시작하고 D9 사례 1/1 PASS. 기존 DB/사용자 데이터는 보존했다. lint/typecheck/build, 앱 단위 57, 로컬 보호/진단 8, 문서 검사 PASS.
 - CI 실패 출력은 종료 코드·허용된 오류 분류만 추가했다. 원시 오류/행/계정/토큰은 로그나 artifact에 공개하지 않는다. 알 수 없는 오류는 `inspect-private-log`로 남긴다.
-- 전체 DB/협업 회귀와 수정 커밋의 원격 CI 결과는 완료 후 아래에 기록한다. 실제 OAuth·배포 smoke는 이번 수정에서도 NOT_RUN이다.
+- 로컬 전체 [DB 46/46](evidence/ci-readiness-db.json), 관련 격리 UI [D7 3/3](evidence/ci-readiness-d7-ui.json)·[D8 5/5](evidence/ci-readiness-d8-ui.json)·[D9 3/3](evidence/ci-readiness-d9-ui.json), production smoke 6/6 PASS. UI는 관련 11개만 재실행했으며 로컬 전체 35개 재실행은 NOT_RUN이다. 실행 후 fixture 정리와 lock 제거를 확인했다.
+- 수정 커밋 `03b844f`의 [원격 CI](https://github.com/YouthCorp/reproboard/actions/runs/36357831192)는 **전체 PASS**: app 작업(정적/단위/보호/문서/build/smoke), DB 46/46, 격리 브라우저 35/35. 새 Ubuntu runner의 실제 로컬 스택에서 기존 실패 사례 25번을 포함해 전부 실행했고 정리 작업도 성공했다. 재시도/skip 없이 확인했다. 실제 OAuth·배포 smoke는 이번 수정에서도 NOT_RUN이다.
 
 ## 원격 연결 후속 — 2026-09-27
 
@@ -35,7 +36,7 @@ Windows 25H2/PowerShell 7.6.5, Node 24.19.0, pnpm 11.19.0, Chromium 153.0.8010.1
 | 새 소스·빈 로컬 DB 재현 | PASS | 09-26. [환경·해시·절차](evidence/d13-reproduction.json) |
 | 실제 앱 시연/녹화 | 4 PASS, PNG 8·WebM 5 | 09-26. [파일 해시](evidence/d13-demo-results.json), [시연](DEMO.md). UI 개선 전 영상 |
 | D14 문서·라이선스·관련 회귀 | 문서 검사·lint·보호 6 PASS | 09-27. Markdown 21개 로컬 경로/heading·실행 명령 검사. 직접 의존성 28개와 폰트 대조 |
-| GitHub CI | FAIL (수정 전 e7d8221) | 09-28 app PASS, DB D9 첫 구독 실패. 상단 후속 기록 참조 |
+| GitHub CI | PASS (03b844f) | 09-28 app·DB 46·격리 UI 35. 수정 전 e7d8221의 실패와 구분, 상단 실행 링크 참조 |
 | 실제 OAuth / 공개 배포 smoke | NOT_RUN | 외부 앱/호스팅 미설정 |
 
 위 숫자는 서로 다른 검증 층과 날짜다. 하나의 전체 성공률로 합산하지 않는다. 이번 문서 변경만으로 과거 앱 테스트를 오늘 다시 실행했다고 표시하지 않는다.

@@ -308,6 +308,6 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V13을 수�
 - 원격 e7d8221의 app PASS/DB 25번째 FAIL 확인. 로컬 D9 첫 실행은 이벤트 0건으로 FAIL, 변경 없는 재실행은 PASS였다.
 - 앱과 D7/D9 DB 테스트에 SDK의 실제 변경 수신 준비 대기를 적용했다. 구독 완료 후 최신 조회/dirty 재조회 계약을 유지한다.
 - DB 보존 상태에서 로컬 Realtime만 재시작한 D9 1/1 PASS. 고정 sleep·재시도·skip·검증 완화는 추가하지 않았다.
-- lint/typecheck/build·단위 57·로컬 보호/진단 8·문서 검사 PASS. 전체 DB/협업 회귀는 실행 중이며 최종 결과는 TEST_REPORT에 보완한다.
+- lint/typecheck/build·단위 57·로컬 보호/진단 8·문서 검사·production smoke 6·격리 DB 46·관련 격리 UI 11 PASS. 실제 결과 JSON은 TEST_REPORT에서 연결한다.
 - CI에 비밀 값 없는 고정 실패 분류를 남기고 원시 로그/사용자 정보는 업로드하지 않는다. README에 작업 이력은 추가하지 않는다.
-- 기존 비공개 원격에 수정 반영 후 실제 CI를 확인한다. OAuth/배포는 NOT_RUN이며 이번 변경 범위가 아니다.
+- 수정 커밋 03b844f를 기존 비공개 원격에 반영했다. 새 CI 전체 PASS: app·DB 46·격리 브라우저 35, 정리 작업까지 확인했다. OAuth/배포는 NOT_RUN이다.
