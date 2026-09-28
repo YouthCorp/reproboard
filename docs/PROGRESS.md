@@ -311,3 +311,11 @@ AGENTS.md와 docs/PROGRESS.md를 읽고 docs/planning/PROMPTS.md의 V13을 수�
 - lint/typecheck/build·단위 57·로컬 보호/진단 8·문서 검사·production smoke 6·격리 DB 46·관련 격리 UI 11 PASS. 실제 결과 JSON은 TEST_REPORT에서 연결한다.
 - CI에 비밀 값 없는 고정 실패 분류를 남기고 원시 로그/사용자 정보는 업로드하지 않는다. README에 작업 이력은 추가하지 않는다.
 - 수정 커밋 03b844f를 기존 비공개 원격에 반영했다. 새 CI 전체 PASS: app·DB 46·격리 브라우저 35, 정리 작업까지 확인했다. OAuth/배포는 NOT_RUN이다.
+
+## 후속 CI 스택 기동 진단·정리 — 2026-09-28
+
+- d8235ea의 원격 실행은 app PASS, Supabase start/stop FAIL이며 DB/UI는 NOT_RUN이다. 이전 03b844f PASS와 분리해 기록한다.
+- 최초 기동 실패의 원시 로그는 래퍼가 보존하지 않아 하위 원인이 미확정이다. 비밀 값 없이 고정 오류 분류·종료 코드·서비스 정보를 남기도록 보완했다.
+- 실패한 스택 정리에 정상 DB status를 요구하던 조건을 제거하고 프로젝트/checkout 소유권 검사를 적용했다. 볼륨은 보존한다.
+- PASS: lint·로컬 보호/진단 10개·실제 stop→중단 상태 stop→start. 건강 검사 무시·자동 재시도·테스트 skip은 없다.
+- 원격 수정 반영 후 전체 CI를 확인한다. 이 변경은 앱 기능·SQL·의존성 버전을 변경하지 않는다.

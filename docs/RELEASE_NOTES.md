@@ -31,7 +31,7 @@
 ## 남은 외부 작업 — 한 번에 준비할 항목
 
 - **저장소와 권한**: YouthCorp/reproboard 비공개 저장소에 main push를 완료했다. 공개 전환 여부를 정한다. 비공개 취약점 신고를 활성화하고 [SECURITY](../SECURITY.md)에 실제 경로를 연결한다. 공개 승인 후에만 push/Release를 진행한다.
-- **CI 완료(2026-09-28)**: 첫 Realtime 구독 준비 경합 수정 후 `03b844f`의 두 job이 실제 GitHub Ubuntu runner에서 PASS했다. 로컬 stack·생성 타입 일치·DB 46·격리 UI 35·build/smoke를 포함한다. [실패/수정/검증 기록](TEST_REPORT.md#ci-realtime-첫-구독-수정--2026-09-28)을 참조한다.
+- **CI(2026-09-28)**: `03b844f`는 app·DB 46·UI 35 전체 PASS였지만 후속 `d8235ea`는 스택 기동 단계에서 실패했다. 최신 판정과 기동 진단 보완은 [검증 기록](TEST_REPORT.md)을 따른다. 과거 PASS로 후속 실패를 대체하지 않는다.
 - **OAuth**: 개발/운영별 GitHub OAuth App과 Supabase provider, callback·site/redirect URL을 [정확한 설정 절차](DEVELOPMENT.md)에 맞춘다. 성공·취소·콜백·로그아웃을 수동으로 확인한다. 개발 계정 로그인은 이 확인의 대체가 아니다.
 - **배포를 선택할 때**: 호스팅·HTTPS origin·hosted Supabase를 정하고 승인된 대상에만 migration/환경 변수를 적용한다. RLS/grant/publication, 일반 사용자·Viewer·타팀, production 개발 도구 미노출, 저장·충돌·복구 smoke를 확인한다. 공유 관리자 계정/RLS 해제는 사용하지 않는다.
 

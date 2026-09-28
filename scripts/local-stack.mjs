@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { stackFailure } from './stack-diagnostics.mjs';
 
 export const root = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -16,9 +17,10 @@ export function runCli(args) {
       cwd: root, encoding: 'utf8', windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'], timeout: args[0] === 'start' ? 600_000 : 180_000, maxBuffer: 8 * 1024 * 1024,
     });
-  } catch {
+  } catch (error) {
     // CLI errors can include URLs/keys. Do not forward raw stdout/stderr.
-    throw new Error(`Local Supabase command failed (${args.slice(0, 2).join(' ')}). Check Docker and local stack.`);
+    // eslint-disable-next-line preserve-caught-error -- Raw cause contains CLI credentials; only allowlisted diagnostics may escape.
+    throw new Error(`Local Supabase command failed (${args.slice(0, 2).join(' ')}). Safe diagnostics: ${JSON.stringify(stackFailure(error))}`);
   }
 }
 
@@ -26,6 +28,31 @@ export function localProjectId(config) {
   const id = /^project_id\s*=\s*"([^"]+)"\s*$/m.exec(config)?.[1];
   if (id !== 'reproboard' && !/^reproboard-cleanroom-[0-9a-f]{12}$/.test(id ?? '')) throw new Error('Unexpected local project id');
   return id;
+}
+
+// Cleanup must also work after a failed start, when status/DB health is unavailable.
+// Validate ownership independently; never accept another checkout's containers.
+export function assertStackOwnership(containers, project, workdir = root) {
+  for (const container of containers) {
+    const labels = container.Config?.Labels ?? {};
+    if (labels['com.supabase.cli.project'] !== project
+      || resolve(labels['com.supabase.cli.workdir'] ?? '') !== resolve(workdir)) {
+      throw new Error('Refusing stack cleanup: Docker container belongs to another project or checkout.');
+    }
+  }
+}
+
+export function stopLocalStack() {
+  if (resolve(process.cwd()) !== resolve(root)) throw new Error('Run from the repository root.');
+  const project = localProjectId(readFileSync(resolve(root, 'supabase/config.toml'), 'utf8'));
+  const options = { cwd: root, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], timeout: 15_000 };
+  let containers;
+  try {
+    const ids = execFileSync('docker', ['ps', '-aq', '--filter', `label=com.supabase.cli.project=${project}`], options).trim().split(/\s+/).filter(Boolean);
+    containers = ids.length ? JSON.parse(execFileSync('docker', ['inspect', ...ids], options)) : [];
+  } catch { throw new Error('Cannot verify Docker ownership for local stack cleanup.'); }
+  assertStackOwnership(containers, project);
+  runCli(['stop']); // Project scoped, default backup enabled; no volume deletion.
 }
 
 export function assertLocalTarget(status, container, config, cwd = root) {

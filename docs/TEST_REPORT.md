@@ -2,6 +2,14 @@
 
 기준: **2026-09-27, v0.1.0 릴리스 후보**. 로컬 PASS와 원격 CI/공급자/운영 검증을 구분한다. 개발 계정은 합성이고 모든 앱 동작은 실제 사용자 세션이다. fixture 준비·정리/SQL 결과 확인 외에 서비스 키로 사용자 동작을 대체하지 않았다. 외부 사용자 관찰과 독립 검수는 NOT_RUN이다.
 
+## 후속 CI 스택 기동 실패 — 2026-09-28
+
+- [d8235ea 실행](https://github.com/YouthCorp/reproboard/actions/runs/36408094586)은 app PASS, Supabase `start` FAIL, 이어진 `stop`도 `status` 실패였다. migration/DB/UI는 모두 NOT_RUN이다. 아래 03b844f의 전체 PASS는 해당 실행에만 적용되며 최신 실행 성공을 뜻하지 않는다.
+- 기존 CLI 래퍼가 원시 오류를 버려 최초 기동 실패의 하위 원인은 미확정이다. Realtime 검증 실패로 분류하거나 Docker 재설치가 필요하다고 판단할 근거는 없다.
+- CLI 오류는 이제 종료 코드·타임아웃/버퍼 한도·health/image/port/disk 등의 고정 분류와 언급된 서비스 이름만 출력한다. 비밀 값이 포함될 수 있는 원시 stderr/stdout/cause는 공개하지 않는다.
+- 정리는 정상 DB `status`를 요구하지 않고 프로젝트/checkout 소유권을 검사한 후 볼륨 보존 `stop`을 수행한다. 다른 폴더 소유 컨테이너는 거부한다. health check 무시·자동 재시도·테스트 skip은 추가하지 않았다.
+- 로컬 PASS: lint, 보호/진단 테스트 10개, 실제 Docker에서 stop→이미 중단된 stack의 stop→start. 원격 재검증은 수정 반영 후 확인한다. 앱/SQL 변경은 없으며 앱/DB 전체 로컬 회귀 재실행은 NOT_RUN이다.
+
 ## CI Realtime 첫 구독 수정 — 2026-09-28
 
 - 원격 [e7d8221 실행](https://github.com/YouthCorp/reproboard/actions/runs/36356540213): app PASS, DB 24 PASS/25번째 D9 Realtime FAIL. 이후 DB 21개와 UI 전체는 NOT_RUN이다. 전체 CI를 성공으로 보지 않는다.
@@ -36,7 +44,7 @@ Windows 25H2/PowerShell 7.6.5, Node 24.19.0, pnpm 11.19.0, Chromium 153.0.8010.1
 | 새 소스·빈 로컬 DB 재현 | PASS | 09-26. [환경·해시·절차](evidence/d13-reproduction.json) |
 | 실제 앱 시연/녹화 | 4 PASS, PNG 8·WebM 5 | 09-26. [파일 해시](evidence/d13-demo-results.json), [시연](DEMO.md). UI 개선 전 영상 |
 | D14 문서·라이선스·관련 회귀 | 문서 검사·lint·보호 6 PASS | 09-27. Markdown 21개 로컬 경로/heading·실행 명령 검사. 직접 의존성 28개와 폰트 대조 |
-| GitHub CI | PASS (03b844f) | 09-28 app·DB 46·격리 UI 35. 수정 전 e7d8221의 실패와 구분, 상단 실행 링크 참조 |
+| GitHub CI | 03b844f PASS / 후속 d8235ea FAIL | 첫 실행의 app·DB 46·UI 35 PASS와 후속 스택 기동 실패를 구분. 상단 기록 참조 |
 | 실제 OAuth / 공개 배포 smoke | NOT_RUN | 외부 앱/호스팅 미설정 |
 
 위 숫자는 서로 다른 검증 층과 날짜다. 하나의 전체 성공률로 합산하지 않는다. 이번 문서 변경만으로 과거 앱 테스트를 오늘 다시 실행했다고 표시하지 않는다.
