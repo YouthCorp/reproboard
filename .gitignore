@@ -1,4 +1,5 @@
 node_modules/
+docs/
 .next/
 out/
 coverage/
@@ -19,4 +20,3 @@ supabase/.branches/
 .DS_Store
 Thumbs.db
 /playwright-ux-report/
-docs/
