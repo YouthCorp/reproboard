@@ -19,3 +19,4 @@ supabase/.branches/
 .DS_Store
 Thumbs.db
 /playwright-ux-report/
+docs/
